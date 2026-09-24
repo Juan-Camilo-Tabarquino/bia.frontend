@@ -2,7 +2,7 @@
 import { Meter } from "../types/backend";
 import { Spin, List, Typography } from 'antd';
 import { useGetMetersQuery } from '../features/api/apiSlice';
-import '../../styles/globals.module.scss';
+import '@/styles/globals.scss';
 
 const { Title } = Typography;
 

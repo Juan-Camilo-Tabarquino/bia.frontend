@@ -27,4 +27,3 @@ const dashboardSlice = createSlice({
 });
 
 export default dashboardSlice.reducer;
-export { fetchAnalysis };

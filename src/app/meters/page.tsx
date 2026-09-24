@@ -1,4 +1,5 @@
-import Link from 'next/link';
+"use client";
+
 import { MeterList } from '../../components/MeterList';
 import { Typography } from 'antd';
 const { Title } = Typography;

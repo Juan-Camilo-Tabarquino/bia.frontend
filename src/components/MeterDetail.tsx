@@ -1,10 +1,14 @@
-import { useGetMeterDetailQuery } from '../features/api/apiSlice';
-import '../../styles/globals.module.scss';
+"use client";
+
+import '@/styles/globals.scss';
 import { Spin, Descriptions } from 'antd';
+
+import { useGetMeterDetailQuery } from '../features/api/apiSlice';
+
 
 interface MeterDetailProps { meterId: string; }
 
-export default function MeterDetail({ meterId }: MeterDetailProps) {
+ export default function MeterDetail({ meterId }: MeterDetailProps) {
   const { data, error, isLoading } = useGetMeterDetailQuery({ meterId });
 
   if (isLoading) return <Spin />;

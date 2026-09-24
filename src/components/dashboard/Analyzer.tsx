@@ -1,6 +1,7 @@
-import React from 'react';
+"use client";
+
 import './Analyzer.module.scss';
-import '../../styles/globals.module.scss';
+import '@/styles/globals.scss';
 import { Card, Typography } from 'antd';
 
 const { Text } = Typography;

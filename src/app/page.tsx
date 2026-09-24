@@ -1,4 +1,5 @@
 "use client";
+
 import { MeterList } from '../components/MeterList';
 import HealthStatus from '../components/HealthStatus';
 

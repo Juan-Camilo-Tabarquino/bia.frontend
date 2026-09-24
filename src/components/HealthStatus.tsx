@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from 'react';
-import '../../styles/globals.module.scss';
+import '@/styles/globals.scss';
 import { getHealth } from '../api/backend';
 import { Result, Spin } from 'antd';
 

@@ -1,6 +1,7 @@
-import React from 'react';
+"use client";
+
 import './ToolProof.module.scss';
-import '../../styles/globals.module.scss';
+import '@/styles/globals.scss';
 import { Collapse, List } from 'antd';
 
 const { Panel } = Collapse;
@@ -12,7 +13,7 @@ interface ToolProofProps {
 
 export default function ToolProof({ toolName, output }: ToolProofProps) {
   return (
-    <Collapse accordion style={{ marginTop: 16 }} aria-live="polite" role="region">
+    <Collapse accordion style={{ marginTop: 16 }} aria-live="polite">
       <Panel header={toolName} key={toolName}>
         <pre>{JSON.stringify(output, null, 2)}</pre>
       </Panel>

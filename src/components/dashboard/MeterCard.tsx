@@ -1,6 +1,7 @@
-import React from 'react';
+"use client";
+
 import './MeterCard.module.scss';
-import '../../styles/globals.module.scss';
+import '@/styles/globals.scss';
 import { Card } from 'antd';
 
 interface MeterCardProps {
