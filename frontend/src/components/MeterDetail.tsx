@@ -7,7 +7,7 @@ export default function MeterDetail({ meterId }: MeterDetailProps) {
   const { data, error, isLoading } = useGetMeterDetailQuery({ meterId });
 
   if (isLoading) return <Spin />;
-  if (error) return <div>{(error as any).message ?? 'Error loading meter'}</div>;
+  if (error) return <div>{((error as unknown) as { message?: string }).message ?? 'Error loading meter'}</div>;
 
   return (
     <Descriptions title="Meter Details" bordered column={1}>

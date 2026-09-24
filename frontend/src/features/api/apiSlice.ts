@@ -1,4 +1,4 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';\n
 
 /**
  * RTK Query API slice for the backend endpoints.
@@ -10,34 +10,34 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
  * - getMeterReadings
  * - getMeterAnomalies
  */
-export const apiSlice = createApi({
-  reducerPath: 'api',
+import { Meter, MeterDetail, Analysis, Reading, Anomaly } from "../../types/backend";\n
+export const apiSlice = createApi({\n
   baseQuery: fetchBaseQuery({
     baseUrl: process.env.NEXT_PUBLIC_API_URL || '/api',
   }),
   endpoints: (builder) => ({
-    getMeters: builder.query<any, void>({
+    getMeters: builder.query<Meter[], void>({
       query: () => '/meters',
     }),
-    getMeterDetail: builder.query<any, { meterId: string; start?: string; end?: string }>({
+    getMeterDetail: builder.query<MeterDetail, { meterId: string; start?: string; end?: string }>({
       query: ({ meterId, start, end }) => ({
         url: `/meter/${meterId}/detail`,
         params: { start, end },
       }),
     }),
-    getAnalysis: builder.query<any, { start?: string; end?: string }>({
+    getAnalysis: builder.query<Analysis, { start?: string; end?: string }>({
       query: ({ start, end }) => ({
         url: '/analysis',
         params: { start, end },
       }),
     }),
-    getMeterReadings: builder.query<any, { meterId: string; start?: string; end?: string }>({
+    getMeterReadings: builder.query<Reading[], { meterId: string; start?: string; end?: string }>({
       query: ({ meterId, start, end }) => ({
         url: `/meter/${meterId}/readings`,
         params: { start, end },
       }),
     }),
-    getMeterAnomalies: builder.query<any, { meterId: string; start?: string; end?: string }>({
+    getMeterAnomalies: builder.query<Anomaly[], { meterId: string; start?: string; end?: string }>({
       query: ({ meterId, start, end }) => ({
         url: `/meter/${meterId}/anomalies`,
         params: { start, end },

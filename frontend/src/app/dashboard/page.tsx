@@ -10,7 +10,7 @@ export default function DashboardPage() {
   const { data, error, isLoading } = useGetAnalysisQuery({});
 
   if (isLoading) return <Spin />;
-  if (error) return <div>{(error as any).message ?? 'Error loading analysis'}</div>;
+  if (error) return <div>{((error as unknown) as { message?: string }).message ?? 'Error loading analysis'}</div>;
 
   return (
     <div>

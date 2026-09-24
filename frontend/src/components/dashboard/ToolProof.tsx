@@ -1,0 +1,19 @@
+import React from 'react';
+import { Collapse, List } from 'antd';
+
+const { Panel } = Collapse;
+
+interface ToolProofProps {
+  toolName: string;
+  output: unknown;
+}
+
+export default function ToolProof({ toolName, output }: ToolProofProps) {
+  return (
+    <Collapse accordion style={{ marginTop: 16 }}>
+      <Panel header={toolName} key={toolName}>
+        <pre>{JSON.stringify(output, null, 2)}</pre>
+      </Panel>
+    </Collapse>
+  );
+}

@@ -1,10 +1,10 @@
-import { createSlice } from '@reduxjs/toolkit';
+import { Meter } from "../../types/backend";\n
 
-// The meters slice now stores the list of meters fetched via RTK Query.
+import { createSlice } from '@reduxjs/toolkit';\n
 // No async thunks are needed because components use useGetMetersQuery.
 const metersSlice = createSlice({
   name: 'meters',
-  initialState: { list: [] as any[] },
+  initialState: { list: [] as Meter[] },
   reducers: {},
 });
 

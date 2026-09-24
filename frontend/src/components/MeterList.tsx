@@ -1,4 +1,5 @@
 "use client";
+import { Meter } from "../types/backend";
 import { Spin, List, Typography } from 'antd';
 import { useGetMetersQuery } from '../features/api/apiSlice';
 
@@ -8,7 +9,7 @@ export function MeterList() {
   const { data: list = [], error, isLoading } = useGetMetersQuery();
 
   if (isLoading) return <Spin />;
-  if (error) return <div>Error loading meters</div>;
+  if (error) return <div>{((error as unknown) as { message?: string }).message ?? 'Error loading meters'}</div>;
 
   return (
     <div>
@@ -16,7 +17,7 @@ export function MeterList() {
       <List
         bordered
         dataSource={list}
-        renderItem={(meter: any) => <List.Item>{meter.id}</List.Item>}
+        renderItem={(meter: Meter) => <List.Item>{meter.id}</List.Item>}
       />
     </div>
   );
