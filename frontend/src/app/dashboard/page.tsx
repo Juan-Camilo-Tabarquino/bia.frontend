@@ -4,7 +4,14 @@ import { Descriptions, Spin } from 'antd';
 import ChartPanel from '../../components/dashboard/ChartPanel';
 import Analyzer from '../../components/dashboard/Analyzer';
 import ToolProof from '../../components/dashboard/ToolProof';
+
+
+import PrivateRoute from '../../components/PrivateRoute';
 import { useGetAnalysisQuery } from '../../features/api/apiSlice';
+
+
+
+
 
 export default function DashboardPage() {
   const { data, error, isLoading } = useGetAnalysisQuery({});
@@ -13,7 +20,9 @@ export default function DashboardPage() {
   if (error) return <div>{((error as unknown) as { message?: string }).message ?? 'Error loading analysis'}</div>;
 
   return (
-    <div>
+    <PrivateRoute>
+      <div>
+
       {/* Chart Panel */}
       <ChartPanel data={data?.chartData ?? []} />
       {/* Analyzer */}
@@ -21,5 +30,6 @@ export default function DashboardPage() {
       {/* Tool Proof */}
       <ToolProof toolName="Analysis Tool" output={data?.toolOutput ?? data} />
     </div>
+    </PrivateRoute>
   );
 }
