@@ -1,0 +1,21 @@
+import { useGetMeterDetailQuery } from '../features/api/apiSlice';
+import { Spin, Descriptions } from 'antd';
+
+interface MeterDetailProps { meterId: string; }
+
+export default function MeterDetail({ meterId }: MeterDetailProps) {
+  const { data, error, isLoading } = useGetMeterDetailQuery({ meterId });
+
+  if (isLoading) return <Spin />;
+  if (error) return <div>{(error as any).message ?? 'Error loading meter'}</div>;
+
+  return (
+    <Descriptions title="Meter Details" bordered column={1}>
+      {Object.entries(data ?? {}).map(([k, v]) => (
+        <Descriptions.Item key={k} label={k}>
+          {String(v)}
+        </Descriptions.Item>
+      ))}
+    </Descriptions>
+  );
+}
