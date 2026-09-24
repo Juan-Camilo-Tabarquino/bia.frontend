@@ -12,7 +12,7 @@ interface ToolProofProps {
 
 export default function ToolProof({ toolName, output }: ToolProofProps) {
   return (
-    <Collapse accordion style={{ marginTop: 16 }}>
+    <Collapse accordion style={{ marginTop: 16 }} aria-live="polite" role="region">
       <Panel header={toolName} key={toolName}>
         <pre>{JSON.stringify(output, null, 2)}</pre>
       </Panel>

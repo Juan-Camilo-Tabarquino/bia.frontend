@@ -19,7 +19,7 @@ export default function MeterCard({
   powerFactor,
 }: MeterCardProps) {
   return (
-    <Card title={meterId} style={{ width: 300 }}>
+    <Card title={meterId} style={{ width: 300 }} role="region" aria-label={`Meter ${meterId}`}>
       <p>Consumption: {consumption} kWh</p>
       <p>Voltage: {voltage} V</p>
       <p>Current: {current} A</p>

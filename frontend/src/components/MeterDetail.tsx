@@ -11,12 +11,14 @@ export default function MeterDetail({ meterId }: MeterDetailProps) {
   if (error) return <div>{((error as unknown) as { message?: string }).message ?? 'Error loading meter'}</div>;
 
   return (
-    <Descriptions title="Meter Details" bordered column={1}>
-      {Object.entries(data ?? {}).map(([k, v]) => (
-        <Descriptions.Item key={k} label={k}>
-          {String(v)}
-        </Descriptions.Item>
-      ))}
-    </Descriptions>
+    <div aria-live="polite">
+      <Descriptions title="Meter Details" bordered column={1}>
+        {Object.entries(data ?? {}).map(([k, v]) => (
+          <Descriptions.Item key={k} label={k}>
+            {String(v)}
+          </Descriptions.Item>
+        ))}
+      </Descriptions>
+    </div>
   );
 }

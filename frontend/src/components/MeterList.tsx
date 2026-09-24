@@ -18,6 +18,7 @@ export function MeterList() {
       <List
         bordered
         dataSource={list}
+        aria-label="Meter list"
         renderItem={(meter: Meter) => <List.Item>{meter.id}</List.Item>}
       />
     </div>

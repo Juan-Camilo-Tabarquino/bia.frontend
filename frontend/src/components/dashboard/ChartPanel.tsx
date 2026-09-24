@@ -9,7 +9,7 @@ interface ChartPanelProps {
 
 export default function ChartPanel({ data }: ChartPanelProps) {
   return (
-    <ResponsiveContainer width="100%" height={300}>
+    <ResponsiveContainer width="100%" height={300} aria-label="Chart panel" role="img">
       <LineChart data={data}>
         <XAxis dataKey="timestamp" tick={{ fontSize: 12 }}></XAxis>
         <YAxis tick={{ fontSize: 12 }}></YAxis>

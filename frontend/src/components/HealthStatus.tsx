@@ -30,9 +30,11 @@ export default function HealthStatus() {
   if (loading) return <Spin />;
 
   return (
-    <Result
-      status={status === 'healthy' ? 'success' : 'error'}
-      title={status === 'healthy' ? 'Backend Up' : 'Backend Down'}
-    />
+    <div aria-live="polite" role="status">
+      <Result
+        status={status === 'healthy' ? 'success' : 'error'}
+        title={status === 'healthy' ? 'Backend Up' : 'Backend Down'}
+      />
+    </div>
   );
 }

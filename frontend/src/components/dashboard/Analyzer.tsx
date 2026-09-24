@@ -12,7 +12,7 @@ interface AnalyzerProps {
 
 export default function Analyzer({ summary, anomalies }: AnalyzerProps) {
   return (
-    <Card title="Analysis" style={{ marginTop: 16 }}>
+    <Card title="Analysis" style={{ marginTop: 16 }} role="region" aria-live="polite">
       <p>{summary}</p>
       <hr />
       <Text strong>Anomalies</Text>
