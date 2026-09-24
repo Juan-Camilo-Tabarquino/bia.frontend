@@ -1,4 +1,6 @@
 import React from 'react';
+import './ToolProof.module.scss';
+import '../../styles/globals.module.scss';
 import { Collapse, List } from 'antd';
 
 const { Panel } = Collapse;

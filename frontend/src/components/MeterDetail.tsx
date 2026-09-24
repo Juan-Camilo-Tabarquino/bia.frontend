@@ -1,4 +1,5 @@
 import { useGetMeterDetailQuery } from '../features/api/apiSlice';
+import '../../styles/globals.module.scss';
 import { Spin, Descriptions } from 'antd';
 
 interface MeterDetailProps { meterId: string; }
