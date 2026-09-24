@@ -1,9 +1,10 @@
-import { Meter } from "../../types/backend";\n
+import { Meter } from "../../types/backend";
 
-import { createSlice } from '@reduxjs/toolkit';\n
+import { createSlice } from "@reduxjs/toolkit";
+
 // No async thunks are needed because components use useGetMetersQuery.
 const metersSlice = createSlice({
-  name: 'meters',
+  name: "meters",
   initialState: { list: [] as Meter[] },
   reducers: {},
 });
