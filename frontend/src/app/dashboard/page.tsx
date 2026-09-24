@@ -1,6 +1,9 @@
 "use client";
 
 import { Descriptions, Spin } from 'antd';
+import ChartPanel from '../../components/dashboard/ChartPanel';
+import Analyzer from '../../components/dashboard/Analyzer';
+import ToolProof from '../../components/dashboard/ToolProof';
 import { useGetAnalysisQuery } from '../../features/api/apiSlice';
 
 export default function DashboardPage() {
@@ -11,13 +14,12 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <Descriptions title="Dashboard Analysis" bordered column={1}>
-        {Object.entries(data ?? {}).map(([k, v]) => (
-          <Descriptions.Item key={k} label={k}>
-            {String(v)}
-          </Descriptions.Item>
-        ))}
-      </Descriptions>
+      {/* Chart Panel */}
+      <ChartPanel data={data?.chartData ?? []} />
+      {/* Analyzer */}
+      <Analyzer summary={data?.summary ?? ''} anomalies={data?.anomalies ?? []} />
+      {/* Tool Proof */}
+      <ToolProof toolName="Analysis Tool" output={data?.toolOutput ?? data} />
     </div>
   );
 }
