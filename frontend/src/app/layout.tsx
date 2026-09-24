@@ -1,4 +1,6 @@
 "use client";
+import * as Sentry from '@sentry/nextjs';
+import '@/sentry.client.config';
 import { ReactNode } from 'react';
 import { Layout } from 'antd';
 import { store } from '../features/store';
@@ -16,7 +18,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <Provider store={store}>
         <AuthProvider>
+          <Sentry.ErrorBoundary fallback={<p>Something went wrong.</p>}>
           <Layout style={{ minHeight: '100vh' }}>{children}</Layout>
+        </Sentry.ErrorBoundary>
         </AuthProvider>
       </Provider>  );
 }
