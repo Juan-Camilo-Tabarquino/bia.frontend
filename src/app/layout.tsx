@@ -13,10 +13,14 @@ import { ReactNode } from "react";
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <Provider store={store}>
-      <Layout style={{ minHeight: "100vh" }}>{children}</Layout>
-        
-      
-    </Provider>
+    <html lang="en">
+      <head />
+      <body>
+        <Provider store={store}>
+          <Layout style={{ minHeight: "100vh" }}>{children}</Layout>
+        </Provider>
+      </body>
+    </html>
   );
 }
+
