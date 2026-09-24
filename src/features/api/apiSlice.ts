@@ -1,4 +1,4 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';\n
+import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
 /**
  * RTK Query API slice for the backend endpoints.
@@ -10,16 +10,25 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';\n
  * - getMeterReadings
  * - getMeterAnomalies
  */
-import { Meter, MeterDetail, Analysis, Reading, Anomaly } from "../../types/backend";\n
-export const apiSlice = createApi({\n
+import {
+  Meter,
+  MeterDetail,
+  Analysis,
+  Reading,
+  Anomaly,
+} from "../../types/backend";
+export const apiSlice = createApi({
   baseQuery: fetchBaseQuery({
-    baseUrl: process.env.NEXT_PUBLIC_API_URL || '/api',
+    baseUrl: process.env.NEXT_PUBLIC_API_URL || "/api",
   }),
   endpoints: (builder) => ({
     getMeters: builder.query<Meter[], void>({
-      query: () => '/meters',
+      query: () => "/meters",
     }),
-    getMeterDetail: builder.query<MeterDetail, { meterId: string; start?: string; end?: string }>({
+    getMeterDetail: builder.query<
+      MeterDetail,
+      { meterId: string; start?: string; end?: string }
+    >({
       query: ({ meterId, start, end }) => ({
         url: `/meter/${meterId}/detail`,
         params: { start, end },
@@ -27,17 +36,23 @@ export const apiSlice = createApi({\n
     }),
     getAnalysis: builder.query<Analysis, { start?: string; end?: string }>({
       query: ({ start, end }) => ({
-        url: '/analysis',
+        url: "/analysis",
         params: { start, end },
       }),
     }),
-    getMeterReadings: builder.query<Reading[], { meterId: string; start?: string; end?: string }>({
+    getMeterReadings: builder.query<
+      Reading[],
+      { meterId: string; start?: string; end?: string }
+    >({
       query: ({ meterId, start, end }) => ({
         url: `/meter/${meterId}/readings`,
         params: { start, end },
       }),
     }),
-    getMeterAnomalies: builder.query<Anomaly[], { meterId: string; start?: string; end?: string }>({
+    getMeterAnomalies: builder.query<
+      Anomaly[],
+      { meterId: string; start?: string; end?: string }
+    >({
       query: ({ meterId, start, end }) => ({
         url: `/meter/${meterId}/anomalies`,
         params: { start, end },
