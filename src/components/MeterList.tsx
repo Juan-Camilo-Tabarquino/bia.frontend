@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 
-import { Spin, List, Typography, Space } from "antd";
+import { Spin, Listy, Typography, Space } from "antd";
 
 import { useGetMetersQuery } from "@/features/api/apiSlice";
 
@@ -35,14 +35,12 @@ export function MeterList({ headingLevel = 1 }: MeterListProps) {
       aria-label="Meters"
     >
       {headingLevel !== null && <Title level={headingLevel}>Meters</Title>}
-      <List
-        bordered
-        dataSource={list}
-        aria-label="Meter list"
-        renderItem={(meterId: string) => (
-          <List.Item>
-            <Link href={`/meter/${meterId}`}>{meterId}</Link>
-          </List.Item>
+      <Listy
+        virtual={false}
+        items={list}
+        rowKey={(meterId: string) => meterId}
+        itemRender={(meterId: string) => (
+          <Link href={`/meter/${meterId}`}>{meterId}</Link>
         )}
       />
     </Space>
