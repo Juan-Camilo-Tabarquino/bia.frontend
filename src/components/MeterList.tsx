@@ -1,34 +1,50 @@
 "use client";
-import { Link } from "react-router-dom";
-import { Meter } from "../types/backend";
+import Link from "next/link";
 
-import { Spin, List, Typography } from 'antd';
+import { Spin, List, Typography, Space } from "antd";
 
-import '@/styles/globals.scss';
+import { useGetMetersQuery } from "@/features/api/apiSlice";
 
 const { Title } = Typography;
 
-export function MeterList() {
+interface MeterListProps {
+  /**
+   * Heading level for the list title. Pass `null` when the surrounding page
+   * already renders the section heading, so each page owns a single `h1`.
+   */
+  headingLevel?: 1 | 2 | 3 | 4 | 5 | null;
+}
+
+export function MeterList({ headingLevel = 1 }: MeterListProps) {
   const { data: list = [], error, isLoading } = useGetMetersQuery();
 
   if (isLoading) return <Spin />;
-  if (error) return <div>{((error as unknown) as { message?: string }).message ?? 'Error loading meters'}</div>;
+  if (error)
+    return (
+      <div>
+        {(error as unknown as { message?: string }).message ??
+          "Error loading meters"}
+      </div>
+    );
 
   return (
-    <div>
-      <Title level={3}>Meters</Title>
+    <Space
+      orientation="vertical"
+      size="large"
+      role="region"
+      aria-label="Meters"
+    >
+      {headingLevel !== null && <Title level={headingLevel}>Meters</Title>}
       <List
         bordered
         dataSource={list}
         aria-label="Meter list"
-        renderItem={(meter: Meter) => (
+        renderItem={(meterId: string) => (
           <List.Item>
-            <Link to={`/meter/${meter.id}`}>
-              {meter.name ?? meter.id}
-            </Link>
+            <Link href={`/meter/${meterId}`}>{meterId}</Link>
           </List.Item>
         )}
       />
-    </div>
+    </Space>
   );
 }

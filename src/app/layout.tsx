@@ -1,26 +1,44 @@
-
-"use client";
-
-
 import { Layout } from "antd";
-import { store } from "../features/store";
-import { Provider } from "react-redux";
+import Link from "next/link";
 import "../styles/globals.scss";
-
+import type { Metadata } from "next";
 import { ReactNode } from "react";
+import { Providers } from "./providers";
 
+export const metadata: Metadata = {
+  title: "BIA — Meter Consumption Analytics",
+  description:
+    "BIA console for meter health, consumption readings and anomaly monitoring.",
+};
 
+const navLinks = [
+  { href: "/", label: "Home" },
+  { href: "/meters", label: "Meters" },
+  { href: "/dashboard", label: "Dashboard" },
+  { href: "/anomalies", label: "Anomalies" },
+];
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <head />
       <body>
-        <Provider store={store}>
-          <Layout style={{ minHeight: "100vh" }}>{children}</Layout>
-        </Provider>
+        <Providers>
+          <Layout style={{ minHeight: "100vh" }}>
+            <header className="site-header">
+              <nav aria-label="Primary" className="site-nav">
+                <ul>
+                  {navLinks.map((link) => (
+                    <li key={link.href}>
+                      <Link href={link.href}>{link.label}</Link>
+                    </li>
+                  ))}
+                </ul>
+              </nav>
+            </header>
+            <main>{children}</main>
+          </Layout>
+        </Providers>
       </body>
     </html>
   );
 }
-

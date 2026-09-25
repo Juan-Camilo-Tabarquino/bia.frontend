@@ -6,8 +6,8 @@ const { Title } = Typography;
 export default function MetersPage() {
   return (
     <div>
-      <Title level={2}>Meters</Title>
-      <MeterList />
+      <Title level={1}>Meters</Title>
+      <MeterList headingLevel={null} />
     </div>
   );
 }
