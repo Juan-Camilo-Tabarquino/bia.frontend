@@ -1,0 +1,259 @@
+import React from 'react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import MeterReadingsPage from '../page';
+import type { Anomaly, Reading } from '@/types/backend';
+
+jest.mock('next/navigation', () => ({
+  useParams: () => ({ id: 'meter-123' }),
+}));
+
+jest.mock('@/features/data/dataAPI', () => ({
+  useGetMeterReadingsQuery: jest.fn(),
+}));
+
+jest.mock('@/features/api/apiSlice', () => ({
+  useGetAnomaliesQuery: jest.fn(),
+}));
+
+// recharts cannot measure a container in jsdom (getBoundingClientRect is 0),
+// so render a deterministic stand-in that exposes the props under test.
+jest.mock('recharts', () => {
+  const ReactModule = jest.requireActual<typeof import('react')>('react');
+  return {
+    ResponsiveContainer: ({
+      children,
+      ...rest
+    }: { children?: React.ReactNode } & Record<string, unknown>) =>
+      ReactModule.createElement('div', rest, children),
+    LineChart: ({
+      data,
+      children,
+    }: {
+      data?: Array<Record<string, unknown>>;
+      children?: React.ReactNode;
+    }) =>
+      ReactModule.createElement(
+        'div',
+        {
+          'data-testid': 'line-chart',
+          'data-points': JSON.stringify(data ?? []),
+        },
+        children,
+      ),
+    Line: ({ dataKey }: { dataKey?: string }) =>
+      ReactModule.createElement('div', {
+        'data-testid': 'line',
+        'data-key': dataKey,
+      }),
+    XAxis: () => null,
+    YAxis: () => null,
+    Tooltip: () => null,
+  };
+});
+
+import { useGetMeterReadingsQuery } from '@/features/data/dataAPI';
+import { useGetAnomaliesQuery } from '@/features/api/apiSlice';
+
+const mockedUseGetMeterReadingsQuery = useGetMeterReadingsQuery as jest.Mock;
+const mockedUseGetAnomaliesQuery = useGetAnomaliesQuery as jest.Mock;
+
+const readings: Reading[] = [
+  {
+    MeterID: 'meter-123',
+    Timestamp: '2024-01-01T00:00:00Z',
+    Consumption: 12.5,
+    Voltage: 230,
+    Current: 5.4,
+    PowerFactor: 0.98,
+  },
+  {
+    MeterID: 'meter-123',
+    Timestamp: '2024-01-02T00:00:00Z',
+    Consumption: 20,
+    Voltage: 231,
+    Current: 5.6,
+    PowerFactor: 0.97,
+  },
+];
+
+const anomalies: Anomaly[] = [
+  {
+    id: 'an-1',
+    meter_id: 'meter-123',
+    detected_at: '2024-01-01T06:00:00Z',
+    type: 'REAL_ANOMALY',
+    severity: 'HIGH',
+    confidence: 0.9,
+    reason: 'Consumption spike',
+    recommended_action: 'Inspect the meter',
+    status: 'unexplained',
+    priority: 1,
+    baseline: {
+      mean: 12.1,
+      stddev: 1.4,
+      count: 12,
+      voltage_mean: 229.5,
+      current_mean: 5.3,
+      power_factor_mean: 0.975,
+    },
+    consumption_change_pct: 65.3,
+    voltage_change_pct: 0.4,
+    current_change_pct: 3.8,
+    power_factor_change_pct: -0.6,
+    correlated_events: [],
+    data_quality: { flagged: false, reason: '' },
+  },
+  {
+    id: 'an-2',
+    meter_id: 'other-meter',
+    detected_at: '2024-02-09T00:00:00Z',
+    type: 'FALSE_POSITIVE',
+    severity: 'LOW',
+    confidence: 0.2,
+    reason: 'Sensor drift',
+    recommended_action: 'No action required',
+    status: 'explained',
+    priority: 2,
+    baseline: {
+      mean: 30.0,
+      stddev: 2.1,
+      count: 24,
+      voltage_mean: 230.1,
+      current_mean: 5.5,
+      power_factor_mean: 0.98,
+    },
+    consumption_change_pct: -12.4,
+    voltage_change_pct: -1.1,
+    current_change_pct: -2.5,
+    power_factor_change_pct: 1.2,
+    correlated_events: [],
+    data_quality: { flagged: false, reason: '' },
+  },
+];
+
+const plottedPoints = (): Array<Record<string, unknown>> =>
+  JSON.parse(
+    screen.getByTestId('line-chart').getAttribute('data-points') ?? '[]',
+  ) as Array<Record<string, unknown>>;
+
+describe('MeterReadingsPage', () => {
+  beforeEach(() => {
+    mockedUseGetMeterReadingsQuery.mockReset();
+    mockedUseGetAnomaliesQuery.mockReset();
+    mockedUseGetMeterReadingsQuery.mockReturnValue({
+      data: readings,
+      isLoading: false,
+      error: undefined,
+    });
+    mockedUseGetAnomaliesQuery.mockReturnValue({
+      data: anomalies,
+      isLoading: false,
+      error: undefined,
+    });
+  });
+
+  it('queries the readings for the routed meter id without skipping', () => {
+    render(<MeterReadingsPage />);
+
+    expect(mockedUseGetMeterReadingsQuery).toHaveBeenCalledWith(
+      { meterId: 'meter-123' },
+      { skip: false },
+    );
+  });
+
+  it('reads the anomaly list so this meter can be marked on the timeline', () => {
+    render(<MeterReadingsPage />);
+
+    expect(mockedUseGetAnomaliesQuery).toHaveBeenCalled();
+  });
+
+  it('renders the heading, chart and table', () => {
+    render(<MeterReadingsPage />);
+
+    expect(
+      screen.getByRole('heading', { name: /Meter Readings for meter-123/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(/Readings chart: Consumption/)).toBeInTheDocument();
+    expect(screen.getByRole('table')).toBeInTheDocument();
+  });
+
+  it('forwards a selected date range as from/to query params', () => {
+    render(<MeterReadingsPage />);
+
+    const start = screen.getByPlaceholderText('Start date');
+    const end = screen.getByPlaceholderText('End date');
+
+    fireEvent.mouseDown(start);
+    fireEvent.change(start, { target: { value: '2024-01-01' } });
+    fireEvent.keyDown(start, { key: 'Enter', code: 'Enter', keyCode: 13 });
+
+    fireEvent.mouseDown(end);
+    fireEvent.change(end, { target: { value: '2024-01-10' } });
+    fireEvent.keyDown(end, { key: 'Enter', code: 'Enter', keyCode: 13 });
+
+    const lastCall = mockedUseGetMeterReadingsQuery.mock.calls.at(-1);
+    const range = lastCall?.[0] as { meterId: string; from: string; to: string };
+
+    // Assert the forwarded values describe the picked local dates, independent
+    // of the runner timezone (dayjs picks local midnight, then serializes to UTC).
+    expect(range.meterId).toBe('meter-123');
+    expect(Number.isNaN(Date.parse(range.from))).toBe(false);
+    expect(Number.isNaN(Date.parse(range.to))).toBe(false);
+    expect(new Date(range.from).getFullYear()).toBe(2024);
+    expect(new Date(range.from).getMonth()).toBe(0);
+    expect(new Date(range.from).getDate()).toBe(1);
+    expect(new Date(range.to).getDate()).toBe(10);
+    expect(lastCall?.[1]).toEqual({ skip: false });
+  });
+
+  it('renders an empty chart and table when the backend answers 200 null', () => {
+    // `GET /meters/{id}/readings` replies `200 null` for an unknown meter or an
+    // empty window, so the page must narrow the payload instead of mapping it.
+    mockedUseGetMeterReadingsQuery.mockReturnValue({
+      data: null,
+      isLoading: false,
+      error: undefined,
+    });
+
+    render(<MeterReadingsPage />);
+
+    expect(
+      screen.getByRole('heading', { name: /Meter Readings for meter-123/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(/Readings chart: Consumption/)).toBeInTheDocument();
+    expect(screen.getByRole('table')).toBeInTheDocument();
+    expect(screen.queryByText(/Error loading readings/i)).not.toBeInTheDocument();
+    expect(plottedPoints()).toEqual([]);
+  });
+
+  it('forwards every signal of the Reading payload without collapsing it', () => {
+    render(<MeterReadingsPage />);
+
+    // The four signals survive to the table cells with their own units, so the
+    // old `Consumption -> value` reduction is gone.
+    expect(screen.getByText('2024-01-01T00:00:00Z')).toBeInTheDocument();
+    expect(screen.getByText('12.5')).toBeInTheDocument();
+    expect(screen.getByText('230')).toBeInTheDocument();
+    expect(screen.getByText('5.4')).toBeInTheDocument();
+    expect(screen.getByText('0.98')).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Voltage (V)' })).toBeInTheDocument();
+  });
+
+  it('marks only the anomalies of this meter on the timeline', () => {
+    render(<MeterReadingsPage />);
+
+    // `GET /api/anomalies` has no per-meter query, so the page filters the full
+    // list client-side: only `meter-123` records reach the chart.
+    const markedPoints = plottedPoints().filter(
+      (point) => point.anomalyValue !== null,
+    );
+    expect(markedPoints).toHaveLength(1);
+    expect(markedPoints[0].Timestamp).toBe('2024-01-01T00:00:00Z');
+
+    expect(screen.getByText('2024-01-01T06:00:00Z')).toBeInTheDocument();
+    expect(
+      screen.getAllByText(/HIGH · Real anomaly/).length,
+    ).toBeGreaterThan(0);
+    expect(screen.queryByText('2024-02-09T00:00:00Z')).not.toBeInTheDocument();
+  });
+});
