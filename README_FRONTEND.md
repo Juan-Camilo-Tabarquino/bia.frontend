@@ -1,46 +1,11 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Frontend README (pointer)
 
-## Getting Started
+This file is kept only so existing links keep working. It no longer duplicates project documentation.
 
-First, run the development server:
+- [`README.md`](README.md) — the single source of truth: stack (Next.js 16 App Router + Turbopack), scripts, environment variables, routes and the documentation index.
+- [`ROUTES.md`](ROUTES.md) — route table and the endpoints each page consumes (Spanish).
+- [`PROJECT_STRUCTURE.md`](PROJECT_STRUCTURE.md) — folder responsibilities (Spanish).
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) — contribution workflow.
+- [`VITE_DECISION.md`](VITE_DECISION.md) — superseded bundler decision record.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-## Accessibility & Internationalization
-
-This project now includes basic WCAG accessibility improvements:
-- ARIA attributes added to key components (`HealthStatus`, `MeterDetail`, `MeterList`, `Analyzer`, `ChartPanel`, `MeterCard`, `ToolProof`).
-- Live regions (`aria-live="polite"`) ensure dynamic content is announced to screen readers.
-- SCSS variable `$high-contrast-color` guarantees sufficient text contrast.
-
-Internationalization is set up via `next-i18next`:
-- `frontend/src/i18n.ts` initializes i18next with English and Spanish locales.
-- Ready to add translation keys throughout the app.
-
+The `create-next-app` boilerplate, the `next-i18next` note and the Vite-era instructions that used to live here were removed because they did not match the repository.

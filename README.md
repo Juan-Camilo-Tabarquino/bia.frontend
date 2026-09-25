@@ -1,39 +1,95 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Ascent BIA Frontend
 
-[![CI](https://github.com/YOUR_REPO/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_REPO/actions/workflows/ci.yml)
+Web client for the Ascent BIA energy management platform: meter monitoring, per-meter readings and dashboard summaries over the `bia.backend` REST API.
 
-## Getting Started
+[![CI](https://github.com/Juan-Camilo-Tabarquino/bia.frontend/actions/workflows/ci.yml/badge.svg)](https://github.com/Juan-Camilo-Tabarquino/bia.frontend/actions/workflows/ci.yml)
 
-First, run the development server:
+## Stack
+
+- **Next.js 16** with the **App Router** (routes live in `src/app`) and the built-in **Turbopack** bundler.
+- **React 19** + **TypeScript**.
+- **Redux Toolkit / RTK Query** for data fetching.
+- **Ant Design** for UI, **Recharts** for charts, **SCSS modules** for styles.
+- **Jest** + **React Testing Library** for tests.
+
+There is **no Vite and no React Router** in this repository. Everything lives at the repository root; there is no `frontend/` subdirectory. See `VITE_DECISION.md` for the superseded bundler decision record.
+
+## Requirements
+
+- Node.js 20 or newer (CI runs Node 20).
+- A reachable `bia.backend` instance exposing the REST API.
+
+## Environment
+
+The API base URL is resolved in exactly one place, `src/utils/apiBaseUrl.ts`, which reads `process.env.NEXT_PUBLIC_API_URL` and falls back to `http://localhost:3001/api` for local development.
+
+Create a `.env.local` file at the repository root:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+NEXT_PUBLIC_API_URL=http://localhost:3001/api
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Install and run
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm install
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-## Learn More
+## Scripts
 
-To learn more about Next.js, take a look at the following resources:
+| Script | Command | Purpose |
+|--------|---------|---------|
+| `npm run dev` | `next dev` | Development server (Turbopack) on http://localhost:3000 |
+| `npm run build` | `next build` | Production build |
+| `npm start` | `next start` | Serve the production build |
+| `npm run lint` | `eslint . --ext .ts,.tsx` | Lint the codebase |
+| `npm test` | `jest` | Run the test suite |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Routes
 
-- [Vite Decision](VITE_DECISION.md) - rationale for using Next.js bundler over Vite.
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Implemented today under `src/app`:
 
-## Deploy on Vercel
+| Route | File | Description |
+|-------|------|-------------|
+| `/` | `src/app/page.tsx` | Home: backend health status (`HealthStatus`) and meter list (`MeterList`). |
+| `/meters` | `src/app/meters/page.tsx` | Full meter list. |
+| `/meter/[id]` | `src/app/meter/[id]/page.tsx` | Single meter detail. |
+| `/meter/[id]/readings` | `src/app/meter/[id]/readings/page.tsx` | Meter readings with chart and table. |
+| `/dashboard` | `src/app/dashboard/page.tsx` | Summary metrics and anomaly table. |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Planned, not implemented yet:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Route | Status |
+|-------|--------|
+| `/anomalies` | Planned. The backend contract is confirmed; pending frontend DTO re-alignment and the ordering/priority decision. |
+| `/anomalies/[id]` | Planned. Same status as `/anomalies`. |
+
+`ROUTES.md` (Spanish) maps each page to the endpoints it consumes.
+
+## API layer
+
+All HTTP access lives under `src/features`:
+
+- `src/features/api/apiSlice.ts` — `apiSlice` (reducerPath `api`): `GET /meters`, `GET /meters/{meterId}`, `GET /anomalies`, `GET /anomalies/{id}`, `GET /dashboard/summary`, `GET /events` (the `/events` endpoint is declared in the slice but the backend does not expose it; it is unused).
+- `src/features/data/dataAPI.ts` — `dataApi`: `GET /meters/{meterId}/readings` with `from`/`to` query params.
+- `src/features/dashboards/dashboardAPI.ts` — `dashboardApi`: `POST /ai/analyze` and `GET /ai/analysis/{id}`.
+- `src/features/store/index.ts` — registers the three slices and their middleware.
+
+`src/api/backend.ts` is a thin axios wrapper kept for one-shot calls outside RTK Query, such as the `GET /health` health check used by `HealthStatus`.
+
+## Documentation
+
+- `docs/backend-requirements.md` — the confirmed backend contract, the two open requests to the backend, the markdown decision and the operational notes.
+- `docs/endpoints.md` — short pointer to the confirmed contract.
+- `ROUTES.md` — routes and the endpoints each page consumes (Spanish).
+- `PROJECT_STRUCTURE.md` — folder responsibilities (Spanish).
+- `CONTRIBUTING.md` — contribution workflow.
+- `VITE_DECISION.md` — superseded bundler decision record.
+- `AGENTS.md` — Next.js agent notes, regenerated by `next dev`.
+
+## Deploy
+
+Standard Next.js deployment: `npm run build` followed by `npm start`, either on the [Vercel Platform](https://vercel.com/new) or any Node.js host.
