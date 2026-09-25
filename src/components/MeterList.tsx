@@ -1,7 +1,9 @@
 "use client";
+import { Link } from "react-router-dom";
 import { Meter } from "../types/backend";
+
 import { Spin, List, Typography } from 'antd';
-import { useGetMetersQuery } from '../features/api/apiSlice';
+
 import '@/styles/globals.scss';
 
 const { Title } = Typography;
@@ -19,7 +21,13 @@ export function MeterList() {
         bordered
         dataSource={list}
         aria-label="Meter list"
-        renderItem={(meter: Meter) => <List.Item>{meter.id}</List.Item>}
+        renderItem={(meter: Meter) => (
+          <List.Item>
+            <Link to={`/meter/${meter.id}`}>
+              {meter.name ?? meter.id}
+            </Link>
+          </List.Item>
+        )}
       />
     </div>
   );
