@@ -1,22 +1,22 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { apiSlice } from '../api/apiSlice';
-
-import metersReducer from '../meters/metersSlice';
-import dataReducer from '../data/dataSlice';
-import dashboardReducer from '../dashboards/dashboardSlice';
+import { dashboardApi } from '../dashboards/dashboardAPI';
+import { dataApi } from '../data/dataAPI';
 
 export const store = configureStore({
   reducer: {
-    meters: metersReducer,
-    data: dataReducer,
-    dashboard: dashboardReducer,
-    // RTK Query API reducer
+    // RTK Query API reducers
     [apiSlice.reducerPath]: apiSlice.reducer,
+    [dashboardApi.reducerPath]: dashboardApi.reducer,
+    [dataApi.reducerPath]: dataApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware().concat(apiSlice.middleware),
+    getDefaultMiddleware().concat(
+      apiSlice.middleware,
+      dashboardApi.middleware,
+      dataApi.middleware,
+    ),
 });
-
 
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;

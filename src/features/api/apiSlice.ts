@@ -1,62 +1,49 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { getApiBaseUrl } from "../../utils/apiBaseUrl";
+import type {
+  Anomaly,
+  DashboardSummary,
+  MeterDetail,
+  MeterId,
+} from "../../types/backend";
+
+// Resolve API base URL from utility (NEXT_PUBLIC_API_URL)
+const apiBaseUrl = getApiBaseUrl();
 
 /**
- * RTK Query API slice for the backend endpoints.
+ * RTK Query slice for the resource endpoints.
  *
  * Endpoints:
- * - getMeters
- * - getMeterDetail
- * - getAnalysis
- * - getMeterReadings
- * - getMeterAnomalies
+ * - getMeters            GET /meters                -> MeterId[] (bare strings)
+ * - getMeterDetail       GET /meters/{meterId}      -> MeterDetail
+ * - getAnomalies         GET /anomalies             -> Anomaly[] (unsorted)
+ * - getAnomalyById       GET /anomalies/{id}        -> Anomaly
+ * - getDashboardSummary  GET /dashboard/summary     -> DashboardSummary
+ *
+ * There is no `/events` resource on the backend.
+ *
+ * Readings live in `dataApi` and the AI analysis flow lives in `dashboardApi`,
+ * so every exported hook name stays unique across the three slices.
  */
-import {
-  Meter,
-  MeterDetail,
-  Analysis,
-  Reading,
-  Anomaly,
-} from "../../types/backend";
 export const apiSlice = createApi({
   baseQuery: fetchBaseQuery({
-    baseUrl: process.env.NEXT_PUBLIC_API_URL || "/api",
+    baseUrl: apiBaseUrl,
   }),
   endpoints: (builder) => ({
-    getMeters: builder.query<Meter[], void>({
+    getMeters: builder.query<MeterId[], void>({
       query: () => "/meters",
     }),
-    getMeterDetail: builder.query<
-      MeterDetail,
-      { meterId: string; start?: string; end?: string }
-    >({
-      query: ({ meterId, start, end }) => ({
-        url: `/meter/${meterId}/detail`,
-        params: { start, end },
-      }),
+    getMeterDetail: builder.query<MeterDetail, string>({
+      query: (meterId) => `/meters/${meterId}`,
     }),
-    getAnalysis: builder.query<Analysis, { start?: string; end?: string }>({
-      query: ({ start, end }) => ({
-        url: "/analysis",
-        params: { start, end },
-      }),
+    getAnomalies: builder.query<Anomaly[], void>({
+      query: () => "/anomalies",
     }),
-    getMeterReadings: builder.query<
-      Reading[],
-      { meterId: string; start?: string; end?: string }
-    >({
-      query: ({ meterId, start, end }) => ({
-        url: `/meter/${meterId}/readings`,
-        params: { start, end },
-      }),
+    getAnomalyById: builder.query<Anomaly, string>({
+      query: (id) => `/anomalies/${id}`,
     }),
-    getMeterAnomalies: builder.query<
-      Anomaly[],
-      { meterId: string; start?: string; end?: string }
-    >({
-      query: ({ meterId, start, end }) => ({
-        url: `/meter/${meterId}/anomalies`,
-        params: { start, end },
-      }),
+    getDashboardSummary: builder.query<DashboardSummary, void>({
+      query: () => "/dashboard/summary",
     }),
   }),
 });
@@ -64,7 +51,7 @@ export const apiSlice = createApi({
 export const {
   useGetMetersQuery,
   useGetMeterDetailQuery,
-  useGetAnalysisQuery,
-  useGetMeterReadingsQuery,
-  useGetMeterAnomaliesQuery,
+  useGetAnomaliesQuery,
+  useGetAnomalyByIdQuery,
+  useGetDashboardSummaryQuery,
 } = apiSlice;
