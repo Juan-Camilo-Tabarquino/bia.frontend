@@ -1,8 +1,8 @@
 # Feature: Repo cleanup + AI re-analysis action
 
 **Status: COMPLETE — 7/7.** Both work units are verified: `tsc` 0, lint 0, **18 suites / 118 tests**,
-`next build` green warm and cold (7 routes). Nothing is committed: `HEAD` is still `2561da81` and 78
-working-tree paths carry this feature plus the earlier compliance work.
+`next build` green warm and cold (7 routes). The work is committed on branch
+`feat/frontend-contract-compliance` in 8 work-unit commits (below); `main` is untouched.
 
 **Reference:** `assets/Requerimientos.md`, `docs/backend-requirements.md` (confirmed contract),
 `odd/tasks/frontend-requirements-compliance.md` (25/25, closed).
@@ -109,6 +109,27 @@ Verifier caveats accepted: the new component tests inject hook states through `j
 no RTK Query lifecycle), mitigated by `tsc` checking the component against the real hooks; and no backend
 was reachable, so the latency, `status` and `404` claims rest on the contract doc plus the backend source
 read earlier, not on a live call in this task.
+
+## Work units (branch `feat/frontend-contract-compliance`, based on `main` = `2561da81`)
+
+| Commit | Work unit |
+| --- | --- |
+| `d32f321c` | `chore(build)`: unify the toolchain on Next.js 16, ESLint 9 and jest |
+| `c5892f81` | `feat(data)`: align the API layer with the confirmed backend contract |
+| `0fc74717` | `feat(ui)`: rebuild the shell, meters and dashboard on deterministic data |
+| `c4914b8f` | `feat(readings)`: plot every signal and mark anomalies on the timeline |
+| `9f2707ad` | `feat(anomalies)`: add the anomaly list and investigation pages |
+| `8ecfe502` | `feat(anomalies)`: re-run the platform AI analysis on demand |
+| `8a9e0bd4` | `chore(cleanup)`: drop the components and modules the rebuilt pages no longer use |
+| `8528030e` | `docs`: reconcile the repository docs with the delivered app |
+
+Order is dependency-aware, not bisect-safe: this 25-task feature was never committed incrementally, so
+no intermediate commit is claimed to be independently green. Only the final tree is verified, and the
+last commit's content is byte-identical to the verified tree (`src/app/anomalies/page.tsx` sha256
+`6f485431…`, `src/styles/variables.scss` sha256 `c8f0fd01…` = the value the verifier compared against
+`HEAD`). The AI action's mount was attributed to `8ecfe502` by removing those two lines for the previous
+commit, with a backup and a matching sha256 on restore. Two junk files (`nul`, `nul.map`, the accidental
+output of `npx sass … /dev/null` on Windows) were deleted rather than committed.
 
 ## Decisions
 
