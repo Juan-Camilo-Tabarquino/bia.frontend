@@ -11,6 +11,7 @@ Esta guía describe la organización de carpetas y su responsabilidad dentro del
 │  │  ├─ page.tsx             # Ruta `/`
 │  │  ├─ dashboard/           # Ruta `/dashboard`
 │  │  ├─ meters/              # Ruta `/meters`
+│  │  ├─ anomalies/           # Rutas `/anomalies` y `/anomalies/[id]`
 │  │  └─ meter/[id]/          # Rutas `/meter/[id]` y `/meter/[id]/readings`
 │  ├─ api/
 │  │  └─ backend.ts           # Wrapper de axios para llamadas puntuales (p. ej. `GET /health`)
@@ -19,18 +20,18 @@ Esta guía describe la organización de carpetas y su responsabilidad dentro del
 │  │  ├─ MeterDetail.tsx      # Detalle de medidor
 │  │  ├─ MeterList.tsx        # Lista de medidores
 │  │  ├─ PrivateRoute.tsx     # Pass-through (no hay autenticación implementada)
+│  │  ├─ anomalies/           # Componentes de anomalías (lista, detalle y narrativa)
 │  │  └─ dashboard/           # Componentes de dashboard, gráficos y tablas
 │  ├─ features/               # Slices de RTK Query y store
 │  │  ├─ api/                 # apiSlice: meters, anomalies, dashboard summary (y `/events`, sin uso)
 │  │  ├─ data/                # dataApi: lecturas de medidor
 │  │  ├─ dashboards/          # dashboardApi: flujo de análisis con IA
 │  │  └─ store/               # configureStore e integración de los tres slices
-│  ├─ hooks/                  # Reservado para hooks personalizados (vacío hoy)
 │  ├─ styles/                 # SCSS global y variables de estilo
 │  ├─ types/                  # DTOs de TypeScript (`backend.ts`) y tipos de entorno
 │  └─ utils/
 │     └─ apiBaseUrl.ts        # Resuelve `NEXT_PUBLIC_API_URL`
-├─ docs/                      # Documentación del proyecto: contratos (`backend-requirements.md`, `endpoints.md`), `routes.md`, `project-structure.md`, `decisions/` y `requisitos/`
+├─ docs/                      # Documentación del proyecto
 ├─ odd/                       # Tareas del flujo ODD
 ├─ public/                    # Archivos estáticos
 └─ .github/workflows/         # CI (lint, test, build)

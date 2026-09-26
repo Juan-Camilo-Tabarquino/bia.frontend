@@ -59,13 +59,14 @@ Implemented today under `src/app`:
 | `/meter/[id]` | `src/app/meter/[id]/page.tsx` | Single meter detail. |
 | `/meter/[id]/readings` | `src/app/meter/[id]/readings/page.tsx` | Meter readings with chart and table. |
 | `/dashboard` | `src/app/dashboard/page.tsx` | Summary metrics and anomaly table. |
+| `/anomalies` | `src/app/anomalies/page.tsx` | Anomaly list with in-browser filters and sorting, plus the on-demand AI re-analysis action (`AiReanalysis`). |
+| `/anomalies/[id]` | `src/app/anomalies/[id]/page.tsx` | Anomaly investigation view (`AnomalyDetail`). An unknown id renders a dedicated 404 state. |
 
 Planned, not implemented yet:
 
 | Route | Status |
 |-------|--------|
-| `/anomalies` | Planned. The backend contract is confirmed; pending frontend DTO re-alignment and the ordering/priority decision. |
-| `/anomalies/[id]` | Planned. Same status as `/anomalies`. |
+| `/settings` | Planned. User preferences; no final design yet. |
 
 `docs/routes.md` (Spanish) maps each page to the endpoints it consumes.
 

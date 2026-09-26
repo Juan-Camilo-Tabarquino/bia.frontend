@@ -31,7 +31,7 @@ The migration was cancelled. The frontend stays on **Next.js 16 (App Router)** w
 - Scripts remain Next.js-based: `next dev`, `next build`, `next start` (see `package.json`).
 - Routes live under `src/app` and are documented in `docs/routes.md`.
 - No Vite configuration file and no React Router dependency exist in the repository.
-- The untracked `dist/` folder at the repository root is leftover build output from the abandoned setup and is not part of the application.
+- No `dist/` build directory exists in the repository; `dist/` remains listed in `.gitignore` as a leftover of the abandoned Vite setup.
 
 ## References
 
