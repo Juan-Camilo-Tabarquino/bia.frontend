@@ -1,6 +1,7 @@
 # Feature: Documentation accuracy fixes + brand cleanup
 
-**Status: COMPLETE — 2/2, independently verified.** Branch `main`, work units `98a5abb2` and `bef78c99`.
+**Status: COMPLETE — 2/2 plus the follow-up, independently verified.** Branch `main`, work units
+`98a5abb2`, `bef78c99` and the follow-up `01b97688`.
 
 **Reference:** `odd/tasks/docs-reorganization.md` (the pass that surfaced the defects), `docs/routes.md`,
 `docs/backend-requirements.md`.
@@ -24,7 +25,10 @@ The user also asked that no `.md` mention "Ascent"; the product is referred to a
 | ID | Title | Status | Evidence |
 | --- | --- | --- | --- |
 | 1 | Fix the four documentation defects | done | `98a5abb2` — `README.md`, `docs/project-structure.md`, `docs/decisions/vite-decision.md`; 7 insertions, 5 deletions |
-| 2 | Drop the remaining "Ascent" mention | done | `bef78c99` — `CONTRIBUTING.md:1`; `git grep -in ascent` over the tracked tree now returns nothing |
+| 2 | Drop the remaining "Ascent" mention | done | `bef78c99` — `CONTRIBUTING.md:1`; no product document mentions it any more. The string still appears inside this record, which is the document that describes its removal |
+| 3 | Fix P-1: the false `/events` claim | done | `01b97688` — dropped from `README.md` and `docs/project-structure.md`; endpoint reconciliation clean in all three directions |
+| 4 | Resolve P-2 by deleting the stray `frontend/` directory | done | `rm -rf frontend` — 753 MB, 62,597 entries, no git diff; the three "no `frontend/` prefix" statements are now literally true |
+| 5 | Fix P-3: document the lint command the repository runs | done | `01b97688` — both docs now say `eslint .`, matching `package.json:9`. The originally stated harm was false and is corrected below |
 
 ## Defect 1 — `README.md` routes contradicted the repository
 
@@ -100,11 +104,11 @@ Fix: `CONTRIBUTING.md:1` is now `# Contributing to BIA Frontend`, matching the `
 | 3 Three-way route reconciliation | PASS | Code (7 routes from `src/app/**/page.tsx`), `README.md` and `docs/routes.md` now agree in all directions. The exact failure mode of defect 1 is closed |
 | 4 Diagram accuracy, in full | FAIL, pre-existing | One false line remains, untouched by this change: see finding P-1 |
 | 5 Comment column integrity | PASS | Character-aware scan: every one of the 30 commented tree lines places `#` at index 30. The `docs/` line went from 180 to 59 characters; no length outlier remains |
-| 6 Brand | FAIL literally, PASS on intent | The tracked tree is clean. The only "ascent" matches are inside this untracked task record, which is about removing the word |
+| 6 Brand | FAIL literally, PASS on intent | The tracked tree is clean. The only "ascent" matches are inside this task record, which is about removing the word |
 | 7 No new false claims | PASS | Every changed sentence verified true. Three pre-existing inaccuracies found nearby, listed below |
 | 8 Build, lint, test | NOT RUN | Deliberate and judged acceptable by the verifier given gate 1. Reported as not-run, never as green |
 
-## Pre-existing defects found by this verification but NOT fixed (new follow-ups)
+## Defects found by the first verification (fixed in the follow-up)
 
 None was introduced by this change, and none was in the authorized scope. All three are the same class of
 defect this feature exists to correct, which is why they are reported rather than buried.
@@ -115,14 +119,59 @@ defect this feature exists to correct, which is why they are reported rather tha
   carries the comment "There is no `/events` resource on the backend", and
   `src/features/api/__tests__/apiSlice.test.ts:20` asserts that no `getEvents` endpoint is exposed.
   `docs/routes.md`'s API table correctly omits `/events`, so the docs also disagree with each other.
-- **P-2 — the "no `frontend/` subdirectory" claim is literally contradicted.**
-  `README.md:20`, `docs/project-structure.md:3` and `docs/routes.md:3` deny a `frontend/` prefix, but a
-  root `frontend/` directory exists holding a 599-entry `node_modules`. It is gitignored, contains no
-  source, and predates this change, so the intent is defensible while the literal wording is not.
-- **P-3 — the documented lint command does not match `package.json`.**
-  `README.md:48` and `CONTRIBUTING.md:88` document `eslint . --ext .ts,.tsx`; `package.json` runs
-  `eslint .`. The documented form is not valid under the flat-config ESLint 9 setup in this repository,
-  so a contributor copying it gets an error.
+- **P-2 — the "no `frontend/` subdirectory" claim was literally contradicted.**
+  `README.md:15`, `docs/project-structure.md:3` and `docs/routes.md:3` deny a `frontend/` prefix, but a
+  root `frontend/` directory existed holding a `node_modules` tree. **Correction to the first description:
+  the directory was not ignored.** It was untracked, and only its `node_modules` contents were ignored by
+  the `node_modules/` rule; the root `.gitignore` has no `frontend/` rule. A second correction: `frontend/`
+  **was** tracked historically and was removed in `cff488db` and `eb950e19`, which are ancestors of `HEAD`
+  — `git log --all --oneline -- frontend` returns 14 commits. So "never tracked" was wrong, even though
+  `HEAD` tracks zero `frontend/` paths and the deletion was safe.
+- **P-3 — the documented lint command did not match `package.json`.**
+  `README.md:48` and `CONTRIBUTING.md:88` documented `eslint . --ext .ts,.tsx`; `package.json` runs
+  `eslint .`. **Correction to the first description: the harm was overstated.** A later verification
+  measured `npx eslint . --ext .ts,.tsx` exiting 0 with no error text and linting the same 54 files as
+  `eslint .`, because under this flat config the flag is accepted but inert (`--ext` is still printed by
+  `--help`). No contributor was ever blocked by it. The defect was real but purely one of documentation
+  fidelity, not of a broken instruction.
+
+## Follow-up — the three defects are fixed (`01b97688`)
+
+The user authorized the follow-up and additionally authorized deleting the stray `frontend/` directory so
+that the documentation and the filesystem stop contradicting each other.
+
+| Defect | Resolution | Evidence |
+| --- | --- | --- |
+| P-1 | The `/events` claim is dropped from `README.md`'s API section, the diagram comment and the Principios bullet | The follow-up verifier enumerated every endpoint the three slices declare and reconciled them against `README.md`, `docs/project-structure.md` and `docs/routes.md`: no disagreement in any direction, and zero `events` hits left in `README.md` and `docs/project-structure.md` |
+| P-2 | Resolved by deleting the directory, not by rewording: `rm -rf frontend` removed 753 MB and 62,597 entries, all inside `node_modules` | No `frontend/` exists at the root, and the three "no `frontend/` prefix" statements are now literally true. No path-prefix reference to `frontend/` exists in `HEAD`, the build configs, CI or `package.json`, so the deletion cannot break anything |
+| P-3 | Both docs now document `npm run lint` as `eslint .`, matching `package.json:9` | `git grep -n eslint -- '*.md'` leaves no other lint command documented |
+
+Nothing was committed for the deletion: it was untracked, so `git status` never showed it and no commit can
+carry it. The follow-up commit contains only the three Markdown files (5 insertions, 5 deletions).
+
+### What this verification caught in my own work
+
+Two of my own assertions were wrong, and this is the second time in this feature that an independent
+verifier corrected the record rather than merely confirming it. Both are corrected above.
+
+1. **P-3's stated harm was false.** I relayed "a contributor copying it gets an error" without testing
+   it. It was testable in one command, and the measurement showed the opposite.
+2. **"`frontend/` was never tracked" was false.** I inferred it from `git ls-files` (which only shows the
+   current index) instead of `git log --all --`, which shows 14 commits.
+
+Both mistakes are the same failure this whole feature exists to correct: asserting a claim without running
+the check that would falsify it. The lesson is that even the remediation of this defect class is not exempt
+from it.
+
+### Two further pre-existing defects found by the follow-up verification, NOT fixed
+
+- **`CONTRIBUTING.md:67` claims Prettier "is also installed as a dependency".** It is not declared: neither
+  `package.json` nor `package-lock.json` contains a `prettier` entry, and `npm ls prettier --depth=0`
+  reports it as `extraneous`. It happens to be runnable in this working tree because a transitive copy is
+  hoisted, but a fresh `npm ci` would not install it.
+- **`README.md:75` says "All HTTP access lives under `src/features`".** The next paragraph in the same
+  section points at `src/api/backend.ts` for the `GET /health` health check, so the sentence contradicts
+  itself. The endpoint inventory is correct; the location claim is not.
 
 ## Work units
 
@@ -130,6 +179,7 @@ defect this feature exists to correct, which is why they are reported rather tha
 | --- | --- | --- |
 | `98a5abb2` | `docs`: correct the stale claims in the repository documentation | `README.md`, `docs/project-structure.md`, `docs/decisions/vite-decision.md` |
 | `bef78c99` | `docs`: drop the Ascent mention from the contributor guide | `CONTRIBUTING.md` |
+| `01b97688` | `docs`: align the API and lint documentation with the code | `README.md`, `CONTRIBUTING.md`, `docs/project-structure.md` |
 
 Two commits on purpose: correctness fixes and a branding change are different intents, and the user asked
 for the defects to land as their own commit. Attribution is verified by content, not by diff inspection:
@@ -142,4 +192,8 @@ each commit was staged per file and its `--stat` matches the surfaces above.
   diagram, so they stayed out of scope.
 - **Do not rebrand the `docs/requisitos/` inputs.** They are historical evidence with no "Ascent" mention.
 - **The three new findings are reported, not absorbed.** Expanding an already-authorized commit with
-  unrelated files would break the split the user asked for.
+  unrelated files would break the split the user asked for. The same rule now applies to the two findings
+  the follow-up verification produced.
+- **The follow-up verifier's correction of my own claims is recorded, not quietly fixed.** A record whose
+  errors are erased teaches nothing; this one keeps them so the next reader can check for the same
+  shortcut.
