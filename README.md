@@ -1,6 +1,6 @@
-# Ascent BIA Frontend
+# BIA Frontend
 
-Web client for the Ascent BIA energy management platform: meter monitoring, per-meter readings and dashboard summaries over the `bia.backend` REST API.
+Web client for the BIA energy management platform: meter monitoring, per-meter readings and dashboard summaries over the `bia.backend` REST API.
 
 [![CI](https://github.com/Juan-Camilo-Tabarquino/bia.frontend/actions/workflows/ci.yml/badge.svg)](https://github.com/Juan-Camilo-Tabarquino/bia.frontend/actions/workflows/ci.yml)
 
