@@ -87,9 +87,20 @@ beforeEach(() => {
     error: undefined,
   });
   (useGetMeterReadingsQuery as jest.Mock).mockReturnValue({
-    data: [],
+    data: [
+      {
+        MeterID: 'M-101',
+        Timestamp: '2024-01-01T00:00:00Z',
+        Consumption: 10,
+        Voltage: 230,
+        Current: 5.4,
+        PowerFactor: 0.98,
+      },
+    ],
     isLoading: false,
+    isFetching: false,
     error: undefined,
+    refetch: jest.fn(),
   });
 });
 

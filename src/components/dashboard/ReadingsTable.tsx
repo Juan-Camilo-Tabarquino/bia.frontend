@@ -1,6 +1,6 @@
 "use client";
 
-import { Table, Spin } from "antd";
+import { Skeleton, Table } from "antd";
 import type { TableColumnsType } from "antd";
 import type { Reading } from "@/types/backend";
 
@@ -44,7 +44,9 @@ export default function ReadingsTable({ data, loading }: ReadingsTableProps) {
   }
 
   if (loading) {
-    return <Spin tip="Loading table..." />;
+    // The table's column shape is known, so a paragraph skeleton states what is
+    // coming; the bare spinner it replaced said nothing.
+    return <Skeleton active paragraph={{ rows: 5 }} />;
   }
 
   const columnTitles = hasStatus

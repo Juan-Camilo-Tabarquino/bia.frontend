@@ -3,14 +3,13 @@
 import Link from "next/link";
 import { useMemo } from "react";
 import {
-  Alert,
   Button,
   Card,
   Col,
   Empty,
   Row,
+  Skeleton,
   Space,
-  Spin,
   Statistic,
   Tag,
   Typography,
@@ -35,6 +34,11 @@ import {
   useGetAnomaliesQuery,
   useGetDashboardSummaryQuery,
 } from "../../features/api/apiSlice";
+import {
+  RequestError,
+  requestErrorMessage,
+  REQUEST_ERROR_FALLBACK,
+} from "../../components/RequestError";
 
 const { Text, Title } = Typography;
 
@@ -44,15 +48,8 @@ const { Text, Title } = Typography;
  */
 const OVERVIEW_LIMIT = 5;
 
-function getErrorMessage(error: unknown, fallback: string): string {
-  if (error && typeof error === "object" && "message" in error) {
-    const { message } = error as { message?: unknown };
-    if (typeof message === "string" && message.length > 0) {
-      return message;
-    }
-  }
-  return fallback;
-}
+/** Number of KPI cards the loading skeleton mirrors. */
+const KPI_CARD_COUNT = 4;
 
 function countTypes(anomalies: Anomaly[]): Map<AnomalyType, number> {
   const counts = new Map<AnomalyType, number>();
@@ -83,12 +80,16 @@ export default function DashboardPage() {
     data: summary,
     error: summaryError,
     isLoading: summaryLoading,
+    isFetching: summaryFetching,
+    refetch: refetchSummary,
   } = useGetDashboardSummaryQuery();
 
   const {
     data: anomalies = [],
     error: anomaliesError,
     isLoading: anomaliesLoading,
+    isFetching: anomaliesFetching,
+    refetch: refetchAnomalies,
   } = useGetAnomaliesQuery();
 
   // The summary endpoint reports only totals (`health`, `meters`, `anomalies`,
@@ -114,13 +115,26 @@ export default function DashboardPage() {
         </p>
 
         {isLoading ? (
-          <Spin />
+          // The KPI row is a known shape, so the loading state mirrors it with
+          // placeholder cards instead of a single unlabelled spinner.
+          <Row gutter={[16, 16]}>
+            {Array.from({ length: KPI_CARD_COUNT }, (_unused, index) => (
+              <Col key={index} xs={24} sm={12} lg={6}>
+                <Card>
+                  <Skeleton active title={false} paragraph={{ rows: 1 }} />
+                </Card>
+              </Col>
+            ))}
+          </Row>
         ) : error ? (
-          <Alert
-            type="error"
-            showIcon
-            role="alert"
-            title={getErrorMessage(error, "Error loading dashboard")}
+          <RequestError
+            title="No se pudo cargar el panel"
+            description={requestErrorMessage(error, REQUEST_ERROR_FALLBACK)}
+            onRetry={() => {
+              void refetchSummary();
+              void refetchAnomalies();
+            }}
+            retrying={summaryFetching || anomaliesFetching}
           />
         ) : (
           <>

@@ -52,30 +52,41 @@ export function AnomalyDetail({ anomaly }: AnomalyDetailProps) {
           column={1}
           size="middle"
           aria-label="Anomaly fields"
-        >
-          <Descriptions.Item label="ID">{anomaly.id}</Descriptions.Item>
-          <Descriptions.Item label="Meter">{anomaly.meter_id}</Descriptions.Item>
-          <Descriptions.Item label="Detected at">
-            {anomaly.detected_at}
-          </Descriptions.Item>
-          <Descriptions.Item label="Priority">
-            {anomaly.priority}
-          </Descriptions.Item>
-          <Descriptions.Item label="Type">
-            <AnomalyTypeTag type={anomaly.type} />
-          </Descriptions.Item>
-          <Descriptions.Item label="Severity">
-            <Tag color={severityColors[anomaly.severity]}>
-              {anomaly.severity}
-            </Tag>
-          </Descriptions.Item>
-          <Descriptions.Item label="Confidence">
-            {formatConfidence(anomaly.confidence)}
-          </Descriptions.Item>
-          <Descriptions.Item label="Status">
-            {anomalyStatusLabels[anomaly.status]}
-          </Descriptions.Item>
-        </Descriptions>
+          items={[
+            { key: "id", label: "ID", children: anomaly.id },
+            { key: "meter", label: "Meter", children: anomaly.meter_id },
+            {
+              key: "detected_at",
+              label: "Detected at",
+              children: anomaly.detected_at,
+            },
+            { key: "priority", label: "Priority", children: anomaly.priority },
+            {
+              key: "type",
+              label: "Type",
+              children: <AnomalyTypeTag type={anomaly.type} />,
+            },
+            {
+              key: "severity",
+              label: "Severity",
+              children: (
+                <Tag color={severityColors[anomaly.severity]}>
+                  {anomaly.severity}
+                </Tag>
+              ),
+            },
+            {
+              key: "confidence",
+              label: "Confidence",
+              children: formatConfidence(anomaly.confidence),
+            },
+            {
+              key: "status",
+              label: "Status",
+              children: anomalyStatusLabels[anomaly.status],
+            },
+          ]}
+        />
       </Card>
 
       <Card title="Reason">
@@ -96,26 +107,39 @@ export function AnomalyDetail({ anomaly }: AnomalyDetailProps) {
           column={1}
           size="middle"
           aria-label="Anomaly baseline"
-        >
-          <Descriptions.Item label="Consumption mean (kWh)">
-            {formatMetric(baseline.mean)}
-          </Descriptions.Item>
-          <Descriptions.Item label="Consumption stddev (kWh)">
-            {formatMetric(baseline.stddev)}
-          </Descriptions.Item>
-          <Descriptions.Item label="Baseline readings">
-            {baseline.count}
-          </Descriptions.Item>
-          <Descriptions.Item label="Voltage mean (V)">
-            {formatMetric(baseline.voltage_mean)}
-          </Descriptions.Item>
-          <Descriptions.Item label="Current mean (A)">
-            {formatMetric(baseline.current_mean)}
-          </Descriptions.Item>
-          <Descriptions.Item label="Power factor mean">
-            {formatMetric(baseline.power_factor_mean, 3)}
-          </Descriptions.Item>
-        </Descriptions>
+          items={[
+            {
+              key: "mean",
+              label: "Consumption mean (kWh)",
+              children: formatMetric(baseline.mean),
+            },
+            {
+              key: "stddev",
+              label: "Consumption stddev (kWh)",
+              children: formatMetric(baseline.stddev),
+            },
+            {
+              key: "count",
+              label: "Baseline readings",
+              children: baseline.count,
+            },
+            {
+              key: "voltage_mean",
+              label: "Voltage mean (V)",
+              children: formatMetric(baseline.voltage_mean),
+            },
+            {
+              key: "current_mean",
+              label: "Current mean (A)",
+              children: formatMetric(baseline.current_mean),
+            },
+            {
+              key: "power_factor_mean",
+              label: "Power factor mean",
+              children: formatMetric(baseline.power_factor_mean, 3),
+            },
+          ]}
+        />
       </Card>
 
       <Card title="Change vs baseline">
@@ -124,20 +148,29 @@ export function AnomalyDetail({ anomaly }: AnomalyDetailProps) {
           column={1}
           size="middle"
           aria-label="Anomaly change percentages"
-        >
-          <Descriptions.Item label="Consumption">
-            {formatSignedPercent(anomaly.consumption_change_pct)}
-          </Descriptions.Item>
-          <Descriptions.Item label="Voltage">
-            {formatSignedPercent(anomaly.voltage_change_pct)}
-          </Descriptions.Item>
-          <Descriptions.Item label="Current">
-            {formatSignedPercent(anomaly.current_change_pct)}
-          </Descriptions.Item>
-          <Descriptions.Item label="Power factor">
-            {formatSignedPercent(anomaly.power_factor_change_pct)}
-          </Descriptions.Item>
-        </Descriptions>
+          items={[
+            {
+              key: "consumption_change_pct",
+              label: "Consumption",
+              children: formatSignedPercent(anomaly.consumption_change_pct),
+            },
+            {
+              key: "voltage_change_pct",
+              label: "Voltage",
+              children: formatSignedPercent(anomaly.voltage_change_pct),
+            },
+            {
+              key: "current_change_pct",
+              label: "Current",
+              children: formatSignedPercent(anomaly.current_change_pct),
+            },
+            {
+              key: "power_factor_change_pct",
+              label: "Power factor",
+              children: formatSignedPercent(anomaly.power_factor_change_pct),
+            },
+          ]}
+        />
       </Card>
 
       <Card title="Correlated events">
@@ -168,16 +201,22 @@ export function AnomalyDetail({ anomaly }: AnomalyDetailProps) {
           column={1}
           size="middle"
           aria-label="Anomaly data quality"
-        >
-          <Descriptions.Item label="Flagged">
-            {data_quality.flagged ? "Yes" : "No"}
-          </Descriptions.Item>
-          <Descriptions.Item label="Reason">
-            {data_quality.reason.length > 0
-              ? data_quality.reason
-              : "No data-quality issue was flagged for this anomaly."}
-          </Descriptions.Item>
-        </Descriptions>
+          items={[
+            {
+              key: "flagged",
+              label: "Flagged",
+              children: data_quality.flagged ? "Yes" : "No",
+            },
+            {
+              key: "reason",
+              label: "Reason",
+              children:
+                data_quality.reason.length > 0
+                  ? data_quality.reason
+                  : "No data-quality issue was flagged for this anomaly.",
+            },
+          ]}
+        />
       </Card>
 
       <Card title="Causal reading">

@@ -2,9 +2,14 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Result, Spin, Typography } from "antd";
+import { Result, Skeleton, Space, Typography } from "antd";
 import { useGetAnomalyByIdQuery } from "@/features/api/apiSlice";
 import { AnomalyDetail } from "@/components/anomalies/AnomalyDetail";
+import {
+  RequestError,
+  requestErrorMessage,
+  REQUEST_ERROR_FALLBACK,
+} from "@/components/RequestError";
 
 const { Title } = Typography;
 
@@ -34,9 +39,12 @@ export default function AnomalyInvestigationPage() {
   const rawId = params?.id;
   const anomalyId = Array.isArray(rawId) ? rawId[0] ?? "" : rawId ?? "";
 
-  const { data, error, isLoading } = useGetAnomalyByIdQuery(anomalyId, {
-    skip: anomalyId.length === 0,
-  });
+  const { data, error, isLoading, isFetching, refetch } = useGetAnomalyByIdQuery(
+    anomalyId,
+    {
+      skip: anomalyId.length === 0,
+    },
+  );
 
   let content;
   if (anomalyId.length === 0) {
@@ -49,7 +57,7 @@ export default function AnomalyInvestigationPage() {
       />
     );
   } else if (isLoading) {
-    content = <Spin />;
+    content = <Skeleton active paragraph={{ rows: 8 }} />;
   } else if (isNotFound(error)) {
     content = (
       <Result
@@ -61,12 +69,17 @@ export default function AnomalyInvestigationPage() {
     );
   } else if (error) {
     content = (
-      <Result
-        status="error"
-        title="Could not load anomaly"
-        subTitle="The anomaly could not be loaded from the backend."
-        extra={backLink()}
-      />
+      <Space orientation="vertical" size="middle">
+        <RequestError
+          title="No se pudo cargar la anomalía"
+          description={requestErrorMessage(error, REQUEST_ERROR_FALLBACK)}
+          onRetry={() => {
+            void refetch();
+          }}
+          retrying={isFetching}
+        />
+        {backLink()}
+      </Space>
     );
   } else if (data) {
     content = <AnomalyDetail anomaly={data} />;

@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import DashboardPage from '../../app/dashboard/page';
 
 jest.mock('../../features/api/apiSlice', () => ({
@@ -16,6 +16,9 @@ import type { Anomaly } from '../../types/backend';
 const mockedUseGetDashboardSummaryQuery =
   useGetDashboardSummaryQuery as jest.Mock;
 const mockedUseGetAnomaliesQuery = useGetAnomaliesQuery as jest.Mock;
+
+const refetchSummary = jest.fn();
+const refetchAnomalies = jest.fn();
 
 const summary = { health: 'ok', meters: 3, anomalies: 2, lastRun: 'latest' };
 
@@ -81,12 +84,16 @@ function mockLoaded(
   mockedUseGetDashboardSummaryQuery.mockReturnValue({
     data: summaryValue,
     isLoading: false,
+    isFetching: false,
     error: undefined,
+    refetch: refetchSummary,
   });
   mockedUseGetAnomaliesQuery.mockReturnValue({
     data: anomalyList,
     isLoading: false,
+    isFetching: false,
     error: undefined,
+    refetch: refetchAnomalies,
   });
 }
 
@@ -94,40 +101,53 @@ describe('DashboardPage component', () => {
   beforeEach(() => {
     mockedUseGetDashboardSummaryQuery.mockReset();
     mockedUseGetAnomaliesQuery.mockReset();
+    refetchSummary.mockReset();
+    refetchAnomalies.mockReset();
   });
 
-  it('renders a loading spinner while the requests are pending', () => {
+  it('renders a skeleton while the requests are pending', () => {
     mockedUseGetDashboardSummaryQuery.mockReturnValue({
       data: undefined,
       isLoading: true,
+      isFetching: true,
       error: undefined,
+      refetch: refetchSummary,
     });
     mockedUseGetAnomaliesQuery.mockReturnValue({
       data: undefined,
       isLoading: true,
+      isFetching: true,
       error: undefined,
+      refetch: refetchAnomalies,
     });
 
     const { container } = render(<DashboardPage />);
 
-    expect(container.querySelector('.ant-spin')).toBeInTheDocument();
+    expect(container.querySelector('.ant-skeleton')).toBeInTheDocument();
   });
 
-  it('renders the API error message when a request fails', () => {
+  it('renders the API error message and retries both queries', () => {
     mockedUseGetDashboardSummaryQuery.mockReturnValue({
       data: undefined,
       isLoading: false,
+      isFetching: false,
       error: { message: 'Oops' },
+      refetch: refetchSummary,
     });
     mockedUseGetAnomaliesQuery.mockReturnValue({
       data: undefined,
       isLoading: false,
+      isFetching: false,
       error: undefined,
+      refetch: refetchAnomalies,
     });
 
     render(<DashboardPage />);
 
-    expect(screen.getByText('Oops')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('Oops');
+    fireEvent.click(screen.getByRole('button', { name: /Reintentar/ }));
+    expect(refetchSummary).toHaveBeenCalledTimes(1);
+    expect(refetchAnomalies).toHaveBeenCalledTimes(1);
   });
 
   it('renders the KPI block from the deterministic summary', () => {

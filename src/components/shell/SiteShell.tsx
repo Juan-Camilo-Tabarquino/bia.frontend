@@ -3,6 +3,7 @@
 import { Layout } from "antd";
 import type { ReactNode } from "react";
 
+import { BackendStatus } from "../BackendStatus";
 import { SiteBreadcrumb } from "./SiteBreadcrumb";
 import { SiteHeader } from "./SiteHeader";
 import styles from "./SiteShell.module.scss";
@@ -20,6 +21,8 @@ const { Content, Footer } = Layout;
 export function SiteShell({ children }: { children: ReactNode }) {
   return (
     <Layout className={styles.layout}>
+      {/* One-shot health toast. Renders nothing and never polls. */}
+      <BackendStatus />
       <SiteHeader />
       <SiteBreadcrumb />
       <Content className={`shell-container ${styles.content}`}>{children}</Content>

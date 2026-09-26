@@ -9,7 +9,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { Spin } from "antd";
+import { Empty, Spin } from "antd";
 import type { Reading } from "@/types/backend";
 import { chartColors } from "@/theme/tokens";
 import { ThemeModeContext } from "@/theme/theme-provider";
@@ -141,7 +141,10 @@ export default function ReadingsChart({
   const selected = signals.find((signal) => signal.key === signalKey) ?? signals[0];
 
   if (loading) {
-    return <Spin tip="Loading chart..." />;
+    // antd 6 deprecated `Spin`'s `tip` in favour of `description`; the
+    // description renders without children, so the loading state stays
+    // perceivable instead of being an unlabelled spinner.
+    return <Spin description="Cargando gráfico…" />;
   }
 
   const timestamps = data.map((reading) => reading.Timestamp);
@@ -194,43 +197,53 @@ export default function ReadingsChart({
           ))}
         </div>
       </fieldset>
-      <ResponsiveContainer
-        width="100%"
-        height={300}
-        aria-label={`Readings chart: ${selected.label} (${selected.unit}) over time`}
-        aria-describedby={descriptionId}
-        role="img"
-      >
-        <LineChart data={points}>
-          <XAxis dataKey="Timestamp" tick={{ fontSize: 12 }} />
-          <YAxis tick={{ fontSize: 12 }} />
-          <Tooltip />
-          <Line
-            type="monotone"
-            dataKey="value"
-            name={`${selected.label} (${selected.unit})`}
-            stroke={colors.series}
-            dot={false}
-            activeDot={{ r: 4 }}
-          />
-          {/* Anomaly markers: a distinct ring plus text elsewhere, never colour alone. */}
-          <Line
-            type="monotone"
-            dataKey={ANOMALY_DATA_KEY}
-            name="Anomaly marker"
-            stroke="transparent"
-            connectNulls={false}
-            isAnimationActive={false}
-            dot={{
-              r: 5,
-              stroke: colors.marker,
-              strokeWidth: 2,
-              fill: colors.markerSurface,
-            }}
-            activeDot={false}
-          />
-        </LineChart>
-      </ResponsiveContainer>
+      {data.length === 0 ? (
+        // The chart's region is blank when the backend answers `200 null` for
+        // an unknown meter or an empty window, so it says so instead of
+        // drawing an empty 300px plot.
+        <Empty
+          className={styles.empty}
+          description="No hay lecturas en el rango seleccionado."
+        />
+      ) : (
+        <ResponsiveContainer
+          width="100%"
+          height={300}
+          aria-label={`Readings chart: ${selected.label} (${selected.unit}) over time`}
+          aria-describedby={descriptionId}
+          role="img"
+        >
+          <LineChart data={points}>
+            <XAxis dataKey="Timestamp" tick={{ fontSize: 12 }} />
+            <YAxis tick={{ fontSize: 12 }} />
+            <Tooltip />
+            <Line
+              type="monotone"
+              dataKey="value"
+              name={`${selected.label} (${selected.unit})`}
+              stroke={colors.series}
+              dot={false}
+              activeDot={{ r: 4 }}
+            />
+            {/* Anomaly markers: a distinct ring plus text elsewhere, never colour alone. */}
+            <Line
+              type="monotone"
+              dataKey={ANOMALY_DATA_KEY}
+              name="Anomaly marker"
+              stroke="transparent"
+              connectNulls={false}
+              isAnimationActive={false}
+              dot={{
+                r: 5,
+                stroke: colors.marker,
+                strokeWidth: 2,
+                fill: colors.markerSurface,
+              }}
+              activeDot={false}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      )}
       <figcaption id={descriptionId} className="sr-only">
         {`Line chart of ${selected.label} in ${selected.unit} over time, ${data.length} readings. ${markerSummary}`}
       </figcaption>

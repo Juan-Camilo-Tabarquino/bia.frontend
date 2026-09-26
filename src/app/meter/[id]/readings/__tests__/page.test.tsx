@@ -57,6 +57,8 @@ import { useGetAnomaliesQuery } from '@/features/api/apiSlice';
 const mockedUseGetMeterReadingsQuery = useGetMeterReadingsQuery as jest.Mock;
 const mockedUseGetAnomaliesQuery = useGetAnomaliesQuery as jest.Mock;
 
+const refetch = jest.fn();
+
 const readings: Reading[] = [
   {
     MeterID: 'meter-123',
@@ -140,10 +142,13 @@ describe('MeterReadingsPage', () => {
   beforeEach(() => {
     mockedUseGetMeterReadingsQuery.mockReset();
     mockedUseGetAnomaliesQuery.mockReset();
+    refetch.mockReset();
     mockedUseGetMeterReadingsQuery.mockReturnValue({
       data: readings,
       isLoading: false,
+      isFetching: false,
       error: undefined,
+      refetch,
     });
     mockedUseGetAnomaliesQuery.mockReturnValue({
       data: anomalies,
@@ -177,6 +182,47 @@ describe('MeterReadingsPage', () => {
     expect(screen.getByRole('table')).toBeInTheDocument();
   });
 
+  it('shows a non-blocking updating indicator during a refetch, keeping the rows', () => {
+    // RTK Query keeps the previous `data` and reports `isFetching` while a
+    // refetch is in flight, so the indicator must appear without blanking the
+    // chart or table.
+    mockedUseGetMeterReadingsQuery.mockReturnValue({
+      data: readings,
+      isLoading: false,
+      isFetching: true,
+      error: undefined,
+      refetch,
+    });
+
+    render(<MeterReadingsPage />);
+
+    expect(screen.getByText('Actualizando…')).toBeInTheDocument();
+    expect(screen.getByLabelText(/Readings chart: Consumption/)).toBeInTheDocument();
+    expect(screen.getByText('12.5')).toBeInTheDocument();
+  });
+
+  it('hides the updating indicator when no refetch is in flight', () => {
+    render(<MeterReadingsPage />);
+
+    expect(screen.queryByText('Actualizando…')).not.toBeInTheDocument();
+  });
+
+  it('renders a retryable error when the readings request fails', () => {
+    mockedUseGetMeterReadingsQuery.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isFetching: false,
+      error: { message: 'Explotó' },
+      refetch,
+    });
+
+    render(<MeterReadingsPage />);
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Explotó');
+    fireEvent.click(screen.getByRole('button', { name: /Reintentar/ }));
+    expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
   it('forwards a selected date range as from/to query params', () => {
     render(<MeterReadingsPage />);
 
@@ -206,13 +252,16 @@ describe('MeterReadingsPage', () => {
     expect(lastCall?.[1]).toEqual({ skip: false });
   });
 
-  it('renders an empty chart and table when the backend answers 200 null', () => {
+  it('renders an empty readings state when the backend answers 200 null', () => {
     // `GET /meters/{id}/readings` replies `200 null` for an unknown meter or an
-    // empty window, so the page must narrow the payload instead of mapping it.
+    // empty window, so the page must narrow the payload instead of mapping it
+    // and must explain the empty chart region.
     mockedUseGetMeterReadingsQuery.mockReturnValue({
       data: null,
       isLoading: false,
+      isFetching: false,
       error: undefined,
+      refetch,
     });
 
     render(<MeterReadingsPage />);
@@ -220,10 +269,14 @@ describe('MeterReadingsPage', () => {
     expect(
       screen.getByRole('heading', { name: /Meter Readings for meter-123/i }),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText(/Readings chart: Consumption/)).toBeInTheDocument();
+    expect(
+      screen.getByText('No hay lecturas en el rango seleccionado.'),
+    ).toBeInTheDocument();
     expect(screen.getByRole('table')).toBeInTheDocument();
     expect(screen.queryByText(/Error loading readings/i)).not.toBeInTheDocument();
-    expect(plottedPoints()).toEqual([]);
+    expect(
+      screen.queryByRole('img', { name: /Readings chart/i }),
+    ).not.toBeInTheDocument();
   });
 
   it('forwards every signal of the Reading payload without collapsing it', () => {

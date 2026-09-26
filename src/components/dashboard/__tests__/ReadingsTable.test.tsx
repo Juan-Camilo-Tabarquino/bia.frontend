@@ -23,10 +23,10 @@ const sampleData: Reading[] = [
 ];
 
 describe('ReadingsTable', () => {
-  it('renders loading spinner when loading', () => {
-    render(<ReadingsTable data={[]} loading={true} />);
+  it('renders a skeleton while loading', () => {
+    const { container } = render(<ReadingsTable data={[]} loading={true} />);
 
-    expect(screen.getByText(/Loading table\.\.\./i)).toBeInTheDocument();
+    expect(container.querySelector('.ant-skeleton')).toBeInTheDocument();
   });
 
   it('renders every signal of each reading with its unit in the header', () => {

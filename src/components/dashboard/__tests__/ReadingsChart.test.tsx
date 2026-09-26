@@ -79,20 +79,23 @@ const plottedDataKeys = (): Array<string | null> =>
     .map((line) => line.getAttribute('data-key'));
 
 describe('ReadingsChart', () => {
-  it('renders loading spinner when loading', () => {
+  it('renders a labelled loading state when loading', () => {
     render(<ReadingsChart data={[]} loading={true} />);
 
-    expect(screen.getByText(/Loading chart\.\.\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Cargando gráfico/i)).toBeInTheDocument();
   });
 
-  it('keeps the chart rendered when the backend answers 200 null', () => {
-    // Empty (null-narrowed) payloads must not remove the labelled figure, so the
-    // page keeps a stable accessible name for screen reader users.
+  it('states that there are no readings instead of drawing an empty plot', () => {
+    // Empty (null-narrowed) payloads must not leave a blank 300px plot: the
+    // chart region explains the emptiness in Spanish.
     render(<ReadingsChart data={[]} />);
 
     expect(
-      screen.getByRole('img', { name: /Readings chart/i }),
+      screen.getByText('No hay lecturas en el rango seleccionado.'),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('img', { name: /Readings chart/i }),
+    ).not.toBeInTheDocument();
   });
 
   it('exposes one image whose accessible name carries the unit of the signal', () => {

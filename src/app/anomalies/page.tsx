@@ -2,7 +2,7 @@
 
 import { Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Alert, Button, Empty, Select, Space, Spin, Typography } from "antd";
+import { Alert, Button, Empty, Select, Skeleton, Space, Typography } from "antd";
 import {
   useGetAnomaliesQuery,
   useGetMetersQuery,
@@ -19,18 +19,13 @@ import {
   type AnomalyFilterValues,
   type AnomalySortKey,
 } from "@/components/anomalies/anomalyFiltering";
+import {
+  RequestError,
+  requestErrorMessage,
+  REQUEST_ERROR_FALLBACK,
+} from "@/components/RequestError";
 
 const { Title, Text } = Typography;
-
-function getErrorMessage(error: unknown, fallback: string): string {
-  if (error && typeof error === "object" && "message" in error) {
-    const { message } = error as { message?: unknown };
-    if (typeof message === "string" && message.length > 0) {
-      return message;
-    }
-  }
-  return fallback;
-}
 
 /**
  * `useSearchParams` reads the URL on the client, so the route is rendered
@@ -38,7 +33,7 @@ function getErrorMessage(error: unknown, fallback: string): string {
  */
 export default function AnomaliesPage() {
   return (
-    <Suspense fallback={<Spin />}>
+    <Suspense fallback={<Skeleton active paragraph={{ rows: 6 }} />}>
       <AnomaliesContent />
     </Suspense>
   );
@@ -75,6 +70,7 @@ function AnomaliesContent() {
     data: anomalies = [],
     error: anomaliesError,
     isLoading: anomaliesLoading,
+    refetch: refetchAnomalies,
   } = useGetAnomaliesQuery();
 
   const {
@@ -89,13 +85,24 @@ function AnomaliesContent() {
   );
 
   if (anomaliesLoading || metersLoading) {
-    return <Spin />;
+    // The anomaly table is the known shape, so the skeleton says what is
+    // coming instead of the empty spinner that used to occupy the page.
+    return <Skeleton active paragraph={{ rows: 6 }} />;
   }
 
   if (anomaliesError) {
     return (
-      <div role="alert">
-        {getErrorMessage(anomaliesError, "Error loading anomalies")}
+      <div style={{ padding: "1rem" }}>
+        <RequestError
+          title="No se pudieron cargar las anomalías"
+          description={requestErrorMessage(
+            anomaliesError,
+            REQUEST_ERROR_FALLBACK,
+          )}
+          onRetry={() => {
+            void refetchAnomalies();
+          }}
+        />
       </div>
     );
   }
@@ -115,8 +122,8 @@ function AnomaliesContent() {
           <Alert
             type="warning"
             showIcon
-            title="Meter list unavailable"
-            description="The meter filter could not be populated because GET /api/meters failed."
+            title="Lista de medidores no disponible"
+            description="El filtro de medidores no se pudo completar porque la consulta de medidores falló."
             style={{ marginTop: "1rem" }}
           />
         )}
@@ -143,14 +150,9 @@ function AnomaliesContent() {
         </Space>
 
         {anomalies.length === 0 ? (
-          <Alert
-            type="info"
-            showIcon
-            title="No anomalies"
-            description="The backend reported no anomalies."
-          />
+          <Empty description="El backend no reportó anomalías." />
         ) : visibleAnomalies.length === 0 ? (
-          <Empty description="No anomalies match the current filters.">
+          <Empty description="Ninguna anomalía coincide con los filtros actuales.">
             <Button onClick={() => setFilters(emptyAnomalyFilters)}>
               Clear filters
             </Button>

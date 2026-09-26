@@ -68,6 +68,8 @@ const mockedUseSearchParams = useSearchParams as jest.Mock;
 const mockedUsePostAnalyzeMutation = usePostAnalyzeMutation as jest.Mock;
 const mockedUseGetAiAnalysisQuery = useGetAiAnalysisQuery as jest.Mock;
 
+const refetch = jest.fn();
+
 const anomalies: Anomaly[] = [
   {
     id: "M-109-2026-09-12T14:00:00Z",
@@ -137,7 +139,9 @@ function mockLoaded(list: Anomaly[] = anomalies): void {
   mockedUseGetAnomaliesQuery.mockReturnValue({
     data: list,
     isLoading: false,
+    isFetching: false,
     error: undefined,
+    refetch,
   });
   mockedUseGetMetersQuery.mockReturnValue({
     data: ["M-109", "M-112"],
@@ -172,31 +176,38 @@ describe("AnomaliesPage", () => {
       error: undefined,
       isLoading: false,
     });
+    refetch.mockReset();
     mockLoaded();
   });
 
-  it("renders a loading spinner while the requests are pending", () => {
+  it("renders a skeleton while the requests are pending", () => {
     mockedUseGetAnomaliesQuery.mockReturnValue({
       data: undefined,
       isLoading: true,
+      isFetching: true,
       error: undefined,
+      refetch,
     });
 
     const { container } = render(<AnomaliesPage />);
 
-    expect(container.querySelector(".ant-spin")).toBeInTheDocument();
+    expect(container.querySelector(".ant-skeleton")).toBeInTheDocument();
   });
 
-  it("renders the API error message when the anomaly request fails", () => {
+  it("renders the API error message with a retry action when the anomaly request fails", () => {
     mockedUseGetAnomaliesQuery.mockReturnValue({
       data: undefined,
       isLoading: false,
+      isFetching: false,
       error: { message: "Boom" },
+      refetch,
     });
 
     render(<AnomaliesPage />);
 
     expect(screen.getByRole("alert")).toHaveTextContent("Boom");
+    fireEvent.click(screen.getByRole("button", { name: /Reintentar/ }));
+    expect(refetch).toHaveBeenCalledTimes(1);
   });
 
   it("renders an empty state when the backend reports no anomalies", () => {
@@ -204,7 +215,9 @@ describe("AnomaliesPage", () => {
 
     render(<AnomaliesPage />);
 
-    expect(screen.getByText("No anomalies")).toBeInTheDocument();
+    expect(
+      screen.getByText("El backend no reportó anomalías."),
+    ).toBeInTheDocument();
     expect(
       screen.getByText("Showing 0 of 0 anomalies"),
     ).toBeInTheDocument();
@@ -297,7 +310,7 @@ describe("AnomaliesPage", () => {
     render(<AnomaliesPage />);
 
     expect(
-      screen.getByText("Meter list unavailable"),
+      screen.getByText("Lista de medidores no disponible"),
     ).toBeInTheDocument();
     expect(screen.getByText("Showing 2 of 2 anomalies")).toBeInTheDocument();
   });
