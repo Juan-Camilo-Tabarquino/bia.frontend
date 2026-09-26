@@ -1,6 +1,6 @@
 # Feature: refactor/improve-ui — Bia visual identity, dark theme, Spanish, modern UX
 
-**Status: IN PROGRESS — 0/6 phases.** Branch `refactor/improve-ui`, base `ab85e7e8` (which is `main` = `origin/main`).
+**Status: IN PROGRESS — phase 0+1 and phase 2 done, 4 phases left.** Branch `refactor/improve-ui`, base `ab85e7e8` (which is `main` = `origin/main`).
 
 **Reference:** the read-only audit of this branch (three explorations + parent verification),
 `odd/tasks/u1-ordering-confirmed.md`, and the Bia brand research (Engram
@@ -62,7 +62,7 @@ energy company — not a hype startup."* → **institutional and clear, never pl
 | Phase | Scope | Status |
 | --- | --- | --- |
 | **0+1** | **IA + foundation**: `/` redirects to `/meters`; nav collapses to 3 Spanish destinations; `ConfigProvider` with the teal tokens; dark default + light toggle; Inter via `next/font`; brand mark in the shell; `reset.css` moved to the root layout; spacing/radius scale; SCSS colors read from antd CSS variables | **done** |
-| 2 | **Shell and IA**: icon rail/header with the anomaly-count badge, breadcrumbs with inline filters, footer | todo |
+| 2 | **Shell**: breadcrumb trail derived from the pathname, and the anomaly-count badge on the Anomalías entry fed by the shared summary cache. The footer landed in phase 0+1, and the **inline filters inside the breadcrumb belong to phase 4** (deep-linked filters), not here | **done** |
 | 3 | **States**: one error vocabulary with retry, `Skeleton`, empty states, `isFetching` refetch indicators, toasts, and clearing the deprecated `Spin tip` + `Descriptions children` usages | todo |
 | 4 | **Interactivity**: search, header sorting, consistent pagination, deep-linked filters, cross-links, readable dates, KPI delta pills, insight banner | todo |
 | 5 | **Chart**: teal series, baseline reference line from `Anomaly.baseline.mean`, legend, grid, axis unit, themed tooltip | todo |
@@ -125,6 +125,61 @@ near-duplicate of `/meters`. Backend health returns as a **start-up toast** in p
 decision. Until then the app reports nothing about backend availability. Also noted: a user whose stored
 preference is `light` sees dark until hydration, which is the accepted cost of dark-by-default without a
 pre-hydration script.
+
+## Phase 2 result
+
+Implemented and verified. `lint` 0, `tsc --noEmit` 0, **22 suites / 138 tests**, `next build` 0 with the same 7
+routes.
+
+**Shipped:** a Spanish breadcrumb trail derived from the pathname (`SiteBreadcrumb.tsx`), rendered by the
+shell between the header and the content; an anomaly-count **badge** on the Anomalías entry; and the shell's
+four inline layout styles moved into `SiteShell.module.scss`.
+
+### Accessibility, which is where this phase earned its keep
+
+- **antd 6 does not emit `aria-current` on the last breadcrumb item** (verified by grepping antd's own source
+  for `aria-current`: zero matches), so the component sets it explicitly. The verification confirmed the
+  necessity rather than accepting it.
+- **The badge count is announced without renaming its destination.** The badge sits inside the already
+  `aria-hidden` icon wrapper, and the count reaches assistive technology through an `aria-describedby`
+  pointing at an `sr-only` span **outside** the link. Result: the accessible name stays exactly
+  "Anomalías" while the count is still announced. Verified in the tests and in the emitted markup.
+- `aria-label` is not part of `BreadcrumbProps`, and antd spreads unknown props onto its root `<nav>`; the
+  component passes it through a typed `AriaAttributes` spread with **no cast**.
+
+### What verification changed
+
+The round returned **ready to commit** with no blocking defect, and then four test-quality findings were
+fixed:
+
+1. **Two assertions were vacuous.** The loading and error tests mocked the hook with `data: undefined`, so
+   deleting the `!isLoading` / `!error` guards would have left them green. They now supply a **positive stale
+   payload** — the real-world case the guard exists for, because RTK Query keeps the last successful `data`
+   while a refetch is in flight or after it fails. A **mutation experiment** proved the fix: weakening the
+   guard to `typeof summary?.anomalies === "number"` makes exactly those two tests fail, and the production
+   file was restored byte-for-byte afterwards (sha256 checked).
+2. The zero-count assertion relied on `queryByText("0")`, which passes even for a `>= 0` gate because antd
+   hides `count={0}`; it now asserts the badge element and the `aria-describedby` are absent.
+3. The nav's `aria-current` had **no** automated coverage — the accessibility suite renders pages, not the
+   shell. Now covered for `/anomalies` and `/meters`.
+4. **The Jest ESM trap was fixed at the cause instead of stubbed.** Phase 1's icon import reaches
+   `@ant-design/colors/es/generate` (ESM) through an icon CJS entry that `require()`s the `/es/` path, which
+   Jest cannot transform on Node 22. The first pass worked around it with a five-component
+   `jest.mock("@ant-design/icons", …)` — all-or-nothing, so any future test importing a *different* icon
+   would receive `undefined`. `jest.config.js` now allowlists `@ant-design/colors` and
+   `@ant-design/fast-color`, and the tests exercise the **real** icon components.
+
+### Deliberate tradeoffs worth knowing
+
+- The shell issues one `GET /dashboard/summary` request **per session**, not per route: the layout never
+  unmounts, so the cache entry is never evicted and `/dashboard` reuses it. A cold landing on `/anomalies`
+  does issue that one request for the badge. The shell stays silent while the request is in flight or failed
+  — it never shows a stale or fake count — and the page that owns the data reports its own errors.
+- **That count is never invalidated**, because `apiSlice` declares no `tagTypes`/`providesTags`. It can be
+  stale for the whole session, which is consistent with the owner's "no polling" decision but is a real
+  limitation rather than an accident.
+- A malformed path renders **no** breadcrumb rather than a misleading one (`/meters/extra`,
+  `/meter/M-109/something-else`).
 
 ## Phase 0+1 verification plan (as originally written)
 
