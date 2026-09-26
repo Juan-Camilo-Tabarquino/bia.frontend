@@ -1,0 +1,8 @@
+/*
+ * The trail sits between the header and the page content. The shared
+ * `shell-container` class supplies the gutter and max width, so only the
+ * vertical separation from the header is owned here.
+ */
+.breadcrumb {
+  margin-top: 1rem;
+}

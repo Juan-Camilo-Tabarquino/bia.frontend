@@ -1,0 +1,19 @@
+/*
+ * The shell's layout properties live here instead of in inline `style` props.
+ *
+ * `min-height` repeats the class so this rule outranks antd's own
+ * `.ant-layout { min-height: 0 }` without `!important` (same technique as
+ * `SiteHeader.module.scss`).
+ */
+.layout.layout {
+  min-height: 100vh;
+}
+
+.content {
+  padding-top: 1.5rem;
+  padding-bottom: 2rem;
+}
+
+.footer {
+  text-align: center;
+}

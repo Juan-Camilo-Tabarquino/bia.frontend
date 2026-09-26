@@ -3,7 +3,9 @@
 import { Layout } from "antd";
 import type { ReactNode } from "react";
 
+import { SiteBreadcrumb } from "./SiteBreadcrumb";
 import { SiteHeader } from "./SiteHeader";
+import styles from "./SiteShell.module.scss";
 
 const { Content, Footer } = Layout;
 
@@ -17,15 +19,11 @@ const { Content, Footer } = Layout;
  */
 export function SiteShell({ children }: { children: ReactNode }) {
   return (
-    <Layout style={{ minHeight: "100vh" }}>
+    <Layout className={styles.layout}>
       <SiteHeader />
-      <Content
-        className="shell-container"
-        style={{ paddingTop: "1.5rem", paddingBottom: "2rem" }}
-      >
-        {children}
-      </Content>
-      <Footer style={{ textAlign: "center" }}>
+      <SiteBreadcrumb />
+      <Content className={`shell-container ${styles.content}`}>{children}</Content>
+      <Footer className={styles.footer}>
         Bia · {new Date().getFullYear()}
       </Footer>
     </Layout>

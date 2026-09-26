@@ -8,8 +8,18 @@
  * such as `escape-string-regexp`) and ts-jest compiles `.js`/`.jsx` alongside
  * `.ts`/`.tsx`. The markdown packages are therefore exercised for real, never
  * mocked.
+ *
+ * The ant-design colour packages are allowlisted for the same reason.
+ * `@ant-design/icons` and `@ant-design/colors` both ship a dual CJS/ESM build,
+ * and their CommonJS entry points `require()` the ESM `/es/` paths:
+ * `@ant-design/icons/lib/colorUtils.js` loads `@ant-design/colors/es/generate`,
+ * whose own ESM file imports `@ant-design/fast-color`. Without these two
+ * entries Jest cannot `require()` the icons barrel, so the real icon
+ * components are exercised here instead of being stubbed.
  */
 const esmPackages = [
+  "@ant-design/colors",
+  "@ant-design/fast-color",
   "@ungap/structured-clone",
   "bail",
   "ccount",
