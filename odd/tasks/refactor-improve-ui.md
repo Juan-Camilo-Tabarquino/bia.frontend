@@ -63,7 +63,7 @@ energy company — not a hype startup."* → **institutional and clear, never pl
 | --- | --- | --- |
 | **0+1** | **IA + foundation**: `/` redirects to `/meters`; nav collapses to 3 Spanish destinations; `ConfigProvider` with the teal tokens; dark default + light toggle; Inter via `next/font`; brand mark in the shell; `reset.css` moved to the root layout; spacing/radius scale; SCSS colors read from antd CSS variables | **done** |
 | 2 | **Shell**: breadcrumb trail derived from the pathname, and the anomaly-count badge on the Anomalías entry fed by the shared summary cache. The footer landed in phase 0+1, and the **inline filters inside the breadcrumb belong to phase 4** (deep-linked filters), not here | **done** |
-| 3 | **States**: one error vocabulary with retry, `Skeleton`, empty states, `isFetching` refetch indicators, toasts, and clearing the deprecated `Spin tip` + `Descriptions children` usages | todo |
+| 3 | **States**: one error vocabulary with retry, `Skeleton`, empty states, `isFetching` refetch indicators, toasts, and clearing the deprecated `Spin tip` + `Descriptions children` usages | **done** |
 | 4 | **Interactivity**: search, header sorting, consistent pagination, deep-linked filters, cross-links, readable dates, KPI delta pills, insight banner | todo |
 | 5 | **Chart**: teal series, baseline reference line from `Anomaly.baseline.mean`, legend, grid, axis unit, themed tooltip | todo |
 | 6 | **Spanish**: ~200 strings, `locale={esES}` + `dayjs/locale/es`, the four missing label maps, locale date/number formatting, `lang="es"` | todo |
@@ -193,6 +193,49 @@ fixed:
   appear in the nav.
 - Theme truth: dark by default, the toggle flips to light, and **no colour literal survives in a SCSS
   module** — they must read from tokens so the toggle is not a lie.
+
+## Phase 3 result
+
+Implemented and verified. `lint` 0, `tsc --noEmit` 0, **24 suites / 155 tests**, `next build` 0 (7 app
+routes). Commit `4820b93f` (25 files, 930 insertions / 349 deletions).
+
+**Shipped:** `RequestError` (an antd `Alert` plus a "Reintentar" button wired to each query's `refetch`)
+replaces all six ad-hoc error presentations, and `MeterDetail` now has a dedicated 404 state instead of a
+generic error. `BackendStatus` calls `getHealth()` once and notifies success or failure — no polling, no
+chip, no request on route change — and `HealthStatus.tsx` is deleted as dead code. `Skeleton` where the
+content shape is known, `Empty` where a blank region used to be, and `"Actualizando…"` so a readings refetch
+is visible without blanking the previous chart and table. `Spin tip` → `description` and `Descriptions`
+`children` → `items` across five blocks, with the rendered rows unchanged. State copy is Spanish; untouched
+copy stays English for an incremental language sweep.
+
+**Browser verification** (the parent, real Chromium against the dev server): exactly **one** notification and
+exactly **one** `GET /health` on load, still one after client-side navigation to two other routes, one again
+after a reload, and **zero console errors** — the deprecated `Spin tip` warning is gone too. Also observed
+there: `Medidor no encontrado` for an unknown meter (with no retry button, correctly — a 404 is not a
+retryable failure), `No hay lecturas en el rango seleccionado.` for empty readings, and 12 rows on the meter
+list. That check also surfaced antd's own untranslated `No data` sitting next to our Spanish empty state,
+which is exactly what phase 6's `ConfigProvider locale={esES}` has to fix.
+
+**Mutation experiment**: removing the `useRef` guard from `BackendStatus` makes the fire-once test fail with
+`Expected calls: 1 / Received: 2`, after which the file was restored byte-for-byte with hash confirmation.
+
+### A correction this phase forced
+
+I had told the owner that antd's `Spin tip` "never renders without children" and that the loading text
+therefore never appeared. **That was false.** antd 6.6.5 computes `mergedDescription = description ?? tip` and
+renders it whenever the indicator shows (`node_modules/antd/es/spin/index.js:66,103-109,132`), and a test at
+the previous HEAD asserted the text was visible. The misleading source was antd's own **stale JSDoc**
+("Customize description content when Spin has children"), which still sits above the deprecated prop. Only the
+**deprecation** was real, so the migration stands on that alone. The lesson: I verified the `.d.ts` comment
+and mistook it for the implementation.
+
+### Non-blocking findings from the phase-3 verification
+
+`retrying` is not passed in `MeterList` and on the anomalies page, so those two retry buttons never show
+their disabled state (the lens and the independent verifier found this separately); the `ReadingsTable`
+skeleton is a paragraph for a six-column table; the sibling 404s disagree in language; and two defensible
+error presentations survive outside the unified vocabulary. All recorded in
+`bia-frontend/refactor-improve-ui/review-advisories`.
 
 ## Anti-scope
 
