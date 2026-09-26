@@ -1,0 +1,9 @@
+/* Tint for DATA_QUALITY rows so they read as measurement problems, not real
+   consumption anomalies, even at a glance. */
+.dataQualityRow > td {
+  background-color: #f9f0ff !important;
+}
+
+.dataQualityRow:hover > td {
+  background-color: #f0e0ff !important;
+}

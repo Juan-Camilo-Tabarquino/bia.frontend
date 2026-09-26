@@ -1,0 +1,1 @@
+- 2: Completar la sección de rutas y páginas

@@ -1,0 +1,5 @@
+- [x] Adaptar MeterList a `useGetMetersQuery`
+- [x] Adaptar MeterDetail a `useGetMeterDetailQuery`
+- [x] Adaptar DashboardPage a `useGetAnalysisQuery`
+- [x] Eliminar async thunk `fetchMeters` y su uso
+- [x] Documentar tarea en `odd/tasks/frontend-adapt-rtk-query.md`
