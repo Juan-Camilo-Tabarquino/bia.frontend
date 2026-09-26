@@ -104,19 +104,13 @@ The list is a **bare array**; the detail is a single object, with the same shape
 An empty list is `[]`. The list is **sorted by ascending `priority`** (`1` =
 most urgent), then by `detected_at`, then by `meter_id`.
 
-> **The ascending-`priority` ordering asserted in §1 — including the restatement
-> under `GET /api/ai/analysis/{id}` — and repeated in §2 is not verified from this
-> repository.** Two comments in this codebase describe the response as
-> **unsorted**: `src/features/api/apiSlice.ts` types it `Anomaly[] (unsorted)`,
-> and `src/components/anomalies/AnomalyFilters.tsx` calls it "the full unsorted
-> array". Several other files assert the ascending order instead:
-> `src/types/backend.ts`, `src/app/anomalies/page.tsx`,
-> `src/app/dashboard/page.tsx`, `src/components/anomalies/anomalyFiltering.ts`,
-> `src/components/anomalies/AnomalyTable.tsx` and
-> `src/components/anomalies/AiReanalysis.tsx`. Because the `/anomalies` page's
-> default view, the dashboard preview order and the `AiReanalysis`
-> "top-priority" label all rely on the API order, confirm this against a live
-> backend before treating it as guaranteed.
+> **The ordering is confirmed against the backend source.** `sortedEvidence()` in
+> `bia.backend`'s `internal/api/handlers/endpoints.go` sorts by `Priority`
+> ascending, then by timestamp, then by meter id — a total order, so there are no
+> ambiguous ties. `anomalyDTOs()` is the single mapping behind both this list
+> endpoint and the stored analysis result, and `internal/api/api_test.go` asserts
+> that a response list is ordered by `priority` ascending, so the sequence is
+> pinned rather than merely conventional.
 
 ```json
 {
@@ -208,10 +202,9 @@ the backend maps the list endpoint and this stored snapshot through one shared h
 (`anomalyDTOs` over `sortedEvidence`, `internal/api/handlers/endpoints.go`), called by
 `AnalysisGET` in `internal/api/handlers/ai.go`. The first element is therefore the most urgent
 anomaly, which is what the `/anomalies` re-analysis action labels "top-priority".
-**Caveat:** the sorting lives in the backend's **uncommitted** working tree (Engram change record
-`bia-backend/change-record-priority-evidence`). At backend `HEAD` (`11c9508`) `anomalyDTOs` maps
-evidence in input order and does not sort, so this ordering claim holds only while that backend work is
-kept.
+That ordering is committed and pinned: `sortedEvidence()` is the sort and
+`anomalyDTOs()` is the mapping both endpoints share, and `internal/api/api_test.go`
+asserts the ascending `priority` sequence.
 - Unknown id: `404`.
 - The snapshot store is in-memory and per-process: ids are lost on restart.
 
@@ -267,10 +260,11 @@ The defects listed in the earlier handoff are fixed:
 ### Former request R1 — priority and ordering (resolved)
 
 The anomaly DTO now exposes `priority` (`REAL_ANOMALY` = 1, `DATA_QUALITY` = 2,
-`EXPLAINABLE_ANOMALY` = 3, `FALSE_POSITIVE` = 4; lower = more urgent) and
+`EXPLAINABLE_ANOMALY` = 3, `FALSE_POSITIVE` = 4, any other type = 5; lower = more
+urgent) and
 `GET /api/anomalies` is sorted by it ascending, then by `detected_at`, then by
 `meter_id`. The ordering is a backend concern: the frontend shows the API value
-and never recomputes the priority from `type`. The ordering claim carries the caveat recorded in the note above: two comments in this repository describe the response as unsorted.
+and never recomputes the priority from `type`. The ordering is confirmed against the backend source and pinned by its test; see the confirmation note under `GET /api/anomalies` in §1.
 
 ### Former request R2 — statistical evidence (resolved)
 
@@ -314,10 +308,12 @@ markdown.
 - With the real LLM, startup takes about **88 s**: the backend makes 4 model
   calls before it starts listening, so a client that probes immediately will time
   out.
-- The backend's latest LLM work (T23–T25: LLM payload, real Ollama provider,
-  `llm_analysis`) is **uncommitted** in its working tree; commit `11c9508` is on
-  branch `split-commits` and has not been pushed. Confirm which revision is
-  actually running before treating `llm_analysis` as available.
+- The backend's LLM work (T23–T25: LLM payload, real Ollama provider,
+  `llm_analysis`) is **committed**, not pending: `a9067ac` ("feat(ai): narrate
+  anomalies with the real Ollama provider") is on `main`, which is pushed and in
+  sync with `origin/main`, and `11c9508` is an ancestor of `main` as well. Both
+  `main` and `split-commits` exist and are pushed, so confirming the running
+  revision is a matter of which checkout is served, not of uncommitted work.
 
 ---
 

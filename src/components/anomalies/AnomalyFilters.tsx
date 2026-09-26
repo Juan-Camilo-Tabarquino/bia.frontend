@@ -49,8 +49,10 @@ interface AnomalyFiltersProps {
  * Filter controls for the anomaly list.
  *
  * Every callback mutates only the local filter state; nothing here is sent to
- * the API. `GET /api/anomalies` returns the full unsorted array with no query
- * parameters, so the page filters the fetched list in the browser.
+ * the API. `GET /api/anomalies` returns the full array and accepts no query
+ * parameters, so the page filters the fetched list in the browser. The array
+ * arrives in the backend's deterministic priority order and nothing here
+ * re-sorts or re-derives it.
  */
 export function AnomalyFilters({
   meters,
@@ -170,8 +172,8 @@ export function AnomalyFilters({
 
       <Text type="secondary" className={styles.note}>
         Filtering and sorting run in the browser over the fetched list. The
-        anomalies endpoint returns the full, unsorted array and accepts no query
-        parameters.
+        anomalies endpoint returns the full array, already in priority order,
+        and accepts no query parameters.
       </Text>
     </div>
   );

@@ -16,7 +16,7 @@ const apiBaseUrl = getApiBaseUrl();
  * Endpoints:
  * - getMeters            GET /meters                -> MeterId[] (bare strings)
  * - getMeterDetail       GET /meters/{meterId}      -> MeterDetail
- * - getAnomalies         GET /anomalies             -> Anomaly[] (unsorted)
+ * - getAnomalies         GET /anomalies             -> Anomaly[] (API order: priority ascending)
  * - getAnomalyById       GET /anomalies/{id}        -> Anomaly
  * - getDashboardSummary  GET /dashboard/summary     -> DashboardSummary
  *

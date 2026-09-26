@@ -8,7 +8,8 @@ contract, to avoid a second copy that drifts out of sync with the backend.
   `type` / `severity` / `status`, and the operational notes.
 - **Asks already resolved by the backend:** in
   [`docs/backend-requirements.md`](backend-requirements.md) §2 — the anomaly
-  `priority` field, the ordering (with the caveat recorded in §2 R1) and the
+  `priority` field, the ordering (confirmed against the backend source and
+  recorded in §2 R1) and the
   per-anomaly statistical evidence (baseline, per-signal change percentages,
   correlated events, data-quality flag) are all in place. §3 is the frontend-only
   markdown decision.
