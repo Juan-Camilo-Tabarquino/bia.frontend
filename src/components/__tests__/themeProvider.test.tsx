@@ -1,4 +1,4 @@
-import React from "react";
+import React, { StrictMode } from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 import { ThemeProvider, useThemeMode } from "../../theme/theme-provider";
@@ -17,6 +17,12 @@ function ModeProbe() {
       {mode}
     </button>
   );
+}
+
+// React StrictMode is on in `next dev`, so the suite renders under it too.
+// Otherwise a StrictMode-only remount bug ships green, as it did once here.
+function renderStrict(ui: React.ReactElement) {
+  return render(<StrictMode>{ui}</StrictMode>);
 }
 
 function injectedCss(): string {
@@ -47,7 +53,7 @@ describe("ThemeProvider", () => {
   });
 
   it("defaults to dark and reflects it on the document element", async () => {
-    render(
+    renderStrict(
       <ThemeProvider>
         <ModeProbe />
       </ThemeProvider>,
@@ -61,7 +67,7 @@ describe("ThemeProvider", () => {
   });
 
   it("toggles to light and persists the choice under bia-theme", async () => {
-    render(
+    renderStrict(
       <ThemeProvider>
         <ModeProbe />
       </ThemeProvider>,
@@ -78,7 +84,7 @@ describe("ThemeProvider", () => {
   it("adopts a stored preference after mount", async () => {
     window.localStorage.setItem("bia-theme", "light");
 
-    render(
+    renderStrict(
       <ThemeProvider>
         <ModeProbe />
       </ThemeProvider>,
@@ -89,8 +95,76 @@ describe("ThemeProvider", () => {
     });
   });
 
+  it("keeps the stored preference through StrictMode's double-invoked effects", async () => {
+    window.localStorage.setItem("bia-theme", "light");
+
+    renderStrict(
+      <ThemeProvider>
+        <ModeProbe />
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => {
+      expect(document.documentElement.dataset.theme).toBe("light");
+    });
+    expect(screen.getByRole("button", { name: "light" })).toBeInTheDocument();
+    // The regression: the mount commit's default "dark" must never overwrite
+    // the preference the read effect just applied. StrictMode remounts effects
+    // immediately, so a persist-on-change effect writes the stale default and
+    // the remount then reads its own clobbered value.
+    expect(window.localStorage.getItem("bia-theme")).toBe("light");
+  });
+
+  it("falls back to dark when reading storage throws", async () => {
+    const getItem = jest
+      .spyOn(Storage.prototype, "getItem")
+      .mockImplementation(() => {
+        throw new Error("storage blocked");
+      });
+
+    try {
+      renderStrict(
+        <ThemeProvider>
+          <ModeProbe />
+        </ThemeProvider>,
+      );
+
+      await waitFor(() => {
+        expect(document.documentElement.dataset.theme).toBe("dark");
+      });
+      expect(screen.getByRole("button", { name: "dark" })).toBeInTheDocument();
+    } finally {
+      getItem.mockRestore();
+    }
+  });
+
+  it("keeps toggling when writing storage throws", async () => {
+    const setItem = jest
+      .spyOn(Storage.prototype, "setItem")
+      .mockImplementation(() => {
+        throw new Error("quota exceeded");
+      });
+
+    try {
+      renderStrict(
+        <ThemeProvider>
+          <ModeProbe />
+        </ThemeProvider>,
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: "dark" }));
+
+      await waitFor(() => {
+        expect(document.documentElement.dataset.theme).toBe("light");
+      });
+      expect(screen.getByRole("button", { name: "light" })).toBeInTheDocument();
+    } finally {
+      setItem.mockRestore();
+    }
+  });
+
   it("defines every bia-prefixed CSS variable the app references", async () => {
-    render(
+    renderStrict(
       <ThemeProvider>
         <ModeProbe />
       </ThemeProvider>,
@@ -113,7 +187,7 @@ describe("ThemeProvider", () => {
       .spyOn(console, "error")
       .mockImplementation(() => {});
 
-    expect(() => render(<ModeProbe />)).toThrow(/ThemeProvider/);
+    expect(() => renderStrict(<ModeProbe />)).toThrow(/ThemeProvider/);
 
     consoleError.mockRestore();
   });
