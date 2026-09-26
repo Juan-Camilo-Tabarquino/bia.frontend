@@ -11,7 +11,7 @@ contract, to avoid a second copy that drifts out of sync with the backend.
   `priority` and/or sort `GET /api/anomalies`, and expose the per-anomaly
   statistical evidence (baseline, per-signal change percentages, correlated
   events, data-quality flag).
-- [`ROUTES.md`](../ROUTES.md) — the routes each page consumes today and the three
+- [`docs/routes.md`](routes.md) — the routes each page consumes today and the three
   RTK Query slices that declare them.
 - The backend repository's own `docs/endpoints.md` and its router/handlers
   (`internal/api/...`) remain the definitive backend reference.

@@ -30,8 +30,7 @@ Esta guía describe la organización de carpetas y su responsabilidad dentro del
 │  ├─ types/                  # DTOs de TypeScript (`backend.ts`) y tipos de entorno
 │  └─ utils/
 │     └─ apiBaseUrl.ts        # Resuelve `NEXT_PUBLIC_API_URL`
-├─ docs/                      # Contratos y documentación de API (`backend-requirements.md`)
-├─ assets/                    # Requerimientos y plan original (insumos, no código)
+├─ docs/                      # Documentación del proyecto: contratos (`backend-requirements.md`, `endpoints.md`), `routes.md`, `project-structure.md`, `decisions/` y `requisitos/`
 ├─ odd/                       # Tareas del flujo ODD
 ├─ public/                    # Archivos estáticos
 └─ .github/workflows/         # CI (lint, test, build)

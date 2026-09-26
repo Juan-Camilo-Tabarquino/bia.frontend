@@ -1,6 +1,6 @@
 # Decision: use the Next.js bundler instead of Vite (superseded)
 
-> **Status: superseded.** This file keeps its original name so existing links do not break. The Vite migration described in the *Original intent* section below was **never carried out**. The project runs on **Next.js 16 with the App Router** and its built-in Turbopack bundler; there is no Vite and no React Router in the repository.
+> **Status: superseded.** This file was moved from the repository root `VITE_DECISION.md` to `docs/decisions/vite-decision.md` and renamed to match the `docs/` naming convention, so root-level links to the old path no longer resolve. The Vite migration described in the *Original intent* section below was **never carried out**. The project runs on **Next.js 16 with the App Router** and its built-in Turbopack bundler; there is no Vite and no React Router in the repository.
 
 ## Date
 
@@ -8,7 +8,7 @@ Final decision: **2026-09-24** — commit `db483f34`, *"docs: decide against Vit
 
 ## Original intent
 
-`assets/Frontend_implementation_plan.md` originally proposed migrating the frontend away from Next.js (Webpack) to **Vite (esbuild)** plus **React Router v6**, expecting faster builds and a lighter setup. The plan at that time was to:
+`docs/requisitos/Frontend_implementation_plan.md` originally proposed migrating the frontend away from Next.js (Webpack) to **Vite (esbuild)** plus **React Router v6**, expecting faster builds and a lighter setup. The plan at that time was to:
 
 - Scaffold a Vite project and move `src/` and related assets.
 - Replace the Next.js App Router with React Router routes.
@@ -29,12 +29,12 @@ The migration was cancelled. The frontend stays on **Next.js 16 (App Router)** w
 ## Consequences
 
 - Scripts remain Next.js-based: `next dev`, `next build`, `next start` (see `package.json`).
-- Routes live under `src/app` and are documented in `ROUTES.md`.
+- Routes live under `src/app` and are documented in `docs/routes.md`.
 - No Vite configuration file and no React Router dependency exist in the repository.
 - The untracked `dist/` folder at the repository root is leftover build output from the abandoned setup and is not part of the application.
 
 ## References
 
 - Next.js App Router documentation: <https://nextjs.org/docs/app>
-- Original (superseded) plan: `assets/Frontend_implementation_plan.md`
+- Original (superseded) plan: `docs/requisitos/Frontend_implementation_plan.md`
 - Current stack summary: `README.md`

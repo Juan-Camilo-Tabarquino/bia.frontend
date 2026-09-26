@@ -148,8 +148,8 @@ Create a branch from `main`, develop your changes, and keep it up to date by reb
 ## Additional Resources
 
 - [Project README](README.md) — stack, scripts and route overview.
-- [Routes](ROUTES.md) — routes and endpoints per page (Spanish).
-- [Project Structure](PROJECT_STRUCTURE.md) — folder responsibilities (Spanish).
+- [Routes](docs/routes.md) — routes and endpoints per page (Spanish).
+- [Project Structure](docs/project-structure.md) — folder responsibilities (Spanish).
 - [Backend requirements](docs/backend-requirements.md) — the confirmed backend API contract and the open requests to the backend.
 
 ---
