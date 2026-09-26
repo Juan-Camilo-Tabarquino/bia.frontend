@@ -1,14 +1,10 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { MeterList } from '../components/MeterList';
-import HealthStatus from '../components/HealthStatus';
-
-
-export default function Home() {
-  return (
-    <div style={{ minHeight: '100vh', padding: '1rem' }}>
-      <HealthStatus />
-      <MeterList />
-    </div>
-  );
+/**
+ * `/` is the app entry point and forward to the meters list, which is the
+ * primary destination. It is a server component so the redirect costs no
+ * client JavaScript.
+ */
+export default function Home(): never {
+  redirect("/meters");
 }

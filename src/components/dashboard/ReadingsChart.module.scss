@@ -6,8 +6,8 @@
 .selector {
   margin: 0 0 1rem;
   padding: 0.5rem 0.75rem;
-  border: 1px solid #d9d9d9;
-  border-radius: 6px;
+  border: 1px solid var(--bia-color-border-secondary);
+  border-radius: var(--bia-border-radius);
 }
 
 .legend {
@@ -39,7 +39,7 @@
 
 .note {
   margin: 0 0 0.5rem;
-  color: #595959;
+  color: var(--bia-color-text-secondary);
   font-size: 0.85rem;
 }
 

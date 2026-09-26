@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useContext, useId, useState } from "react";
 import {
   LineChart,
   Line,
@@ -11,6 +11,8 @@ import {
 } from "recharts";
 import { Spin } from "antd";
 import type { Reading } from "@/types/backend";
+import { chartColors } from "@/theme/tokens";
+import { ThemeModeContext } from "@/theme/theme-provider";
 import styles from "./ReadingsChart.module.scss";
 
 /**
@@ -129,6 +131,13 @@ export default function ReadingsChart({
   const markerHeadingId = useId();
   const [signalKey, setSignalKey] = useState<SignalKey>("Consumption");
 
+  // Recharts writes its colours as SVG presentation attributes, where `var()` is
+  // not guaranteed to resolve (SVG2 still parses them as attribute grammar, not
+  // CSS declarations), so the chart takes real values for the current mode. It
+  // also renders outside the app shell in isolation, hence the non-throwing read.
+  const mode = useContext(ThemeModeContext)?.mode ?? "dark";
+  const colors = chartColors[mode];
+
   const selected = signals.find((signal) => signal.key === signalKey) ?? signals[0];
 
   if (loading) {
@@ -200,7 +209,7 @@ export default function ReadingsChart({
             type="monotone"
             dataKey="value"
             name={`${selected.label} (${selected.unit})`}
-            stroke="#0064c8"
+            stroke={colors.series}
             dot={false}
             activeDot={{ r: 4 }}
           />
@@ -212,7 +221,12 @@ export default function ReadingsChart({
             stroke="transparent"
             connectNulls={false}
             isAnimationActive={false}
-            dot={{ r: 5, stroke: "#a8071a", strokeWidth: 2, fill: "#fff1f0" }}
+            dot={{
+              r: 5,
+              stroke: colors.marker,
+              strokeWidth: 2,
+              fill: colors.markerSurface,
+            }}
             activeDot={false}
           />
         </LineChart>

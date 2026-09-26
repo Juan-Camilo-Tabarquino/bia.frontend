@@ -9,6 +9,7 @@ import MeterReadingsPage from '../../app/meter/[id]/readings/page';
 
 jest.mock('next/navigation', () => ({
   useParams: () => ({ id: 'meter-123' }),
+  redirect: jest.fn(),
 }));
 
 jest.mock('@/features/api/apiSlice', () => ({
@@ -20,10 +21,6 @@ jest.mock('@/features/api/apiSlice', () => ({
 
 jest.mock('@/features/data/dataAPI', () => ({
   useGetMeterReadingsQuery: jest.fn(),
-}));
-
-jest.mock('@/api/backend', () => ({
-  getHealth: jest.fn(),
 }));
 
 // recharts cannot measure a container in jsdom (getBoundingClientRect is 0),
@@ -55,7 +52,7 @@ import {
   useGetMetersQuery,
 } from '@/features/api/apiSlice';
 import { useGetMeterReadingsQuery } from '@/features/data/dataAPI';
-import { getHealth } from '@/api/backend';
+import { redirect } from 'next/navigation';
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -94,7 +91,6 @@ beforeEach(() => {
     isLoading: false,
     error: undefined,
   });
-  (getHealth as jest.Mock).mockResolvedValue({ status: 200 });
 });
 
 const expectSingleH1 = (name: string | RegExp): void => {
@@ -104,18 +100,16 @@ const expectSingleH1 = (name: string | RegExp): void => {
 };
 
 describe('accessibility', () => {
-  it('renders exactly one h1 on the home page', async () => {
+  it('redirects the home page to the meters route', () => {
     render(<Home />);
 
-    expectSingleH1('Meters');
-    // Flush HealthStatus' async first check so its state update is wrapped.
-    await screen.findByText('Backend Up');
+    expect(redirect).toHaveBeenCalledWith('/meters');
   });
 
   it('renders exactly one h1 on the meters page', () => {
     render(<MetersPage />);
 
-    expectSingleH1('Meters');
+    expectSingleH1('Medidores');
   });
 
   it('renders exactly one h1 on the dashboard page', () => {

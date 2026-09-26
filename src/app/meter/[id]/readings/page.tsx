@@ -3,7 +3,6 @@
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { DatePicker, Row, Col, Typography } from "antd";
-import "antd/dist/reset.css"; // ensure antd styles
 import { useGetMeterReadingsQuery } from "@/features/data/dataAPI";
 import { useGetAnomaliesQuery } from "@/features/api/apiSlice";
 import { anomalyTypeLabels } from "@/components/anomalies/anomalyLabels";
@@ -82,7 +81,7 @@ export default function MeterReadingsPage() {
       </Col>
       {error && (
         <Col xs={24}>
-          <p style={{ color: "red" }}>Error loading readings</p>
+          <p style={{ color: "var(--bia-color-error)" }}>Error loading readings</p>
         </Col>
       )}
       <Col xs={24}>
