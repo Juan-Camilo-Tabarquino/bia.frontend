@@ -1,6 +1,6 @@
 # Arquitectura de carpetas del Frontend
 
-Esta guía describe la organización de carpetas y su responsabilidad dentro del proyecto Next.js (App Router). Todo el código vive en la raíz del repositorio; no existe un prefijo `frontend/`.
+Esta guía describe la organización de carpetas y su responsabilidad dentro del proyecto Next.js (App Router). Todo el código vive en la raíz del repositorio; no existe un prefijo `frontend/`. El diagrama lista las carpetas de código: omite los directorios `__tests__/`, el archivo `src/app/favicon.ico` y los archivos de configuración de la raíz.
 
 ```
 .
@@ -48,4 +48,4 @@ Esta guía describe la organización de carpetas y su responsabilidad dentro del
   - `dataApi` (`src/features/data/dataAPI.ts`) — lecturas de medidor.
   - `dashboardApi` (`src/features/dashboards/dashboardAPI.ts`) — análisis con IA.
 - `src/api/backend.ts` es un wrapper de axios que se conserva solo para llamadas puntuales fuera de RTK Query, por ejemplo `GET /health` usado por `HealthStatus`. No es el único camino de acceso a la API.
-- Los estilos se gestionan con módulos SCSS (`*.module.scss`) para evitar colisiones.
+- Los estilos de componente se gestionan con módulos SCSS (`*.module.scss`) para evitar colisiones; los estilos globales y las variables viven en `src/styles/*.scss`: `src/app/layout.tsx` importa `globals.scss`, que a su vez usa `variables.scss`.

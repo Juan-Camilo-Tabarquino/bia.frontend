@@ -8,7 +8,7 @@ Final decision: **2026-09-24** — commit `db483f34`, *"docs: decide against Vit
 
 ## Original intent
 
-`docs/requisitos/Frontend_implementation_plan.md` originally proposed migrating the frontend away from Next.js (Webpack) to **Vite (esbuild)** plus **React Router v6**, expecting faster builds and a lighter setup. The plan at that time was to:
+`docs/requisitos/Frontend_implementation_plan.md` lists **`vite`** as the packaging tool while still naming **Next.js (App Router)** as the framework. It does not mention React Router, does not propose leaving Next.js, and never says "Webpack". The intent reconstructed at the time, which is what the decision below was taken against rather than what that file literally states, was to:
 
 - Scaffold a Vite project and move `src/` and related assets.
 - Replace the Next.js App Router with React Router routes.

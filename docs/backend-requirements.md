@@ -104,6 +104,20 @@ The list is a **bare array**; the detail is a single object, with the same shape
 An empty list is `[]`. The list is **sorted by ascending `priority`** (`1` =
 most urgent), then by `detected_at`, then by `meter_id`.
 
+> **The ascending-`priority` ordering asserted in §1 — including the restatement
+> under `GET /api/ai/analysis/{id}` — and repeated in §2 is not verified from this
+> repository.** Two comments in this codebase describe the response as
+> **unsorted**: `src/features/api/apiSlice.ts` types it `Anomaly[] (unsorted)`,
+> and `src/components/anomalies/AnomalyFilters.tsx` calls it "the full unsorted
+> array". Several other files assert the ascending order instead:
+> `src/types/backend.ts`, `src/app/anomalies/page.tsx`,
+> `src/app/dashboard/page.tsx`, `src/components/anomalies/anomalyFiltering.ts`,
+> `src/components/anomalies/AnomalyTable.tsx` and
+> `src/components/anomalies/AiReanalysis.tsx`. Because the `/anomalies` page's
+> default view, the dashboard preview order and the `AiReanalysis`
+> "top-priority" label all rely on the API order, confirm this against a live
+> backend before treating it as guaranteed.
+
 ```json
 {
   "id": "M-109-2026-09-12T14:00:00Z",
@@ -153,7 +167,7 @@ most urgent), then by `detected_at`, then by `meter_id`.
   empty string when `flagged` is `false`.
 - `llm_analysis` is `omitempty`: the key is absent when no narrative was
   produced, and the frontend renders an honest empty state in that case (see
-  [Frontend-only decision](#3-frontend-only-decision)).
+  [Frontend-only decision](#3-frontend-only-decision-resolved)).
 - Unknown id: `404` with `{"error":"anomaly <id> not found"}`.
 
 **Enum values**
@@ -205,7 +219,7 @@ kept.
 only UI path to these two routes. Because `POST /api/ai/analyze` is synchronous
 and runs the LLM once per evidence item, the request can stay pending for about
 a minute; the UI states that latency in the page instead of hiding it, and it
-does **not** poll, since `status` is always `completed` on arrival. The action is
+does **not** poll: every response observed so far carried `status: "completed"`, and the DTO in `src/types/backend.ts` also lists `"queued"` among the observed values, so a future run could differ. The action is
 additive: it never replaces the deterministic anomaly list already on the page.
 
 ### `GET /api/dashboard/summary`
@@ -256,7 +270,7 @@ The anomaly DTO now exposes `priority` (`REAL_ANOMALY` = 1, `DATA_QUALITY` = 2,
 `EXPLAINABLE_ANOMALY` = 3, `FALSE_POSITIVE` = 4; lower = more urgent) and
 `GET /api/anomalies` is sorted by it ascending, then by `detected_at`, then by
 `meter_id`. The ordering is a backend concern: the frontend shows the API value
-and never recomputes the priority from `type`.
+and never recomputes the priority from `type`. The ordering claim carries the caveat recorded in the note above: two comments in this repository describe the response as unsorted.
 
 ### Former request R2 — statistical evidence (resolved)
 

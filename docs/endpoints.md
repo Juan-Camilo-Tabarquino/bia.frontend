@@ -6,11 +6,12 @@ contract, to avoid a second copy that drifts out of sync with the backend.
 - **Confirmed contract:** [`docs/backend-requirements.md`](backend-requirements.md)
   — the route table, the exact response shapes, the confirmed enum values for
   `type` / `severity` / `status`, and the operational notes.
-- **Open asks to the backend:** also in
-  [`docs/backend-requirements.md`](backend-requirements.md) §3 — expose anomaly
-  `priority` and/or sort `GET /api/anomalies`, and expose the per-anomaly
-  statistical evidence (baseline, per-signal change percentages, correlated
-  events, data-quality flag).
+- **Asks already resolved by the backend:** in
+  [`docs/backend-requirements.md`](backend-requirements.md) §2 — the anomaly
+  `priority` field, the ordering (with the caveat recorded in §2 R1) and the
+  per-anomaly statistical evidence (baseline, per-signal change percentages,
+  correlated events, data-quality flag) are all in place. §3 is the frontend-only
+  markdown decision.
 - [`docs/routes.md`](routes.md) — the routes each page consumes today and the three
   RTK Query slices that declare them.
 - The backend repository's own `docs/endpoints.md` and its router/handlers

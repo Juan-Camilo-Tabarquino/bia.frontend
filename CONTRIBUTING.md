@@ -64,17 +64,9 @@ ESLint is configured with `eslint-config-next`. Run it before committing:
 npm run lint
 ```
 
-Prettier is also installed as a dependency and can be run directly when you want to format your changes:
+There is no Prettier in this repository. It is not declared in `package.json` or `package-lock.json`, so a fresh `npm ci` does not install it, and there is no formatting configuration to apply. If you want to check formatting, install Prettier for yourself in a scratch directory rather than adding it to this project's manifest, which is a separate decision.
 
-```bash
-# Check formatting
-npx prettier --check .
-
-# Apply formatting
-npx prettier --write .
-```
-
-All CI jobs will fail on lint errors or a failing build.
+The single CI job, `build`, runs `npm ci`, `npm run lint`, `npm test` and `npm run build`, so a lint error, a failing test or a failing build all stop it.
 
 ---
 
@@ -150,7 +142,7 @@ Create a branch from `main`, develop your changes, and keep it up to date by reb
 - [Project README](README.md) — stack, scripts and route overview.
 - [Routes](docs/routes.md) — routes and endpoints per page (Spanish).
 - [Project Structure](docs/project-structure.md) — folder responsibilities (Spanish).
-- [Backend requirements](docs/backend-requirements.md) — the confirmed backend API contract and the open requests to the backend.
+- [Backend requirements](docs/backend-requirements.md) — the confirmed backend API contract and the requests the backend has since resolved.
 
 ---
 
