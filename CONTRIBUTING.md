@@ -1,4 +1,4 @@
-# Contributing to Ascent BIA Frontend
+# Contributing to BIA Frontend
 
 Thank you for your interest in contributing! This guide outlines the workflow we follow to keep the codebase consistent and maintainable.
 
