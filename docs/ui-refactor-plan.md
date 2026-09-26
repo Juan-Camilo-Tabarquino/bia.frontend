@@ -20,7 +20,7 @@ operativo.
 | Fases pendientes | **4, 5, 6** |
 | Suite | **24 suites / 155 tests** (arrancó en 18/118) |
 | Gates | `lint` 0 · `tsc --noEmit` 0 · `test` 155/155 · `next build` 0 (7 rutas) |
-| Review nativo | **3 recibos, los 3 aprobados**, autoridad quemada. 9 advisories abiertos (abajo) |
+| Review nativo | **4 recibos, los 4 aprobados**, autoridad quemada. 12 advisories abiertos (abajo) |
 | Decisiones fijadas | 3 destinos con `/meters` como entrada · **dark por defecto + toggle** · teal de Bia · health como **toast al arrancar** (sin polling ni chip) · **Inter** · `@ant-design/icons` permitido (solo componentes gratis de antd) |
 
 ## Fases hechas
@@ -104,7 +104,7 @@ formato localizado de fechas y números, y `lang="es"`.
 
 ---
 
-## Advisories abiertos (9 + hallazgos del verificador)
+## Advisories abiertos (12 + hallazgos del verificador)
 
 Todos **no bloqueantes** y explícitamente **no** razón para re-revisar su candidato. Consolidados también
 en memoria (`bia-frontend/refactor-improve-ui/review-advisories`).
@@ -120,6 +120,9 @@ en memoria (`bia-frontend/refactor-improve-ui/review-advisories`).
 | `R3-theme-persist-effect` | WARNING | `theme-provider.tsx:69-77` | El `toggle` perdió el updater funcional |
 | `R3-retry-loading-flag` | WARNING | `MeterList.tsx:28-38` | `retrying` no se pasa (lo marcaron **la lente y el verificador por separado**) |
 | `R3-chart-empty-coverage` | SUGGESTION | `ReadingsChart.tsx:200-205` | Cobertura del empty state nuevo |
+| `R3-backend-status-unmount-safety` | SUGGESTION | `BackendStatus.tsx:35-52` | Seguridad del toast ante un desmontaje |
+| `R3-request-error-shared-id` | SUGGESTION | `RequestError.tsx:33-44` | Id compartido dentro del vocabulario de error |
+| `R3-theme-toggle-stale-closure` | WARNING | `theme-provider.tsx:98-100` | El `toggle` lee `mode` del closure en vez de usar un updater funcional, así que dos toggles en el mismo tick netean un solo giro |
 
 Además, del verificador y sin advisory asociado: el skeleton de `ReadingsTable` es de párrafo para una tabla
 de 6 columnas (se contradice con su propio comentario); los 404 hermanos no coinciden de idioma
@@ -148,6 +151,21 @@ Playwright en `node_modules` (instalado con `--no-save`, así que `package.json`
 `npx playwright install chromium` y un script que abre la app contra `next dev` — **en dev, no en
 `next start`**, porque React solo loguea los warnings de hidratación en desarrollo. Instrumentar
 `Storage.prototype.getItem/setItem` por `addInitScript` fue lo que reveló el bug del tema.
+
+### Cosas del ciclo de review que conviene saber de antemano
+
+- **El disparador de `executable_change` es `jest.config.js`**, no un archivo de código: apareció en los
+  cuatro candidatos. Un candidato de pura documentación se auto-cierra como `low`/`non_executable_only`.
+- **El controller proyecta contra `main`**, así que el diff revisado es la **rama acumulada**, no el último
+  commit (fue de 29 a 51 rutas). Cada commit nuevo agranda el candidato.
+- **Commitear supersede el target de un recordatorio**, porque la identidad se deriva del árbol. Pasó una
+  vez y ese target no se llegó a revisar.
+- **Un payload de revisor puede ser rechazado en la admisión** por una inconsistencia interna
+  (`pi-host-relay-transport-failure` / `submission-refused`): en el caso real la lente produjo hallazgos y
+  puso `inspection.status: "completed"`, pero su `evidence` decía que no había podido inspeccionar el
+  candidato — y en ese caso hay que declarar `"unavailable"` con una razón. **El rechazo no consume el
+  slot**, el payload queda en `.git/gentle-ai/rejected-results/<linaje>/`, y la recuperación es **relanzar la
+  lente sobre el mismo linaje**: funcionó. Nunca reenviar los bytes rechazados.
 
 ## Pregunta abierta
 
