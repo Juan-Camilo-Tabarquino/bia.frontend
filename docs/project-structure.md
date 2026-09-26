@@ -23,7 +23,7 @@ Esta guía describe la organización de carpetas y su responsabilidad dentro del
 │  │  ├─ anomalies/           # Componentes de anomalías (lista, detalle y narrativa)
 │  │  └─ dashboard/           # Componentes de dashboard, gráficos y tablas
 │  ├─ features/               # Slices de RTK Query y store
-│  │  ├─ api/                 # apiSlice: meters, anomalies, dashboard summary (y `/events`, sin uso)
+│  │  ├─ api/                 # apiSlice: meters, anomalies, dashboard summary
 │  │  ├─ data/                # dataApi: lecturas de medidor
 │  │  ├─ dashboards/          # dashboardApi: flujo de análisis con IA
 │  │  └─ store/               # configureStore e integración de los tres slices
@@ -44,7 +44,7 @@ Esta guía describe la organización de carpetas y su responsabilidad dentro del
 - La lógica de datos vive en `src/features` con **RTK Query**, no en slices de estado manuales.
 - La URL base de la API sale siempre de `src/utils/apiBaseUrl.ts` (`NEXT_PUBLIC_API_URL`); ningún otro módulo lee la variable de entorno por su cuenta.
 - La mayoría de las llamadas al backend pasan por los **tres slices de RTK Query** registrados en `src/features/store/index.ts`:
-  - `apiSlice` (`src/features/api/apiSlice.ts`) — meters, anomalies, dashboard summary y `/events`. El backend **no expone** `/events`: el endpoint queda declarado en el slice pero no se consume.
+  - `apiSlice` (`src/features/api/apiSlice.ts`) — meters, anomalies, dashboard summary.
   - `dataApi` (`src/features/data/dataAPI.ts`) — lecturas de medidor.
   - `dashboardApi` (`src/features/dashboards/dashboardAPI.ts`) — análisis con IA.
 - `src/api/backend.ts` es un wrapper de axios que se conserva solo para llamadas puntuales fuera de RTK Query, por ejemplo `GET /health` usado por `HealthStatus`. No es el único camino de acceso a la API.

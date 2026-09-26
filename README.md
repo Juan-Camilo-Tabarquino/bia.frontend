@@ -45,7 +45,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 | `npm run dev` | `next dev` | Development server (Turbopack) on http://localhost:3000 |
 | `npm run build` | `next build` | Production build |
 | `npm start` | `next start` | Serve the production build |
-| `npm run lint` | `eslint . --ext .ts,.tsx` | Lint the codebase |
+| `npm run lint` | `eslint .` | Lint the codebase |
 | `npm test` | `jest` | Run the test suite |
 
 ## Routes
@@ -74,7 +74,7 @@ Planned, not implemented yet:
 
 All HTTP access lives under `src/features`:
 
-- `src/features/api/apiSlice.ts` — `apiSlice` (reducerPath `api`): `GET /meters`, `GET /meters/{meterId}`, `GET /anomalies`, `GET /anomalies/{id}`, `GET /dashboard/summary`, `GET /events` (the `/events` endpoint is declared in the slice but the backend does not expose it; it is unused).
+- `src/features/api/apiSlice.ts` — `apiSlice` (reducerPath `api`): `GET /meters`, `GET /meters/{meterId}`, `GET /anomalies`, `GET /anomalies/{id}`, `GET /dashboard/summary`.
 - `src/features/data/dataAPI.ts` — `dataApi`: `GET /meters/{meterId}/readings` with `from`/`to` query params.
 - `src/features/dashboards/dashboardAPI.ts` — `dashboardApi`: `POST /ai/analyze` and `GET /ai/analysis/{id}`.
 - `src/features/store/index.ts` — registers the three slices and their middleware.

@@ -85,7 +85,7 @@ All CI jobs will fail on lint errors or a failing build.
 | `npm run dev` | `next dev` | Development server |
 | `npm run build` | `next build` | Production build |
 | `npm start` | `next start` | Serve the production build |
-| `npm run lint` | `eslint . --ext .ts,.tsx` | Lint |
+| `npm run lint` | `eslint .` | Lint |
 | `npm test` | `jest` | Run the test suite |
 
 There is no separate `lint:fix`, `format`, `format:check`, `test:watch` or `commit` script; use the commands above.
