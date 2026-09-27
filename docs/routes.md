@@ -6,7 +6,7 @@ Este documento describe las rutas expuestas por la aplicación Next.js (App Rout
 
 | Ruta | Archivo | Descripción |
 |------|---------|-------------|
-| `/` | `src/app/page.tsx` | Página de inicio. Muestra el estado del backend (`HealthStatus`) y la lista de medidores (`MeterList`). |
+| `/` | `src/app/page.tsx` | Componente de servidor que solo redirige a `/meters` (`redirect("/meters")`). No renderiza contenido propio. |
 | `/meters` | `src/app/meters/page.tsx` | Lista completa de medidores. Utiliza el componente `MeterList`. |
 | `/meter/[id]` | `src/app/meter/[id]/page.tsx` | Detalle de un medidor específico. Renderiza `MeterDetail`. |
 | `/meter/[id]/readings` | `src/app/meter/[id]/readings/page.tsx` | Lecturas del medidor con gráfico (`ReadingsChart`) y tabla (`ReadingsTable`). |
@@ -24,8 +24,8 @@ Este documento describe las rutas expuestas por la aplicación Next.js (App Rout
 
 ## Wireframes / UI (breve)
 
-- **Home**: barra superior, estado de salud (`HealthStatus`), lista de medidores (`MeterList`).
-- **Meters**: título y lista de medidores con enlaces a detalle.
+- **Home (`/`)**: no renderiza nada; redirige a `/meters`. El shell —común a todas las rutas— monta la barra superior, el breadcrumb, el toast de salud del backend (`BackendStatus`) y el footer.
+- **Meters**: título y grid de cards de medidores, cada uno con enlace a su detalle.
 - **Meter Detail**: tabla con los campos poblados de `GET /meters/{meterId}` (`id`, `meter_id`, `status`, `created_at`, `readings_count`, `last_reading_at`); `name` y `location` llegan siempre vacíos y la tabla no los renderiza. La serie de consumo, voltaje, corriente y factor de potencia llega por `/readings`.
 - **Meter Readings**: gráfico de la serie de consumo y tabla de lecturas, con selector de rango de fechas.
 - **Dashboard**: resumen de métricas y tabla de anomalías con severidad.
@@ -34,7 +34,7 @@ Este documento describe las rutas expuestas por la aplicación Next.js (App Rout
 
 | Página | Endpoint(s) del backend | Datos usados |
 |--------|--------------------------|--------------|
-| Home (`/`) | `GET /health`, `GET /meters` | Estado del backend y lista de IDs de medidores. |
+| Home (`/`) | ninguno | Redirige a `/meters`. El shell monta una vez `GET /health` (toast de arranque) y, para el badge de navegación, `GET /dashboard/summary` una vez por sesión. |
 | Meters (`/meters`) | `GET /meters` | Array de IDs de medidores. |
 | Meter Detail (`/meter/[id]`) | `GET /meters/{meterId}` | Metadatos reales del medidor: `id`, `meter_id`, `name` (siempre vacío), `location` (siempre vacío), `status` (`OK`/`DEGRADED`), `created_at`, `readings_count`, `last_reading_at`. Medidor desconocido → `404`. La serie numérica llega por `/readings`. |
 | Meter Readings (`/meter/[id]/readings`) | `GET /meters/{meterId}/readings?from&to` | Array de lecturas con **nombres de campo Go**: `MeterID`, `Timestamp`, `Consumption`, `Voltage`, `Current`, `PowerFactor` y `status` opcional (`omitempty`; es el único campo re-etiquetado en minúscula, los otros seis conservan los nombres Go). `from`/`to` son RFC3339, opcionales e inclusivos. Medidor desconocido o ventana vacía → `200 null` (nunca 404). |
@@ -52,8 +52,8 @@ Los endpoints se declaran en tres slices de RTK Query, todos registrados en `src
 | `dataApi` | `src/features/data/dataAPI.ts` | `GET /meters/{meterId}/readings` (parámetros `from`, `to`) |
 | `dashboardApi` | `src/features/dashboards/dashboardAPI.ts` | `POST /ai/analyze`, `GET /ai/analysis/{id}` |
 
-`src/api/backend.ts` es un wrapper de axios que se conserva solo para llamadas puntuales fuera de RTK Query, por ejemplo `GET /health` en `HealthStatus`.
+`src/api/backend.ts` es un wrapper de axios que se conserva solo para llamadas puntuales fuera de RTK Query, por ejemplo `GET /health` en `BackendStatus` (toast de arranque que no renderiza markup).
 
-La URL base de la API se resuelve en `src/utils/apiBaseUrl.ts`, que lee `process.env.NEXT_PUBLIC_API_URL`.
+La URL base de la API se resuelve en `src/utils/apiBaseUrl.ts`, que lee `process.env.NEXT_PUBLIC_API_URL`. Esa lectura **hoy no llega al navegador** (defecto `apiBaseUrl-never-inlined`): gana el fallback `http://localhost:3001/api`. Ver la sección del defecto en `docs/frontend-guide.md`.
 
 **Contrato autoritativo**: `docs/backend-requirements.md`. No agregar endpoints que no existan en el backend real.

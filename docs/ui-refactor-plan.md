@@ -16,11 +16,11 @@ operativo.
 | | |
 | --- | --- |
 | Rama | `refactor/improve-ui`, desde `main` (`ab85e7e8`) |
-| Fases hechas | **0+1, 2, 3, 4, 5 y 6** (más el arreglo del tema) |
-| Fases pendientes | **Ninguna.** El refactor está cerrado; lo que queda es la decisión de merge a `main` |
-| Suite | **32 suites / 279 tests** en `55399056` (arrancó en 18/118, y era 24/155 al cerrar la fase 3) |
-| Gates | `lint` 0 · `tsc --noEmit` 0 · `test` 279/279 · `next build` 0 (8 rutas) en `55399056` |
-| Review nativo | Último estado **registrado** (fase 3): **4 recibos, los 4 aprobados**, autoridad quemada. Las fases 4 y 5 se cerraron con **verificación independiente** (`gentle-ai-verify`, PASS WITH FINDINGS) registrada en sus propios ODD; **si cada una tiene un recibo de review nativo no se puede leer de los documentos → desconocido**. La fase 6 tiene recibo propio: **APROBADA** (lineage `review-ea04c99651f669cf`), autoridad quemada, 3 advisories no bloqueantes |
+| Fases hechas | **0+1, 2, 3, 4, 5 y 6** (más el arreglo del tema) y **dos cambios posteriores al refactor con su propia revisión**: `meters-cards` (recibo de review nativo **APROBADO**) y `breadcrumb-gutter` (verificación en navegador y confirmación del dueño) |
+| Fases pendientes | **Ninguna.** El refactor está cerrado. Lo que queda abierto es: la decisión de merge a `main`, los defectos `apiBaseUrl-never-inlined` y `meter-detail-h1-encoded`, los advisories abiertos, y la deuda `T-SUITE` |
+| Suite | **32 suites / 279 tests** en `55399056` (arrancó en 18/118, y era 24/155 al cerrar la fase 3). **Cifra histórica de la fase 6**: `meters-cards` agregó después la suite `MeterCard`, así que el total actual no está re-medido acá |
+| Gates | Medición de la fase 6 en `55399056`: `lint` 0 · `tsc --noEmit` 0 · `test` 279/279 · `next build` 0 (8 rutas). Los cambios posteriores corrieron sus propios gates acotados, no la suite completa |
+| Review nativo | Último estado **registrado** (fase 3): **4 recibos, los 4 aprobados**, autoridad quemada. Las fases 4 y 5 se cerraron con **verificación independiente** (`gentle-ai-verify`, PASS WITH FINDINGS) registrada en sus propios ODD; **si cada una tiene un recibo de review nativo no se puede leer de los documentos → desconocido**. La fase 6 tiene recibo propio: **APROBADA** (lineage `review-ea04c99651f669cf`), autoridad quemada, 3 advisories no bloqueantes. `meters-cards` también: **APROBADA** (lineage `review-b78b90f368a5ca5c`), autoridad quemada, 1 advisory no bloqueante (`R3-nplus1-load`, WARNING). `breadcrumb-gutter` **no registra un recibo de review nativo** en su ODD: se cerró con medición en navegador y confirmación visual del dueño |
 | Decisiones fijadas | 3 destinos con `/meters` como entrada · **dark por defecto + toggle** · teal de Bia · health como **toast al arrancar** (sin polling ni chip) · **Inter** · `@ant-design/icons` permitido (solo componentes gratis de antd) |
 
 ## Fases hechas
@@ -34,6 +34,8 @@ operativo.
 | **4 — Interactividad** | `62dceaa6` … `026794d1` (T1–T8 + verificación) · registro `64c069bc` · `1147bc71` · `d3f5ca19` | Búsqueda con debounce en medidores y anomalías (con el gate que la limpieza necesitaba), orden desde los headers con un registro único, paginación consistente, **deep links de filtros y orden** por URL, cross-links medidor ↔ anomalía, fechas por un formateador único, **KPI con pastilla de delta** y banner de insight. Cierra `R3-retry-loading-flag` y `R3-breadcrumb-encoding` |
 | **5 — Chart** | `a845fc24` (código + registro en el mismo commit) | **Línea de referencia del baseline** (el `baseline.mean` existía en el DTO y el mapeo lo descartaba; la línea se dibuja solo en Consumo y en las otras señales hay un `role="note"` que lo explica), leyenda con swatches, grid suave, unidad en el eje Y y tooltip tematizado. Los tres mocks inline de recharts se unificaron en `src/test-support/rechartsMock.ts` |
 | **6 — Español** | `55399056` (implementación) · registro `a07a1c16` | App traducida al español y antd con `locale={esES}` + `dayjs.locale("es")`; los cuatro mapas de labels que faltaban. Gates: 32 suites / 279 tests, los cuatro en 0. Review nativo **APROBADO** (lineage `review-ea04c99651f669cf`), autoridad quemada, 3 advisories no bloqueantes |
+| **post-refactor — `meters-cards`** | `cb0cec3` (código) · `9f5ef7f` (registro) | `/meters` pasa de una lista de filas a un **grid de cards cliqueables** (id + estado + última lectura), con stretched link para que el nombre accesible del link siga siendo el id. Review nativo **APROBADO** (lineage `review-b78b90f368a5ca5c`), autoridad quemada, 1 advisory WARNING (`R3-nplus1-load`) |
+| **post-refactor — `breadcrumb-gutter`** | `c1c1bb8` (código) · `aa4947b` (registro) | Un solo borde de contenido: el gutter y la separación pasan a un wrapper propio (la clase compartida sobre el `<nav>` de antd perdía el empate de especificidad). **Sin recibo de review nativo registrado**: se cerró con medición en navegador y confirmación visual del dueño |
 
 ### Dos cosas que valen más que el código
 
@@ -76,11 +78,11 @@ Estas no son sugerencias: son cosas que ya costaron un ciclo cada una.
 
 ## Fases pendientes
 
-**Ninguna.** Las fases 0+1 a 6 están hechas, comiteadas, pusheadas y (la 6) con review nativo aprobado.
+**Ninguna.** Las fases 0+1 a 6 están hechas, comiteadas, pusheadas y (la 6) con review nativo aprobado. Después se sumaron dos cambios con su propio alcance: `meters-cards` (review nativo aprobado) y `breadcrumb-gutter` (verificación en navegador + confirmación del dueño, sin recibo de review nativo registrado).
 
 ### El refactor está cerrado — queda la decisión de merge
 
-- **Merge a `main`**: es tuya, no del flujo de trabajo. `refactor/improve-ui` está 25 commits adelante de `main`.
+- **Merge a `main`**: es tuya, no del flujo de trabajo. `refactor/improve-ui` está 31 commits adelante de `main`.
 - **El review de la rama acumulada ya no es posible.** El primer `START` falló con `lens_context_budget_exceeded`
   sobre el candidato por defecto (`main` → rama: 86 paths, fases 3 a 6). No se creó autoridad y nada quedó que
   reparar; revisar la fase 6 sola necesitó `baseRef` en la punta de la fase 5 y bajó a 38 paths. Cualquier fase
@@ -127,6 +129,9 @@ en el eje Y y tooltip tematizado — todo mirando su producto, que tiene exactam
 ---
 
 ## Advisories (18 registrados: 12 de la fase 3 + 3 de la fase 6 + 3 del review nativo, más hallazgos del verificador)
+
+> Esta tabla cubre la fase 3, la fase 6 y el review nativo. Los dos cambios posteriores al refactor registran
+> sus propios advisories en sus secciones de más abajo: `meters-cards` (4) y `breadcrumb-gutter` (4).
 
 Todos **no bloqueantes** y explícitamente **no** razón para re-revisar su candidato. De los 12 de la fase 3,
 **3 ya están resueltos** (`R3-1` por `8c7c4982`, y `R3-retry-loading-flag` + `R3-breadcrumb-encoding` en la

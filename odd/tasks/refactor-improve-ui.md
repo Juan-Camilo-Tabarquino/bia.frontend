@@ -1,6 +1,6 @@
 # Feature: refactor/improve-ui — Bia visual identity, dark theme, Spanish, modern UX
 
-**Status: COMPLETE — phases 0+1, 2, 3, 4, 5 and 6 done and pushed; phase 6 implementation `5539905`, record `a07a1c1`, native review APPROVED with its authority burned. What remains is the merge decision to `main`, which belongs to the owner.** Branch `refactor/improve-ui`, base `ab85e7e8` (which is `main` = `origin/main`).
+**Status: COMPLETE — phases 0+1, 2, 3, 4, 5 and 6 done and pushed; phase 6 implementation `5539905`, record `a07a1c1`, native review APPROVED with its authority burned. Two post-refactor changes followed it: `meters-cards` (`cb0cec3` code, `9f5ef7f` record, native review APPROVED) and `breadcrumb-gutter` (`c1c1bb8` code, `aa4947b` record, browser-verified and owner-confirmed, no native review receipt recorded). What remains open is the merge decision to `main`, the `apiBaseUrl-never-inlined` and `meter-detail-h1-encoded` defects, the open advisories and the `T-SUITE` debt.** Branch `refactor/improve-ui`, base `ab85e7e8` (which is `main` = `origin/main`).
 
 **Reference:** the read-only audit of this branch (three explorations + parent verification),
 `odd/tasks/u1-ordering-confirmed.md`, and the Bia brand research (Engram
@@ -68,6 +68,8 @@ energy company — not a hype startup."* → **institutional and clear, never pl
 | 4 | **Interactivity**: search, header sorting, consistent pagination, deep-linked filters, cross-links, readable dates, KPI delta pills, insight banner | **done** — `62dceaa` … `026794d` (T1–T8 + the phase verification; records `64c069b`, `1147bc7`, `d3f5ca1`) |
 | 5 | **Chart**: teal series, baseline reference line from `Anomaly.baseline.mean`, legend, grid, axis unit, themed tooltip | **done** — `a845fc2` (code and record in one commit) |
 | 6 | **Spanish**: ~200 strings, `locale={esES}` + `dayjs/locale/es`, the four missing label maps, locale date/number formatting, `lang="es"` | **done** — implementation `5539905` (35 files, 1040/372), record `a07a1c1`, native review APPROVED (lineage `review-ea04c99651f669cf`), authority burned |
+| **post-refactor: `meters-cards`** | `/meters` as a grid of clickable antd cards (id + estado + última lectura), where the whole card is the hit area and the link's accessible name stays exactly the meter id | **done** — `cb0cec3` code, `9f5ef7f` record; native review APPROVED (lineage `review-b78b90f368a5ca5c`), authority burned, one WARNING advisory (`R3-nplus1-load`). Detail: `odd/tasks/meters-cards.md` |
+| **post-refactor: `breadcrumb-gutter`** | One content edge on every route: the shared `shell-container` gutter and the header separation move to a plain wrapper, off antd's `<nav>`, where they cannot tie with antd's `:where()` reset | **done** — `c1c1bb8` code, `aa4947b` record; browser-verified on six routes and confirmed by the owner. **No native review receipt is recorded in its ODD**, unlike the other post-refactor change. Detail: `odd/tasks/breadcrumb-gutter.md` |
 
 **Why 0 and 1 ship together:** they touch the same four files (`providers.tsx`, `layout.tsx`,
 `globals.scss`, `page.tsx`). Splitting them would rewrite those files twice for no reader benefit.

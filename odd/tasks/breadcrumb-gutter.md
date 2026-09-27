@@ -2,6 +2,12 @@
 
 **Status: DONE and verified — all six tasks complete, browser-verified on six routes at two viewports, and the owner confirmed it visually.** Branch `refactor/improve-ui`, base `c2064fa`.
 
+**Review: deliberately NOT run — owner decision.** The owner reviewed the result in their own browser and declined the
+native review slice for this candidate ("dejémoslo como está, no más corridas"). This is a recorded disposition, not an
+oversight: the candidate `baseRef = c2064fa` stays **unreviewed on purpose**, so a later session does not need to
+re-litigate it. What this candidate therefore does NOT have, and what the other two post-refactor changes do have: a
+native review receipt. Phase 6 and `meters-cards` each carry one.
+
 **Reference:** `odd/tasks/refactor-improve-ui.md`, `odd/tasks/refactor-improve-ui-phase-4.md` (the contracts),
 `odd/tasks/meters-cards.md` (the change that closed right before this one).
 
