@@ -203,6 +203,34 @@ Playwright en `node_modules` (instalado con `--no-save`, así que `package.json`
   slot**, el payload queda en `.git/gentle-ai/rejected-results/<linaje>/`, y la recuperación es **relanzar la
   lente sobre el mismo linaje**: funcionó. Nunca reenviar los bytes rechazados.
 
+## Trabajo posterior al refactor: `/meters` en cards
+
+**Hecho y verificado en navegador, pendiente de commit al escribir esto.** Detalle completo en
+`odd/tasks/meters-cards.md`. La lista de medidores dejó de ser filas de `Listy` (que **no** era una tabla, contra la
+premisa del pedido) y pasó a un grid de cards de antd cliqueables, con `id + estado + última lectura`.
+
+Lo que importa si se retoma:
+
+- **La card clicleable es un stretched link**, no un `div onClick` ni un `<a>` que envuelva la card: así el nombre
+  accesible del link sigue siendo exactamente el id, que es el contrato que `accessibility.test.tsx` fija y la
+  razón por la que la fase 4 no le puso `aria-label`. Click real medido **fuera** del texto del link, dentro del
+  padding de la card: navega. Tab: **un solo stop por card**, con anillo de foco visible en `--bia-color-primary`.
+- **La queja original de "cortada" quedó refutada con números**: el grid mide `1152` dentro de un contenedor de
+  `1200` (24 px de padding por lado), 4 filas, `documentElement` sin overflow horizontal, y ningún elemento
+  recortado. La causa estructural que encontré — el `Space` externo `inline-flex` sin `width` — quedó superada por
+  el layout, y el grid lo llena.
+- **El detalle es un request por card** (`GET /api/meters` solo devuelve ids, no hay endpoint de lista con datos),
+  y sigue al conjunto **visible**: filtrar 102 ids a 2 cuesta 2 requests, probado por mutación.
+
+## Dos defectos encontrados al verificar esto, ninguno causado por el cambio
+
+No se arreglaron: quedan fuera del cambio autorizado y en esta rama cada cambio necesita su propia rebanada de review.
+
+| ID | Gravedad | Dónde | Qué |
+| --- | --- | --- | --- |
+| `apiBaseUrl-never-inlined` | **WARNING** | `src/utils/apiBaseUrl.ts` | `NEXT_PUBLIC_API_URL` **nunca llega al navegador**. El archivo lee `process?.env?.NEXT_PUBLIC_API_URL`, y Next solo inlinea la referencia estática `process.env.NEXT_PUBLIC_X`: sus propios docs declaran que un lookup dinámico (su ejemplo es `const env = process.env; env.NEXT_PUBLIC_X`) **no** se inlinea. Probado en el bundle emitido: `.next/static/chunks/2zp1jrsfcykn6.js` conserva el literal sin reemplazar. En el browser `process` es `undefined`, el encadenamiento opcional corta, y **gana siempre el fallback hardcodeado `http://localhost:3001/api`**. Impacto: el cliente de la app desplegada no se puede apuntar a otra API. Fue lo que obligó al verificador a redirigir `localhost:3001` en la capa CDP para llegar a su stand-in |
+| `meter-detail-h1-encoded` | SUGGESTION | `src/app/meter/[id]/page.tsx` | El `h1` del detalle muestra el segmento crudo de la ruta: `/meter/M%20109%2FA` renderiza `Medidor M%20109%2FA` mientras la API reporta el id como `M 109/A`. Comportamiento **pre-existente** de `useParams`, de la misma clase que arregló la fase 4 para los labels del breadcrumb |
+
 ## Pregunta abierta
 
 Un warning de hidratación reportado por el dueño (*"attributes of the server rendered HTML didn't match"*)
