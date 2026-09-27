@@ -18,39 +18,11 @@ jest.mock('@/features/api/apiSlice', () => ({
 
 // recharts cannot measure a container in jsdom (getBoundingClientRect is 0),
 // so render a deterministic stand-in that exposes the props under test.
-jest.mock('recharts', () => {
-  const ReactModule = jest.requireActual<typeof import('react')>('react');
-  return {
-    ResponsiveContainer: ({
-      children,
-      ...rest
-    }: { children?: React.ReactNode } & Record<string, unknown>) =>
-      ReactModule.createElement('div', rest, children),
-    LineChart: ({
-      data,
-      children,
-    }: {
-      data?: Array<Record<string, unknown>>;
-      children?: React.ReactNode;
-    }) =>
-      ReactModule.createElement(
-        'div',
-        {
-          'data-testid': 'line-chart',
-          'data-points': JSON.stringify(data ?? []),
-        },
-        children,
-      ),
-    Line: ({ dataKey }: { dataKey?: string }) =>
-      ReactModule.createElement('div', {
-        'data-testid': 'line',
-        'data-key': dataKey,
-      }),
-    XAxis: () => null,
-    YAxis: () => null,
-    Tooltip: () => null,
-  };
-});
+jest.mock("recharts", () =>
+  (
+    jest.requireActual("@/test-support/rechartsMock") as typeof import("@/test-support/rechartsMock")
+  ).createRechartsMock(),
+);
 
 import { useGetMeterReadingsQuery } from '@/features/data/dataAPI';
 import { useGetAnomaliesQuery } from '@/features/api/apiSlice';
@@ -319,5 +291,15 @@ describe('MeterReadingsPage', () => {
       screen.queryByText(formatDateTime('2024-02-09T00:00:00Z')),
     ).not.toBeInTheDocument();
     expect(screen.queryByText('2024-01-01T06:00:00Z')).not.toBeInTheDocument();
+  });
+
+  it('carries the anomaly baseline mean into the chart reference line', () => {
+    render(<MeterReadingsPage />);
+
+    // `Anomaly.baseline.mean` used to be dropped when the page mapped the
+    // anomalies; it now reaches the chart as the consumption reference line.
+    const lines = screen.getAllByTestId('reference-line');
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toHaveAttribute('data-y', '12.1');
   });
 });

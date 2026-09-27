@@ -26,6 +26,7 @@ export const brand = {
   success: "#10B981", // exact
   border: "#27272A", // exact
   muted: "#A1A1AA", // exact
+  reference: "#8B5CF6", // perceptual read of Bia's dashed average line (their product screenshots)
   darkBg: "#0B0F11",
   darkSurface: "#151B1D",
   lightBg: "#F7F8F9",
@@ -41,10 +42,35 @@ export const brand = {
  * (svgwg#1031, raised 2025-11). Anything passed to recharts therefore takes a
  * real value from here. The brand wordmark keeps the exact brand gradient on
  * purpose: a wordmark is exempt from token derivation.
+ *
+ * The map covers both modes for every graphical role the chart needs — the
+ * series, the anomaly marker and its surface, the grid, the axis ticks, the
+ * reference line and the tooltip surface/text — so a mode switch repaints the
+ * chart instead of leaving a colour pinned to the other theme.
  */
 export const chartColors = {
-  dark: { series: brand.teal, marker: "#F87171", markerSurface: "#2C1618" },
-  light: { series: brand.tealDeep, marker: "#DC2626", markerSurface: "#FFF1F0" },
+  dark: {
+    series: brand.teal,
+    marker: "#F87171",
+    markerSurface: "#2C1618",
+    grid: "#243032",
+    axis: "#8B9399",
+    reference: brand.reference,
+    tooltipBackground: brand.darkSurface,
+    tooltipBorder: brand.border,
+    tooltipText: "#E4E4E7",
+  },
+  light: {
+    series: brand.tealDeep,
+    marker: "#DC2626",
+    markerSurface: "#FFF1F0",
+    grid: "#E5E7EB",
+    axis: "#52525B",
+    reference: brand.reference,
+    tooltipBackground: brand.lightSurface,
+    tooltipBorder: "#E5E7EB",
+    tooltipText: "#18181B",
+  },
 } as const;
 
 /**

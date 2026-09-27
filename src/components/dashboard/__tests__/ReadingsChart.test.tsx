@@ -1,9 +1,10 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import ReadingsChart, {
   type ReadingAnomalyMarker,
 } from '../ReadingsChart';
 import { formatDateTime } from '@/components/formatters';
+import { chartColors } from '@/theme/tokens';
 import type { Reading } from '@/types/backend';
 
 // recharts cannot measure a container in jsdom (getBoundingClientRect is 0),
@@ -12,62 +13,11 @@ import type { Reading } from '@/types/backend';
 // assertions can see what would be shown without any real SVG text. The probe
 // timestamp is a literal inside the factory (a hoisted `jest.mock` factory
 // cannot read a module-scope `const`).
-jest.mock('recharts', () => {
-  const ReactModule = jest.requireActual<typeof import('react')>('react');
-  return {
-    ResponsiveContainer: ({
-      children,
-      ...rest
-    }: { children?: React.ReactNode } & Record<string, unknown>) =>
-      ReactModule.createElement('div', rest, children),
-    LineChart: ({
-      data,
-      children,
-    }: {
-      data?: Array<Record<string, unknown>>;
-      children?: React.ReactNode;
-    }) =>
-      ReactModule.createElement(
-        'div',
-        {
-          'data-testid': 'line-chart',
-          'data-points': JSON.stringify(data ?? []),
-        },
-        children,
-      ),
-    Line: ({ dataKey }: { dataKey?: string }) =>
-      ReactModule.createElement('div', {
-        'data-testid': 'line',
-        'data-key': dataKey,
-      }),
-    XAxis: ({
-      dataKey,
-      tickFormatter,
-    }: {
-      dataKey?: string;
-      tickFormatter?: (value: unknown) => string;
-    }) =>
-      ReactModule.createElement('div', {
-        'data-testid': 'x-axis',
-        'data-key': dataKey,
-        'data-tick-output': tickFormatter
-          ? tickFormatter('2024-01-01T00:00:00Z')
-          : '',
-      }),
-    YAxis: () => null,
-    Tooltip: ({
-      labelFormatter,
-    }: {
-      labelFormatter?: (label: unknown) => React.ReactNode;
-    }) =>
-      ReactModule.createElement('div', {
-        'data-testid': 'tooltip',
-        'data-label-output': labelFormatter
-          ? String(labelFormatter('2024-01-01T00:00:00Z'))
-          : '',
-      }),
-  };
-});
+jest.mock("recharts", () =>
+  (
+    jest.requireActual("@/test-support/rechartsMock") as typeof import("@/test-support/rechartsMock")
+  ).createRechartsMock(),
+);
 
 const sampleReadings: Reading[] = [
   {
@@ -249,5 +199,126 @@ describe('ReadingsChart', () => {
     render(<ReadingsChart data={sampleReadings} />);
 
     expect(screen.getByText(/No anomalies recorded for this meter/i)).toBeInTheDocument();
+  });
+
+  it('draws a dashed reference line at the DTO baseline mean for Consumption', () => {
+    const anomalyMarkers: ReadingAnomalyMarker[] = [
+      {
+        id: 'an-1',
+        detectedAt: '2024-01-02T03:00:00Z',
+        label: 'HIGH · Real anomaly',
+        baselineMean: 12.1,
+      },
+    ];
+
+    render(<ReadingsChart data={sampleReadings} anomalyMarkers={anomalyMarkers} />);
+
+    const lines = screen.getAllByTestId('reference-line');
+    expect(lines).toHaveLength(1);
+    // The Y value is the raw `baseline.mean`: it is plotted, never reformatted
+    // or averaged.
+    expect(lines[0]).toHaveAttribute('data-y', '12.1');
+    expect(lines[0]).toHaveAttribute('data-stroke-dasharray', '6 4');
+    // Colour comes from the token map: a CSS variable is not reliable in a
+    // recharts SVG presentation attribute (svgwg#1031).
+    expect(lines[0]).toHaveAttribute('data-stroke', chartColors.dark.reference);
+  });
+
+  it('withholds the consumption reference line on another signal and says why', () => {
+    const anomalyMarkers: ReadingAnomalyMarker[] = [
+      {
+        id: 'an-1',
+        detectedAt: '2024-01-02T03:00:00Z',
+        label: 'HIGH · Real anomaly',
+        baselineMean: 12.1,
+      },
+    ];
+
+    render(<ReadingsChart data={sampleReadings} anomalyMarkers={anomalyMarkers} />);
+    expect(screen.getAllByTestId('reference-line')).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Voltage (V)' }));
+
+    // `baseline.mean` is kWh consumption, so it must not sit on a voltage axis.
+    expect(screen.queryAllByTestId('reference-line')).toHaveLength(0);
+    expect(screen.getByText(/solo con la señal Consumo/i)).toBeInTheDocument();
+  });
+
+  it('draws one reference line per distinct baseline mean instead of averaging', () => {
+    const anomalyMarkers: ReadingAnomalyMarker[] = [
+      { id: 'an-1', detectedAt: '2024-01-02T03:00:00Z', label: 'HIGH', baselineMean: 12.1 },
+      { id: 'an-2', detectedAt: '2024-01-03T03:00:00Z', label: 'MEDIUM', baselineMean: 18.4 },
+      { id: 'an-3', detectedAt: '2024-01-03T04:00:00Z', label: 'LOW', baselineMean: 12.1 },
+    ];
+
+    render(<ReadingsChart data={sampleReadings} anomalyMarkers={anomalyMarkers} />);
+
+    // Duplicates collapse, distinct DTO values each keep their own line, and no
+    // invented average appears.
+    expect(
+      screen
+        .getAllByTestId('reference-line')
+        .map((line) => line.getAttribute('data-y')),
+    ).toEqual(['12.1', '18.4']);
+  });
+
+  it('draws no reference line when no anomaly reaches the meter', () => {
+    render(<ReadingsChart data={sampleReadings} />);
+
+    expect(screen.queryAllByTestId('reference-line')).toHaveLength(0);
+  });
+
+  it('renders a legend naming the series, the anomaly markers and the reference line', () => {
+    const anomalyMarkers: ReadingAnomalyMarker[] = [
+      {
+        id: 'an-1',
+        detectedAt: '2024-01-02T03:00:00Z',
+        label: 'HIGH · Real anomaly',
+        baselineMean: 12.1,
+      },
+    ];
+
+    render(<ReadingsChart data={sampleReadings} anomalyMarkers={anomalyMarkers} />);
+
+    const legend = screen.getByRole('list', { name: 'Leyenda del gráfico' });
+    expect(within(legend).getByText('Consumption (kWh)')).toBeInTheDocument();
+    expect(within(legend).getByText('Marcador de anomalía')).toBeInTheDocument();
+    expect(
+      within(legend).getByText('Media de referencia: 12.1 kWh'),
+    ).toBeInTheDocument();
+  });
+
+  it('prints the selected signal unit on the Y axis, and none for a dimensionless signal', () => {
+    render(<ReadingsChart data={sampleReadings} />);
+    expect(screen.getByTestId('y-axis')).toHaveAttribute('data-unit', 'kWh');
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Voltage (V)' }));
+    expect(screen.getByTestId('y-axis')).toHaveAttribute('data-unit', 'V');
+
+    fireEvent.click(
+      screen.getByRole('radio', { name: 'Power factor (dimensionless 0-1)' }),
+    );
+    expect(screen.getByTestId('y-axis')).toHaveAttribute('data-unit', '');
+  });
+
+  it('draws a soft grid and themes the tooltip from the token map', () => {
+    render(<ReadingsChart data={sampleReadings} />);
+
+    expect(screen.getByTestId('cartesian-grid')).toHaveAttribute(
+      'data-stroke',
+      chartColors.dark.grid,
+    );
+    expect(screen.getByTestId('cartesian-grid')).toHaveAttribute(
+      'data-stroke-dasharray',
+      '3 3',
+    );
+
+    const contentStyle = JSON.parse(
+      screen.getByTestId('tooltip').getAttribute('data-content-style') ?? '{}',
+    ) as Record<string, unknown>;
+    expect(contentStyle.backgroundColor).toBe(
+      chartColors.dark.tooltipBackground,
+    );
+    expect(contentStyle.color).toBe(chartColors.dark.tooltipText);
   });
 });

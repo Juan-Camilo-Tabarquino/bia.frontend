@@ -25,25 +25,11 @@ jest.mock('@/features/data/dataAPI', () => ({
 
 // recharts cannot measure a container in jsdom (getBoundingClientRect is 0),
 // so render a deterministic stand-in that exposes the props under test.
-jest.mock('recharts', () => {
-  const ReactModule = jest.requireActual<typeof import('react')>('react');
-  return {
-    ResponsiveContainer: ({
-      children,
-      ...rest
-    }: { children?: React.ReactNode } & Record<string, unknown>) =>
-      ReactModule.createElement('div', rest, children),
-    LineChart: ({
-      children,
-    }: {
-      children?: React.ReactNode;
-    }) => ReactModule.createElement('div', null, children),
-    Line: () => null,
-    XAxis: () => null,
-    YAxis: () => null,
-    Tooltip: () => null,
-  };
-});
+jest.mock("recharts", () =>
+  (
+    jest.requireActual("@/test-support/rechartsMock") as typeof import("@/test-support/rechartsMock")
+  ).createRechartsMock(),
+);
 
 import {
   useGetAnomaliesQuery,

@@ -51,16 +51,17 @@ export default function MeterReadingsPage() {
   const rows = data ?? [];
 
   // `GET /api/anomalies` has no per-meter query, so the markers are a client-side
-  // derivation: the full list is filtered by `meter_id` and only the detection
-  // timestamp plus a human-readable label reach the chart. The API exposes no
-  // baseline (no mean, stddev or change percentage), so this page draws no
-  // baseline band and no delta line; the chart marks detected anomalies only.
+  // derivation: the full list is filtered by `meter_id`, and the detection
+  // timestamp, a human-readable label and the statistical `baseline.mean` (mean
+  // consumption in kWh) are forwarded to the chart. The backend carries no delta
+  // line, so none is drawn; the baseline feeds the chart's reference line.
   const anomalyMarkers: ReadingAnomalyMarker[] = (anomalies ?? [])
     .filter((anomaly) => anomaly.meter_id === meterId)
     .map((anomaly) => ({
       id: anomaly.id,
       detectedAt: anomaly.detected_at,
       label: `${anomaly.severity} · ${anomalyTypeLabels[anomaly.type]}`,
+      baselineMean: anomaly.baseline.mean,
     }));
 
   // Changing the date range keeps the previous cache entry's `data` while the
