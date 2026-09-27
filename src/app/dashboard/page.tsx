@@ -18,6 +18,8 @@ import PrivateRoute from "../../components/PrivateRoute";
 // The anomaly table is reused verbatim: every row links to `/anomalies/{id}`,
 // so the dashboard preview stays consistent with the full list page.
 import { AnomalyTable } from "@/components/anomalies/AnomalyTable";
+import { InsightBanner } from "@/components/dashboard/InsightBanner";
+import { KpiDeltaPill } from "@/components/dashboard/KpiDeltaPill";
 import {
   anomalySeverities,
   anomalyTypeColors,
@@ -48,8 +50,32 @@ const { Text, Title } = Typography;
  */
 const OVERVIEW_LIMIT = 5;
 
-/** Number of KPI cards the loading skeleton mirrors. */
-const KPI_CARD_COUNT = 4;
+/**
+ * Number of KPI cards the loading skeleton mirrors: the four summary cards
+ * plus the four leading-anomaly signal cards the loaded row can show.
+ */
+const KPI_CARD_COUNT = 8;
+
+/** Signed change fields the anomaly DTO carries, in the order the pills render. */
+type DeltaSignalField =
+  | "consumption_change_pct"
+  | "voltage_change_pct"
+  | "current_change_pct"
+  | "power_factor_change_pct";
+
+/**
+ * The four deltas the dashboard can show with a pill, each one a DTO field.
+ * These are read verbatim; no value is derived and no signal is invented.
+ */
+const ANOMALY_DELTA_SIGNALS: ReadonlyArray<{
+  field: DeltaSignalField;
+  label: string;
+}> = [
+  { field: "consumption_change_pct", label: "Cambio de consumo" },
+  { field: "voltage_change_pct", label: "Cambio de voltaje" },
+  { field: "current_change_pct", label: "Cambio de corriente" },
+  { field: "power_factor_change_pct", label: "Cambio de factor de potencia" },
+];
 
 function countTypes(anomalies: Anomaly[]): Map<AnomalyType, number> {
   const counts = new Map<AnomalyType, number>();
@@ -74,6 +100,12 @@ function countSeverities(anomalies: Anomaly[]): Map<AnomalySeverity, number> {
  * `GET /api/anomalies`. There is no LLM step on mount: the narrative is a later
  * increment, so this page never triggers an analysis request and never renders
  * the optional LLM narrative field.
+ *
+ * The delta pills and the insight banner are Bia's visual signature, and they
+ * only ever show what the DTO already carries: the leading anomaly's four
+ * signed change percentages (each relative to that anomaly's own `baseline`)
+ * and plain counts of the fetched rows. None of them is a period-over-period
+ * delta, because the API exposes no previous run to compare against.
  */
 export default function DashboardPage() {
   const {
@@ -100,6 +132,14 @@ export default function DashboardPage() {
   const severityCounts = useMemo(() => countSeverities(anomalies), [anomalies]);
   const overview = anomalies.slice(0, OVERVIEW_LIMIT);
 
+  // `GET /api/anomalies` returns rows already ordered by ascending `priority`
+  // (most urgent first) and the preview is never re-sorted, so the head of the
+  // array is the anomaly the delta pills describe.
+  const leadingAnomaly = anomalies[0];
+  // The summary DTO has no severity breakdown, so this is a plain count of the
+  // fetched rows — the same source the severity tags below use.
+  const highSeverityCount = severityCounts.get("HIGH") ?? 0;
+
   const isLoading = summaryLoading || anomaliesLoading;
   const error = summaryError ?? anomaliesError;
 
@@ -111,7 +151,10 @@ export default function DashboardPage() {
           Key indicators for the latest deterministic run and a preview of the
           detected anomalies, which arrive from the API ordered by priority
           (most urgent first). Per-type and per-severity counts are computed in
-          the browser from the fetched anomaly list.
+          the browser from the fetched anomaly list. The delta pills show the
+          signed change percentages of the most urgent anomaly against its own
+          baseline, and the insight banner uses the summary total plus the
+          HIGH-severity row count; no other metric is displayed.
         </p>
 
         {isLoading ? (
@@ -164,6 +207,39 @@ export default function DashboardPage() {
                   </Card>
                 </Col>
               </Row>
+
+              {leadingAnomaly && (
+                <section
+                  aria-label="Cambios de la anomalía más urgente"
+                  style={{ marginTop: "1rem" }}
+                >
+                  <Text type="secondary">
+                    Cambios de la anomalía más urgente (
+                    {leadingAnomaly.meter_id}).
+                  </Text>
+                  <Row gutter={[16, 16]} style={{ marginTop: "0.5rem" }}>
+                    {ANOMALY_DELTA_SIGNALS.map(({ field, label }) => (
+                      <Col key={field} xs={24} sm={12} lg={6}>
+                        <Card>
+                          <Text type="secondary">{label}</Text>
+                          <div
+                            style={{ marginTop: "0.5rem", fontSize: "1.5rem" }}
+                          >
+                            <KpiDeltaPill changePct={leadingAnomaly[field]} />
+                          </div>
+                        </Card>
+                      </Col>
+                    ))}
+                  </Row>
+                </section>
+              )}
+
+              <div style={{ marginTop: "1rem" }}>
+                <InsightBanner
+                  total={summary?.anomalies ?? anomalies.length}
+                  highSeverity={highSeverityCount}
+                />
+              </div>
             </section>
 
             <section

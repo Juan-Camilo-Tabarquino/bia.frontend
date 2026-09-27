@@ -1,0 +1,19 @@
+/* Full-width context line. The surface tint and the highlight both read antd's
+   CSS variables, so the banner follows the light/dark toggle instead of
+   freezing one mode. */
+.banner {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border-radius: var(--bia-border-radius);
+  background-color: var(--bia-color-fill-alter);
+}
+
+/* The headline number in Bia's teal. `colorPrimary` is the brand teal in dark
+   mode and the accessible deeper teal in light mode. */
+.number {
+  color: var(--bia-color-primary);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}

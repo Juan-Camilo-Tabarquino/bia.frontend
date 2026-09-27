@@ -1,0 +1,26 @@
+/* Direction colours come from antd's CSS variables, never a literal, so the
+   pill follows the light/dark toggle. A hardcoded colour would break one of the
+   two modes. */
+.pill {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* An increase is the error colour (red) and a decrease the success colour
+   (green): Bia's green-down / red-up signature. */
+.up {
+  color: var(--bia-color-error);
+}
+
+.down {
+  color: var(--bia-color-success);
+}
+
+/* Exactly zero carries no direction, so it stays neutral instead of borrowing a
+   meaning the DTO never stated. */
+.flat {
+  color: var(--bia-color-text-secondary);
+}

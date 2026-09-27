@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import DashboardPage from '../../app/dashboard/page';
 
 jest.mock('../../features/api/apiSlice', () => ({
@@ -95,6 +95,17 @@ function mockLoaded(
     error: undefined,
     refetch: refetchAnomalies,
   });
+}
+
+/** The pill that renders `value`, so a direction can be asserted per field. */
+function pillFor(container: HTMLElement, value: string): HTMLElement {
+  const pill = Array.from(
+    container.querySelectorAll<HTMLElement>('[data-direction]'),
+  ).find((candidate) => candidate.textContent?.includes(value));
+  if (!pill) {
+    throw new Error(`No delta pill rendering ${value}`);
+  }
+  return pill;
 }
 
 describe('DashboardPage component', () => {
@@ -230,6 +241,61 @@ describe('DashboardPage component', () => {
 
     expect(
       screen.getByText(/Showing the first 5 of 7 anomalies/),
+    ).toBeInTheDocument();
+  });
+
+  it('gives each signed change of the most urgent anomaly its own delta pill', () => {
+    mockLoaded();
+
+    const { container } = render(<DashboardPage />);
+
+    // `a1` heads the API-ordered array (priority 1), so these are its four DTO
+    // change fields shown verbatim, each rounded by the shared formatter.
+    expect(pillFor(container, '+125.3%')).toHaveClass('up');
+    expect(pillFor(container, '-2.7%')).toHaveClass('down');
+    expect(pillFor(container, '+111.2%')).toHaveClass('up');
+    expect(pillFor(container, '-18.2%')).toHaveClass('down');
+
+    // A decrease keeps the DTO's minus sign; it is never flipped to positive.
+    expect(screen.queryByText('18.2%')).not.toBeInTheDocument();
+
+    // Exactly four pills, one per DTO change field. The four summary KPIs get
+    // none, because the summary carries no prior period to compare against.
+    expect(container.querySelectorAll('[data-direction]')).toHaveLength(4);
+  });
+
+  it('derives the insight banner only from the summary total and the fetched rows', () => {
+    mockLoaded();
+
+    render(<DashboardPage />);
+
+    const banner = screen.getByText(/Hay 2 anomalías/);
+    expect(banner).toHaveTextContent(
+      'Hay 2 anomalías en la última ejecución, 1 de severidad alta.',
+    );
+    // The single HIGH-severity row is the highlighted number.
+    expect(within(banner).getByText('1')).toHaveClass('number');
+  });
+
+  it('keeps the four summary KPI cards and the anomaly table alongside the pills', () => {
+    mockLoaded();
+
+    render(<DashboardPage />);
+
+    for (const title of ['Health', 'Meters', 'Anomalies', 'Last run']) {
+      expect(screen.getByText(title)).toBeInTheDocument();
+    }
+    expect(screen.getByRole('table')).toBeInTheDocument();
+  });
+
+  it('shows no delta pill when there is no anomaly to describe', () => {
+    mockLoaded({ ...summary, anomalies: 0 }, []);
+
+    const { container } = render(<DashboardPage />);
+
+    expect(container.querySelectorAll('[data-direction]')).toHaveLength(0);
+    expect(
+      screen.getByText('No se detectaron anomalías en la última ejecución.'),
     ).toBeInTheDocument();
   });
 });

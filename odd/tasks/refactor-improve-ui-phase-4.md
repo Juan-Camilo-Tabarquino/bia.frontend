@@ -1,6 +1,6 @@
 # Feature: refactor/improve-ui — phase 4 (Interactividad)
 
-**Status: IN PROGRESS — 7/8 (T1, T2, T2b, T3, T4, T5, T6 done; T7, T8 and 1 debt task open).** Branch `refactor/improve-ui`, base `cdb610b` (phase 3 complete).
+**Status: IN PROGRESS — 8/8 features (T1, T2, T2b, T3, T4, T5, T6, T7 done; T8 and 1 debt task open).** Branch `refactor/improve-ui`, base `cdb610b` (phase 3 complete).
 
 **Reference:** `odd/tasks/refactor-improve-ui.md` (the whole feature and its phases),
 `docs/ui-refactor-plan.md` (the resume entry point), and the 12 open advisories recorded there.
@@ -121,9 +121,10 @@ Measured against the branch at `cdb610b`. Corrections to the plan's assumptions 
       time with a safe fallback, and the formatters extracted out of the anomaly module. See the T6 result below.
 - [x] **T5 — Cross-links meter ↔ anomaly.** Done: `meter_id` links to `/meter/{id}` in both `AnomalyDetail`
       (was plain text) and the `AnomalyTable` column, closing the round trip. See the T5 result above.
-- [ ] **T7 — KPI delta pills and the insight banner** on `/dashboard`, reading only fields the DTO actually
-      carries. No invented metric, no derived baseline: `baseline.mean` and the four signed
-      `*_change_pct` values **exist**, so the UI must not claim the backend lacks them.
+- [x] **T7 — KPI delta pills and the insight banner.** Done: four delta pills on the signed DTO percentages of the
+      leading anomaly, plus an insight banner backed only by the summary total and a plain count of fetched HIGH rows.
+      No KPI got a pill without a DTO-backed delta, and no period-over-period comparison was invented. See the T7
+      result below.
 - [ ] **T8 — Close the two advisories that belong to this phase** (`R3-retry-loading-flag`,
       `R3-breadcrumb-encoding`) and record the phase result here.
 - [ ] **T-SUITE — Reduce the page suite's runtime.** ~2.3 s per test against Jest's 5 s default; one flaky timeout
@@ -141,7 +142,7 @@ Measured against the branch at `cdb610b`. Corrections to the plan's assumptions 
 | T4 | `76c352d` | eslint 0 · tsc 0 · **26 suites / 217 tests** · next build 0 (7 routes) | 3 mutations by the worker, 1 load-bearing | parent audit: the `onChange` guard fixes a URL-rewrite bug the new tests caught |
 | T5 | `93f1e45` | eslint 0 · tsc 0 · **26 suites / 202 tests** · next build 0 (7 routes) | n/a — verified by reading the whole diff (small, presentation-only) | parent audit: code matches the `MeterDetail.tsx:72` precedent; assertions strengthened, none loosened |
 | T6 | _(this commit)_ | eslint 0 · tsc 0 · **27 suites / 223 tests** · next build 0 (7 routes) | n/a — verified by reading the diff; two traps checked by hand | parent audit: formatters extracted to `components/formatters.ts` (see below) |
-| T7 | — | — | — | — |
+| T7 | _(this commit)_ | eslint 0 · tsc 0 · **29 suites / 237 tests** · next build 0 (7 routes) | n/a — audited by reading the diff and by a real-browser check | parent audit: zero invented metrics; contrast measured in both themes |
 | T8 | — | — | — | — |
 | **T-SUITE** | — | — | — | **OPEN DEBT**: the page suite runs ~2.3 s/test (~85 s total, was ~15 s at `cdb610b`). One flaky timeout observed. See below. |
 
@@ -391,6 +392,42 @@ metadata. That was survivable while only anomaly components used them, but a gen
 after another feature. All four presentational formatters moved to `src/components/formatters.ts`, `anomalyLabels.ts`
 kept only its own metadata, and every import was repointed (nine files, including six suites). Leaving it would have
 guaranteed a second date formatter the next time a chart needed one.
+
+### T7 result — Bia's visual signature, with no invented metric
+
+The dashboard's four plain `Statistic` cards gained the product's signature: a **delta pill** per signed signal, and a
+full-width **insight banner** with the number that matters highlighted in teal. Two new components
+(`KpiDeltaPill`, `InsightBanner`) with their own SCSS modules.
+
+**The binding constraint held: every number is a DTO field or a plain count of fetched rows.** Pills were given only
+to the four signed percentages the DTO actually carries (`consumption_change_pct`, `voltage_change_pct`,
+`current_change_pct`, `power_factor_change_pct`), describing the leading anomaly (`anomalies[0]`, the head of the
+API's ascending-priority array). The four summary KPIs got **no** pill, and correctly so: `health` is a status
+string, `meters` and `anomalies` are current totals with no historical counterpart in this API, and `lastRun` is the
+literal `"latest"`. A delta there would have been a **period-over-period comparison the API cannot support** — the
+most tempting mistake in a task literally named "delta pills".
+
+The banner reads `Hay 4 anomalías en la última ejecución, 1 de severidad alta.` The `4` is
+`DashboardSummary.anomalies`; the `1` is a plain count of fetched rows with `severity === "HIGH"` (the established
+browser-derived-count pattern, since the summary carries no breakdown). Three honest states are distinguished: a
+zero total, an absent/malformed total, and the populated case.
+
+**Verified in a real browser, not just in jsdom.** With the backend down the dashboard showed its error state, so a
+minimal stand-in serving the two endpoints was used to exercise the real components:
+
+- All four pills rendered with the right direction, and the **sign was preserved** (`-2.7%` did not become `2.7%`).
+- Direction is communicated three ways, not by colour alone: an `aria-hidden` arrow, the colour, and an `sr-only`
+  label ("aumento"/"descenso"). Colour-only signalling would have failed for colour-blind users.
+- **WCAG AA contrast measured on composited backgrounds in both themes**: banner text 17.76 (dark) / 18.91 (light);
+  the teal highlighted number 7.61 / 4.93; the red up-pill 4.83 in both; the green down-pill 6.76. All above the 4.5
+  floor. The highlighted number was the one worth measuring, because `colorPrimary` had already needed darkening
+  twice in earlier phases for exactly this reason.
+- Zero console errors. No hex literal in either component or SCSS module — colours resolve through the `--bia-*`
+  variables, which the theme toggle switches correctly.
+
+**Corrected from the plan:** the plan claimed a code comment somewhere asserted the backend does not expose the
+baseline. Re-checking before delegating showed that claim was wrong — `AnomalyDetail` already renders `baseline` and
+its docstring says so. The stale claim was in this document, not in the code.
 
 ## Verification plan (phase 4)
 
