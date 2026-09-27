@@ -81,6 +81,9 @@ function AnomaliesContent() {
     data: anomalies = [],
     error: anomaliesError,
     isLoading: anomaliesLoading,
+    // `isLoading` is false on a retry, so only `isFetching` can tell the retry
+    // action that its request is still running.
+    isFetching: anomaliesFetching,
     refetch: refetchAnomalies,
   } = useGetAnomaliesQuery();
 
@@ -110,6 +113,7 @@ function AnomaliesContent() {
             anomaliesError,
             REQUEST_ERROR_FALLBACK,
           )}
+          retrying={anomaliesFetching}
           onRetry={() => {
             void refetchAnomalies();
           }}

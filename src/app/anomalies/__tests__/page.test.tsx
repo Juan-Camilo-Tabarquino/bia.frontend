@@ -264,6 +264,39 @@ describe("AnomaliesPage", () => {
     expect(refetch).toHaveBeenCalledTimes(1);
   });
 
+  // Same contract as the MeterList suite: the disabled state is only proven by
+  // pairing it with the enabled one, because an unpassed `retrying` prop also
+  // leaves the button enabled.
+  it("disables the retry action while the anomaly refetch is in flight", () => {
+    mockedUseGetAnomaliesQuery.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isFetching: true,
+      error: { message: "Boom" },
+      refetch,
+    });
+
+    render(<AnomaliesPage />);
+
+    expect(screen.getByRole("button", { name: /Reintentar/ })).toBeDisabled();
+  });
+
+  it("keeps the retry action enabled when the anomaly request is not refetching", () => {
+    mockedUseGetAnomaliesQuery.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isFetching: false,
+      error: { message: "Boom" },
+      refetch,
+    });
+
+    render(<AnomaliesPage />);
+
+    expect(
+      screen.getByRole("button", { name: /Reintentar/ }),
+    ).not.toBeDisabled();
+  });
+
   it("renders an empty state when the backend reports no anomalies", () => {
     mockLoaded([]);
 

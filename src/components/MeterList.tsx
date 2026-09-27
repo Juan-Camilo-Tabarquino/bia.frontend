@@ -24,7 +24,13 @@ interface MeterListProps {
 }
 
 export function MeterList({ headingLevel = 1 }: MeterListProps) {
-  const { data: list = [], error, isLoading, refetch } = useGetMetersQuery();
+  const {
+    data: list = [],
+    error,
+    isLoading,
+    isFetching,
+    refetch,
+  } = useGetMetersQuery();
   const [query, setQuery] = useState("");
 
   // `GET /api/meters` returns the whole id array in the browser, so the search
@@ -54,6 +60,11 @@ export function MeterList({ headingLevel = 1 }: MeterListProps) {
       <RequestError
         title="No se pudieron cargar los medidores"
         description={requestErrorMessage(error, REQUEST_ERROR_FALLBACK)}
+        // `isLoading` is only true for the first load; a retry after a failure
+        // leaves it false, so it cannot gate the button. `isFetching` is the
+        // flag that is true while the user's own retry is in flight, and it is
+        // what makes the action show its loading/disabled state.
+        retrying={isFetching}
         onRetry={() => {
           void refetch();
         }}

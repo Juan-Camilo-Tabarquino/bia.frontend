@@ -21,6 +21,32 @@ const current = (title: string): TrailItem => ({
 
 const linked = (title: string, href: string): TrailItem => ({ title, href });
 
+/**
+ * Splits a raw pathname segment into what a human reads and what the URL
+ * carries.
+ *
+ * `usePathname()` returns the **encoded** pathname, so rendering a segment
+ * verbatim shows `M%20109%2FA` instead of the id the API actually uses (seen in
+ * a real browser). Decoding is therefore required for the label, and the result
+ * must be re-encoded for the href -- `encodeURIComponent`, the same convention
+ * `MeterDetail` and `AnomalyDetail` already use -- or a decoded `/` would be
+ * read as a path separator and the link would address a different route.
+ *
+ * `decodeURIComponent` throws `URIError` on a malformed escape (`%ZZ`). That
+ * input can only come from a hand-crafted or externally produced link, and the
+ * choice here is to degrade to the pre-existing behaviour rather than to guess:
+ * the raw segment is used for both label and href, so the trail never blanks,
+ * never throws, and never points somewhere the browser is not.
+ */
+function splitSegment(segment: string): { label: string; slug: string } {
+  try {
+    const decoded = decodeURIComponent(segment);
+    return { label: decoded, slug: encodeURIComponent(decoded) };
+  } catch {
+    return { label: segment, slug: segment };
+  }
+}
+
 const SECTION_LABELS = {
   meters: "Medidores",
   dashboard: "Análisis",
@@ -33,8 +59,8 @@ const SECTION_LABELS = {
  * Returns `null` for any path this app does not own, so an unknown or malformed
  * URL renders no breadcrumb rather than a broken or misleading one.
  *
- * The meter id and the anomaly id are route data: they are rendered verbatim
- * and never passed through a label map.
+ * The meter id and the anomaly id are route data: they never pass through a
+ * label map, and they are decoded for display (see `splitSegment`).
  */
 function buildTrail(pathname: string): TrailItem[] | null {
   const [first, second, third] = pathname.split("/").filter(Boolean);
@@ -44,14 +70,19 @@ function buildTrail(pathname: string): TrailItem[] | null {
   }
 
   if (first === "meter" && second !== undefined && third === undefined) {
-    return [HOME, linked(SECTION_LABELS.meters, "/meters"), current(second)];
-  }
-
-  if (first === "meter" && second !== undefined && third === "readings") {
     return [
       HOME,
       linked(SECTION_LABELS.meters, "/meters"),
-      linked(second, `/meter/${second}`),
+      current(splitSegment(second).label),
+    ];
+  }
+
+  if (first === "meter" && second !== undefined && third === "readings") {
+    const meter = splitSegment(second);
+    return [
+      HOME,
+      linked(SECTION_LABELS.meters, "/meters"),
+      linked(meter.label, `/meter/${meter.slug}`),
       current("Lecturas"),
     ];
   }
@@ -65,7 +96,11 @@ function buildTrail(pathname: string): TrailItem[] | null {
   }
 
   if (first === "anomalies" && second !== undefined && third === undefined) {
-    return [HOME, linked(SECTION_LABELS.anomalies, "/anomalies"), current(second)];
+    return [
+      HOME,
+      linked(SECTION_LABELS.anomalies, "/anomalies"),
+      current(splitSegment(second).label),
+    ];
   }
 
   return null;

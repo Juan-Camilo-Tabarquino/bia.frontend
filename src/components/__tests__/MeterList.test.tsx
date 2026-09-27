@@ -46,6 +46,39 @@ describe('MeterList component', () => {
     expect(refetch).toHaveBeenCalledTimes(1);
   });
 
+  // The retry action must show that a retry is actually running. A disabled
+  // control alone would not prove the flag is wired, so the enabled case is
+  // asserted too: together they can only pass if `isFetching` reaches the prop.
+  it('disables the retry action while the meters refetch is in flight', () => {
+    mockedUseGetMetersQuery.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isFetching: true,
+      error: { message: 'Fail' },
+      refetch,
+    });
+
+    render(<MeterList />);
+
+    expect(screen.getByRole('button', { name: /Reintentar/ })).toBeDisabled();
+  });
+
+  it('keeps the retry action enabled when the meters request is not refetching', () => {
+    mockedUseGetMetersQuery.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isFetching: false,
+      error: { message: 'Fail' },
+      refetch,
+    });
+
+    render(<MeterList />);
+
+    expect(
+      screen.getByRole('button', { name: /Reintentar/ }),
+    ).not.toBeDisabled();
+  });
+
   it('renders an empty state when the backend reports no meters', () => {
     mockedUseGetMetersQuery.mockReturnValue({
       data: [],

@@ -1,6 +1,6 @@
 # Feature: refactor/improve-ui — phase 4 (Interactividad)
 
-**Status: IN PROGRESS — 8/8 features (T1, T2, T2b, T3, T4, T5, T6, T7 done; T8 and 1 debt task open).** Branch `refactor/improve-ui`, base `cdb610b` (phase 3 complete).
+**Status: ALL PHASE-4 TASKS DONE — T1, T2, T2b, T3, T4, T5, T6, T7, T8 complete. One debt task open (T-SUITE).** Branch `refactor/improve-ui`, base `cdb610b` (phase 3 complete).
 
 **Reference:** `odd/tasks/refactor-improve-ui.md` (the whole feature and its phases),
 `docs/ui-refactor-plan.md` (the resume entry point), and the 12 open advisories recorded there.
@@ -125,8 +125,8 @@ Measured against the branch at `cdb610b`. Corrections to the plan's assumptions 
       leading anomaly, plus an insight banner backed only by the summary total and a plain count of fetched HIGH rows.
       No KPI got a pill without a DTO-backed delta, and no period-over-period comparison was invented. See the T7
       result below.
-- [ ] **T8 — Close the two advisories that belong to this phase** (`R3-retry-loading-flag`,
-      `R3-breadcrumb-encoding`) and record the phase result here.
+- [x] **T8 — Close the two advisories that belong to this phase.** Done: `retrying={isFetching}` at both sites, and
+the breadcrumb decodes its label while keeping the href encoded, with a `URIError` guard. See the T8 result below.
 - [ ] **T-SUITE — Reduce the page suite's runtime.** ~2.3 s per test against Jest's 5 s default; one flaky timeout
       observed. See the open-debt section below.
 
@@ -143,7 +143,7 @@ Measured against the branch at `cdb610b`. Corrections to the plan's assumptions 
 | T5 | `93f1e45` | eslint 0 · tsc 0 · **26 suites / 202 tests** · next build 0 (7 routes) | n/a — verified by reading the whole diff (small, presentation-only) | parent audit: code matches the `MeterDetail.tsx:72` precedent; assertions strengthened, none loosened |
 | T6 | _(this commit)_ | eslint 0 · tsc 0 · **27 suites / 223 tests** · next build 0 (7 routes) | n/a — verified by reading the diff; two traps checked by hand | parent audit: formatters extracted to `components/formatters.ts` (see below) |
 | T7 | _(this commit)_ | eslint 0 · tsc 0 · **29 suites / 237 tests** · next build 0 (7 routes) | n/a — audited by reading the diff and by a real-browser check | parent audit: zero invented metrics; contrast measured in both themes |
-| T8 | — | — | — | — |
+| T8 | _(this commit)_ | eslint 0 · tsc 0 · **29 suites / 246 tests** · next build 0 (7 routes) | RED observed before the write; 3 mutations reverted with hashes | parent audit: 5 cases re-verified in real Chrome (see below) |
 | **T-SUITE** | — | — | — | **OPEN DEBT**: the page suite runs ~2.3 s/test (~85 s total, was ~15 s at `cdb610b`). One flaky timeout observed. See below. |
 
 ### T1 result
@@ -428,6 +428,44 @@ minimal stand-in serving the two endpoints was used to exercise the real compone
 **Corrected from the plan:** the plan claimed a code comment somewhere asserted the backend does not expose the
 baseline. Re-checking before delegating showed that claim was wrong — `AnomalyDetail` already renders `baseline` and
 its docstring says so. The stale claim was in this document, not in the code.
+
+### T8 result — both advisories closed, and the first task with real RED evidence
+
+**`R3-retry-loading-flag` closed at both sites.** `MeterList` and the anomalies page now destructure `isFetching`
+and pass it as `retrying`. The distinction matters and both sites comment on it: **`isLoading` is `false` during a
+manual refetch**, so gating the button on it would have left the disabled state unreachable — the advisory would
+have looked fixed while changing nothing. `RequestError` was not touched; it already supported the prop. This
+advisory was reported by the review lens and by the independent verifier separately, four times.
+
+**`R3-breadcrumb-encoding` closed.** A route segment is now decoded for the label and re-encoded for the href
+(`splitSegment`). The advisory had been reproduced in a real browser before delegating: `/meter/M%20109%2FA`
+rendered the literal text `M%20109%2FA`, because `usePathname` returns the **encoded** pathname and the component
+used it verbatim.
+
+**The decode-failure fallback, and why it is the right one:** a malformed escape (`%ZZ`) makes `decodeURIComponent`
+throw `URIError`, and the raw segment is then used for **both** label and href. Re-encoding the undecodable text
+would produce `%25ZZ`, pointing the link at a *different* route than the one the browser is on; degrading to the
+previous verbatim behaviour keeps the trail intact and never throws.
+
+**First task in this phase with observed RED.** The worker ran the tests before writing the source:
+`Tests: 5 failed, 51 passed` — the two disabled-state tests and the three decode tests. It also noted, correctly,
+that the two malformed-escape tests **passed before the fix** (the old code rendered the raw segment) and are
+therefore a guard against re-introducing an unguarded `decodeURIComponent`, not a description of new behaviour.
+Three mutations were then reverted with hash verification.
+
+**Parent re-verification in real Chrome**, because the worker honestly reported it had not driven the browser for the
+malformed case:
+
+| Path | Label | Verdict |
+| --- | --- | --- |
+| `/meter/M%20109%2FA` | `M 109/A` | decoded, was `M%20109%2FA` |
+| `/meter/M-109` | `M-109` | unchanged |
+| `/anomalies/anomaly-42` | `anomaly-42` | unchanged |
+| `/meter/%ZZ` | (no trail) | no crash, no blank trail |
+| `/meter/M%20109%2FA/readings` | `M 109/A` + href `/meter/M%20109%2FA` | **label decoded, href still encoded** |
+
+The last row is the one that matters: it proves the href was re-encoded rather than the decoded label being
+interpolated into the path, which would have split `M 109/A` into two route segments. No crash in any case.
 
 ## Verification plan (phase 4)
 
