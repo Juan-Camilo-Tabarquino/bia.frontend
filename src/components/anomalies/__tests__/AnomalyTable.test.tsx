@@ -73,12 +73,55 @@ describe("AnomalyTable", () => {
     expect(
       screen.getByRole("link", { name: realAnomaly.id }),
     ).toHaveAttribute("href", `/anomalies/${realAnomaly.id}`);
-    expect(screen.getByText("M-109")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: realAnomaly.meter_id }),
+    ).toHaveAttribute("href", `/meter/${realAnomaly.meter_id}`);
     expect(screen.getByText("2026-09-12T14:00:00Z")).toBeInTheDocument();
     expect(screen.getByText("REAL_ANOMALY")).toBeInTheDocument();
     expect(screen.getByText("HIGH")).toBeInTheDocument();
     expect(screen.getByText("97%")).toBeInTheDocument();
     expect(screen.getByText("Unexplained")).toBeInTheDocument();
+  });
+
+  it("links each meter id to its meter detail route", () => {
+    render(<AnomalyTable anomalies={[realAnomaly, dataQualityAnomaly]} />);
+
+    // The text stays the meter id verbatim, so the link names which meter it
+    // points at instead of hiding it behind a label.
+    expect(screen.getByRole("link", { name: "M-109" })).toHaveAttribute(
+      "href",
+      "/meter/M-109",
+    );
+    expect(screen.getByRole("link", { name: "M-112" })).toHaveAttribute(
+      "href",
+      "/meter/M-112",
+    );
+  });
+
+  it("keeps the anomaly and meter links as two addressable sibling links", () => {
+    render(<AnomalyTable anomalies={[realAnomaly]} />);
+
+    const anomalyLink = screen.getByRole("link", { name: realAnomaly.id });
+    const meterLink = screen.getByRole("link", { name: realAnomaly.meter_id });
+
+    // Distinct accessible names, and neither anchor is nested inside the other
+    // (nested links would be an accessibility and DOM problem).
+    expect(anomalyLink.contains(meterLink)).toBe(false);
+    expect(meterLink.contains(anomalyLink)).toBe(false);
+  });
+
+  it("encodes a meter id with reserved characters the same way the reverse link does", () => {
+    // `MeterId` is a bare string, so a reserved character is possible even
+    // though the seeded ids are `M-<digits>`. This is the exact encoding
+    // `MeterDetail` applies to its anomaly link.
+    render(
+      <AnomalyTable anomalies={[{ ...realAnomaly, meter_id: "M 109/A" }]} />,
+    );
+
+    expect(screen.getByRole("link", { name: "M 109/A" })).toHaveAttribute(
+      "href",
+      "/meter/M%20109%2FA",
+    );
   });
 
   it("shows the API priority value in a Priority column", () => {

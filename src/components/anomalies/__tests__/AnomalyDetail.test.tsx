@@ -52,6 +52,28 @@ describe("AnomalyDetail", () => {
     ).toBeInTheDocument();
   });
 
+  it("links the meter id to its meter detail route", () => {
+    render(<AnomalyDetail anomaly={makeAnomaly()} />);
+
+    // The link text is the meter id verbatim, so the target is not hidden.
+    expect(screen.getByRole("link", { name: "M-109" })).toHaveAttribute(
+      "href",
+      "/meter/M-109",
+    );
+  });
+
+  it("encodes a meter id with reserved characters the same way the reverse link does", () => {
+    // `MeterId` is a bare string, so a reserved character is possible even
+    // though the seeded ids are `M-<digits>`. This is the exact encoding
+    // `MeterDetail` applies to its anomaly link.
+    render(<AnomalyDetail anomaly={makeAnomaly({ meter_id: "M 109/A" })} />);
+
+    expect(screen.getByRole("link", { name: "M 109/A" })).toHaveAttribute(
+      "href",
+      "/meter/M%20109%2FA",
+    );
+  });
+
   it("presents the recommended action as the conclusion and status as the causal reading", () => {
     render(<AnomalyDetail anomaly={makeAnomaly()} />);
 

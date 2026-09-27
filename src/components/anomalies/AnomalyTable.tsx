@@ -130,6 +130,17 @@ export function AnomalyTable({
       title: "Meter",
       dataIndex: "meter_id",
       key: "meter_id",
+      // The second link in the row. It lives in its own cell as a sibling of
+      // the `Anomaly` link, never nested inside it, and keeps the meter id as
+      // its text, so the two links have distinct accessible names and each
+      // reaches one destination. `encodeURIComponent` matches the anomaly
+      // detail page and `MeterDetail`'s existing anomaly link, so the round
+      // trip encodes the id the same way in both directions.
+      render: (_value: string, anomaly: Anomaly) => (
+        <Link href={`/meter/${encodeURIComponent(anomaly.meter_id)}`}>
+          {anomaly.meter_id}
+        </Link>
+      ),
     },
     {
       title: "Detected at",

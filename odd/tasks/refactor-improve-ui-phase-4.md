@@ -1,6 +1,6 @@
 # Feature: refactor/improve-ui — phase 4 (Interactividad)
 
-**Status: IN PROGRESS — 4/8 (T1, T2, T2b, T3 done).** Branch `refactor/improve-ui`, base `cdb610b` (phase 3 complete).
+**Status: IN PROGRESS — 5/8 (T1, T2, T2b, T3, T5 done).** Branch `refactor/improve-ui`, base `cdb610b` (phase 3 complete).
 
 **Reference:** `odd/tasks/refactor-improve-ui.md` (the whole feature and its phases),
 `docs/ui-refactor-plan.md` (the resume entry point), and the 12 open advisories recorded there.
@@ -134,6 +134,7 @@ Measured against the branch at `cdb610b`. Corrections to the plan's assumptions 
 | T2 | `8bbd7e0` | eslint 0 · tsc 0 · **26 suites / 171 tests** · next build 0 (7 routes) | 1 probe proving the stale-closure fix | `gentle-ai-verify`: **FAIL**, 1 BLOCKER. Scope reduced by owner decision — see below |
 | T2b | `a533122` | eslint 0 · tsc 0 · **26 suites / 177 tests** · next build 0 (7 routes) | 2 gate mutations by the verifier; real-Chrome probes by the parent | `gentle-ai-verify`: PASS WITH FINDINGS, no BLOCKER. 3 findings fixed; 4 recorded |
 | T3 | _(this commit)_ | eslint 0 · tsc 0 · **26 suites / 196 tests** · next build 0 (7 routes) | 2 gate mutations by the parent | `gentle-ai-verify`: PASS WITH FINDINGS, no BLOCKER. 1 finding fixed; 4 recorded |
+| T5 | _(this commit)_ | eslint 0 · tsc 0 · **26 suites / 202 tests** · next build 0 (7 routes) | n/a — verified by reading the whole diff (small, presentation-only) | parent audit: code matches the `MeterDetail.tsx:72` precedent; assertions strengthened, none loosened |
 | T4 | — | — | — | — |
 | T5 | — | — | — | — |
 | T6 | — | — | — | — |
@@ -295,6 +296,30 @@ antd sorter, so `applyAnomalySort` is still the only ordering there, and the uni
 `?sort=backend` is *accepted as the explicit default* rather than ignored, which is what the wording claimed —
 the outcome is still correct (no arrow, no rewrite); and the deep-link coverage for `sort=confidence` is indirect,
 sharing the `detected_at` path.
+
+### T5 result — the anomaly → meter direction
+
+The meter → anomaly direction already worked (`MeterDetail.tsx` renders `/anomalies?meter_id=<encoded>`, made
+deep-linkable by T1). This closes the other direction: `meter_id` is now a link to `/meter/{id}` in both
+`AnomalyDetail` (it was plain text, and the component did not even import `next/link`) and the `AnomalyTable`
+`Meter` column.
+
+Encoding follows the existing precedent exactly (`encodeURIComponent`, as `MeterDetail.tsx:72` does), so an id
+with a reserved character addresses the same route segment in both directions of the round trip. `MeterId` is
+`type MeterId = string` (`types/backend.ts:11`), so that is reachable in principle even though the seeded ids are
+`M-<digits>`; both new encoding tests use `"M 109/A"`.
+
+**Two links per table row, checked rather than assumed.** The row already linked the anomaly id, and now links
+the meter too. They live in separate cells as siblings — `AnomalyTable` declares no `onRow`, so there is no
+row-level click for a cell link to collide with, and neither anchor nests inside the other. Accessible names stay
+distinct and equal to the visible text (which satisfies label-in-name and is why no `aria-label` was added): the
+anomaly link is named by the anomaly id, the meter link by the meter id.
+
+**The 16 `linkNames()` assertions in the page suite were doubled deliberately, not loosened.** Each row
+legitimately gained a link, so the counts changed. The audit confirmed every one is still an exact `toEqual` over
+the full ordered list of links on the page — now also pinning each meter link's position between its row's
+anomaly link and the next row. One table-suite expectation was changed from `getByText("M-109")` to a role+name
+lookup plus an href assertion, which is strictly stronger.
 
 ## Verification plan (phase 4)
 

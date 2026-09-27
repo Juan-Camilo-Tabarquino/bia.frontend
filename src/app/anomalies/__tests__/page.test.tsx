@@ -247,14 +247,39 @@ describe("AnomaliesPage", () => {
 
     expect(screen.getByText("Showing 2 of 2 anomalies")).toBeInTheDocument();
     // The API returns the array sorted by ascending priority: M-109 (1) before
-    // M-112 (2). The default view leaves that order untouched.
+    // M-112 (2). The default view leaves that order untouched. Each row now has
+    // two links: the anomaly id first (Anomaly column), then its meter id
+    // (Meter column), which is why every expected list is doubled.
     expect(linkNames()).toEqual([
       "M-109-2026-09-12T14:00:00Z",
+      "M-109",
       "M-112-2026-09-10T09:00:00Z",
+      "M-112",
     ]);
     expect(
       screen.getByRole("columnheader", { name: "Priority" }),
     ).toBeInTheDocument();
+  });
+
+  it("links each row's meter to its meter route next to the anomaly link", () => {
+    render(<AnomaliesPage />);
+
+    // The meter cell is the second link of the row and points at the meter
+    // detail route, closing the anomaly -> meter half of the round trip that
+    // MeterDetail already opens in the other direction.
+    expect(screen.getByRole("link", { name: "M-109" })).toHaveAttribute(
+      "href",
+      "/meter/M-109",
+    );
+    expect(screen.getByRole("link", { name: "M-112" })).toHaveAttribute(
+      "href",
+      "/meter/M-112",
+    );
+    // The anomaly link in the same row keeps its own destination, so the two
+    // links are siblings with distinct names rather than a nested pair.
+    expect(
+      screen.getByRole("link", { name: "M-109-2026-09-12T14:00:00Z" }),
+    ).toHaveAttribute("href", "/anomalies/M-109-2026-09-12T14:00:00Z");
   });
 
   it("re-sorts the fetched list by the API priority field on demand from the header", async () => {
@@ -266,7 +291,9 @@ describe("AnomaliesPage", () => {
 
     expect(linkNames()).toEqual([
       "M-112-2026-09-10T09:00:00Z",
+      "M-112",
       "M-109-2026-09-12T14:00:00Z",
+      "M-109",
     ]);
 
     clickHeader("Priority");
@@ -274,7 +301,9 @@ describe("AnomaliesPage", () => {
     await waitFor(() => {
       expect(linkNames()).toEqual([
         "M-109-2026-09-12T14:00:00Z",
+        "M-109",
         "M-112-2026-09-10T09:00:00Z",
+        "M-112",
       ]);
     });
     // The header writes the same `sort` key the URL already carries, so the
@@ -292,7 +321,7 @@ describe("AnomaliesPage", () => {
     await waitFor(() => {
       expect(screen.getByText("Showing 1 of 2 anomalies")).toBeInTheDocument();
     });
-    expect(linkNames()).toEqual(["M-112-2026-09-10T09:00:00Z"]);
+    expect(linkNames()).toEqual(["M-112-2026-09-10T09:00:00Z", "M-112"]);
     expect(screen.getByText("DATA_QUALITY")).toBeInTheDocument();
   });
 
@@ -318,7 +347,9 @@ describe("AnomaliesPage", () => {
 
     expect(linkNames()).toEqual([
       "M-112-2026-09-10T09:00:00Z",
+      "M-112",
       "M-109-2026-09-12T14:00:00Z",
+      "M-109",
     ]);
 
     clickHeader("Severity");
@@ -326,7 +357,9 @@ describe("AnomaliesPage", () => {
     await waitFor(() => {
       expect(linkNames()).toEqual([
         "M-109-2026-09-12T14:00:00Z",
+        "M-109",
         "M-112-2026-09-10T09:00:00Z",
+        "M-112",
       ]);
     });
   });
@@ -341,7 +374,9 @@ describe("AnomaliesPage", () => {
     await waitFor(() => {
       expect(linkNames()).toEqual([
         "M-109-2026-09-12T14:00:00Z",
+        "M-109",
         "M-112-2026-09-10T09:00:00Z",
+        "M-112",
       ]);
     });
     expect(replaceUrl).toHaveBeenCalledWith("/anomalies?sort=detected_at", {
@@ -359,7 +394,9 @@ describe("AnomaliesPage", () => {
     await waitFor(() => {
       expect(linkNames()).toEqual([
         "M-109-2026-09-12T14:00:00Z",
+        "M-109",
         "M-112-2026-09-10T09:00:00Z",
+        "M-112",
       ]);
     });
     expect(replaceUrl).toHaveBeenCalledWith("/anomalies?sort=confidence", {
@@ -379,7 +416,9 @@ describe("AnomaliesPage", () => {
 
     expect(linkNames()).toEqual([
       "M-109-2026-09-12T14:00:00Z",
+      "M-109",
       "M-112-2026-09-10T09:00:00Z",
+      "M-112",
     ]);
     expect(screen.getByRole("columnheader", { name: "Detected at" })).toHaveAttribute(
       "aria-sort",
@@ -410,7 +449,7 @@ describe("AnomaliesPage", () => {
     render(<AnomaliesPage />);
 
     expect(screen.getByText("Showing 1 of 2 anomalies")).toBeInTheDocument();
-    expect(linkNames()).toEqual(["M-109-2026-09-12T14:00:00Z"]);
+    expect(linkNames()).toEqual(["M-109-2026-09-12T14:00:00Z", "M-109"]);
   });
 
   it("restores every filter and the sort from the query string on mount", () => {
@@ -425,7 +464,7 @@ describe("AnomaliesPage", () => {
     render(<AnomaliesPage />);
 
     expect(screen.getByText("Showing 1 of 2 anomalies")).toBeInTheDocument();
-    expect(linkNames()).toEqual(["M-109-2026-09-12T14:00:00Z"]);
+    expect(linkNames()).toEqual(["M-109-2026-09-12T14:00:00Z", "M-109"]);
     // The URL sort is reflected in the header, so a shared link shows the arrow
     // for the order it carries instead of silently defaulting.
     expect(
@@ -457,7 +496,9 @@ describe("AnomaliesPage", () => {
 
     expect(linkNames()).toEqual([
       "M-112-2026-09-10T09:00:00Z",
+      "M-112",
       "M-109-2026-09-12T14:00:00Z",
+      "M-109",
     ]);
 
     clickHeader("Severity");
@@ -471,7 +512,9 @@ describe("AnomaliesPage", () => {
     await waitFor(() => {
       expect(linkNames()).toEqual([
         "M-109-2026-09-12T14:00:00Z",
+        "M-109",
         "M-112-2026-09-10T09:00:00Z",
+        "M-112",
       ]);
     });
 
@@ -546,7 +589,7 @@ describe("AnomaliesPage", () => {
 
     expect(searchBox()).toHaveValue("m-112");
     expect(screen.getByText("Showing 1 of 2 anomalies")).toBeInTheDocument();
-    expect(linkNames()).toEqual(["M-112-2026-09-10T09:00:00Z"]);
+    expect(linkNames()).toEqual(["M-112-2026-09-10T09:00:00Z", "M-112"]);
   });
 
   it("matches a case-insensitive substring typed into the box", async () => {
@@ -558,7 +601,7 @@ describe("AnomaliesPage", () => {
     await waitFor(() => {
       expect(screen.getByText("Showing 1 of 2 anomalies")).toBeInTheDocument();
     });
-    expect(linkNames()).toEqual(["M-109-2026-09-12T14:00:00Z"]);
+    expect(linkNames()).toEqual(["M-109-2026-09-12T14:00:00Z", "M-109"]);
   });
 
   it("shows the filter empty state, not the backend empty state, when the search matches nothing", async () => {

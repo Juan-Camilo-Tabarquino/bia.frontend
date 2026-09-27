@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Card, Descriptions, Space, Tag, Typography } from "antd";
 import type { Anomaly, AnomalyStatus, CorrelatedEvent } from "@/types/backend";
 import { AnomalyTypeTag } from "./AnomalyTypeTag";
@@ -54,7 +55,22 @@ export function AnomalyDetail({ anomaly }: AnomalyDetailProps) {
           aria-label="Anomaly fields"
           items={[
             { key: "id", label: "ID", children: anomaly.id },
-            { key: "meter", label: "Meter", children: anomaly.meter_id },
+            {
+              key: "meter",
+              label: "Meter",
+              // The meter id is the link text verbatim (never relabelled), so
+              // the target stays obvious; `encodeURIComponent` mirrors the
+              // meter -> anomaly precedent in `MeterDetail` so an id with a
+              // reserved character addresses the same route segment on both
+              // sides of the round trip.
+              children: (
+                <Link
+                  href={`/meter/${encodeURIComponent(anomaly.meter_id)}`}
+                >
+                  {anomaly.meter_id}
+                </Link>
+              ),
+            },
             {
               key: "detected_at",
               label: "Detected at",
