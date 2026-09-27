@@ -4,18 +4,42 @@ import { MeterList } from '../MeterList';
 
 jest.mock('@/features/api/apiSlice', () => ({
   useGetMetersQuery: jest.fn(),
+  useGetMeterDetailQuery: jest.fn(),
 }));
 
-import { useGetMetersQuery } from '@/features/api/apiSlice';
+import {
+  useGetMeterDetailQuery,
+  useGetMetersQuery,
+} from '@/features/api/apiSlice';
 
 const mockedUseGetMetersQuery = useGetMetersQuery as jest.Mock;
+const mockedUseGetMeterDetailQuery = useGetMeterDetailQuery as jest.Mock;
 
 const refetch = jest.fn();
+
+// The card renders estado and última lectura from its own detail query, so the
+// list suite needs a resolved detail to keep every card on its happy path.
+const detail = {
+  id: 'meter-row-1',
+  meter_id: 'M-101',
+  name: '',
+  location: '',
+  status: 'OK' as const,
+  created_at: '2024-01-01T00:00:00Z',
+  readings_count: 12,
+  last_reading_at: '2024-01-10T00:00:00Z',
+};
 
 describe('MeterList component', () => {
   beforeEach(() => {
     refetch.mockReset();
     mockedUseGetMetersQuery.mockReset();
+    mockedUseGetMeterDetailQuery.mockReset();
+    mockedUseGetMeterDetailQuery.mockReturnValue({
+      data: detail,
+      isLoading: false,
+      error: undefined,
+    });
   });
 
   it('renders a skeleton while the meters request is pending', () => {
@@ -185,6 +209,43 @@ describe('MeterList component', () => {
     expect(
       screen.getByText('Mostrando 0 de 2 medidores.'),
     ).toBeInTheDocument();
+  });
+
+  // `GET /api/meters` returns bare ids and there is no bulk detail endpoint, so
+  // each rendered card fetches its own detail. The whole point is that the
+  // fetch follows the VISIBLE set: narrowing many ids down to a couple must
+  // cost a couple of detail calls, not one per backend id.
+  it('fetches detail only for the visible cards after filtering', async () => {
+    const many = [
+      ...Array.from({ length: 100 }, (_, index) => `M-${200 + index}`),
+      'OBJETIVO-1',
+      'OBJETIVO-2',
+    ];
+    mockMeters(many);
+
+    render(<MeterList />);
+
+    fireEvent.change(screen.getByLabelText('Buscar medidor'), {
+      target: { value: 'OBJETIVO' },
+    });
+
+    // The keystroke re-renders the still-unfiltered list before the debounce
+    // settles. Drop those calls so the measurement covers only the settled,
+    // filtered render — the one whose visible set is under test.
+    mockedUseGetMeterDetailQuery.mockClear();
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Mostrando 2 de 102 medidores.'),
+      ).toBeInTheDocument();
+    });
+
+    const requestedIds = new Set(
+      mockedUseGetMeterDetailQuery.mock.calls.map((call) => call[0]),
+    );
+    expect([...requestedIds].sort()).toEqual(['OBJETIVO-1', 'OBJETIVO-2']);
+    expect(requestedIds.size).toBe(2);
+    expect(screen.getAllByRole('link')).toHaveLength(2);
   });
 
   it('keeps the search working under StrictMode\'s double-invoked effects', async () => {

@@ -1,12 +1,13 @@
 "use client";
-import Link from "next/link";
 import { useState } from "react";
 
-import { Empty, Input, Listy, Skeleton, Space, Typography } from "antd";
+import { Empty, Input, Skeleton, Space, Typography } from "antd";
 
 import { useGetMetersQuery } from "@/features/api/apiSlice";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 
+import { MeterCard } from "./MeterCard";
+import styles from "./MeterList.module.scss";
 import {
   RequestError,
   requestErrorMessage,
@@ -78,6 +79,10 @@ export function MeterList({ headingLevel = 1 }: MeterListProps) {
       size="large"
       role="region"
       aria-label="Medidores"
+      // The grid must fill the page container rather than shrink-wrap: `Space`
+      // lays out as `inline-flex`, so without this the cards would collapse to
+      // their content width.
+      style={{ width: "100%" }}
     >
       {headingLevel !== null && <Title level={headingLevel}>Medidores</Title>}
       {list.length === 0 ? (
@@ -102,14 +107,14 @@ export function MeterList({ headingLevel = 1 }: MeterListProps) {
             // this specific search just found none of them.
             <Empty description="Ningún medidor coincide con la búsqueda." />
           ) : (
-            <Listy
-              virtual={false}
-              items={visibleMeters}
-              rowKey={(meterId: string) => meterId}
-              itemRender={(meterId: string) => (
-                <Link href={`/meter/${meterId}`}>{meterId}</Link>
-              )}
-            />
+            // Only the VISIBLE ids are rendered, and only a rendered card calls
+            // its detail hook: narrowing many meters down to a few costs one
+            // request per visible card, never one per backend id.
+            <div className={styles.grid}>
+              {visibleMeters.map((meterId) => (
+                <MeterCard key={meterId} meterId={meterId} />
+              ))}
+            </div>
           )}
         </Space>
       )}

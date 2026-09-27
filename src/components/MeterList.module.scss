@@ -1,0 +1,9 @@
+/* Responsive card grid that replaces the single-column list. `auto-fill` plus a
+   minimum tracks the container width, so the same rule serves a phone and the
+   1200px shell without a breakpoint. */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: 1rem;
+  width: 100%;
+}
