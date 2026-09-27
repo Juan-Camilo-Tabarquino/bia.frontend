@@ -6,13 +6,15 @@ contract, to avoid a second copy that drifts out of sync with the backend.
 - **Confirmed contract:** [`docs/backend-requirements.md`](backend-requirements.md)
   — the route table, the exact response shapes, the confirmed enum values for
   `type` / `severity` / `status`, and the operational notes.
-- **Asks already resolved by the backend:** in
-  [`docs/backend-requirements.md`](backend-requirements.md) §2 — the anomaly
-  `priority` field, the ordering (confirmed against the backend source and
-  recorded in §2 R1) and the
+- **Backend requests:** in
+  [`docs/backend-requirements.md`](backend-requirements.md) §2 — two asks the
+  backend has already resolved (the anomaly
+  `priority` field and the ordering, confirmed against the backend source and
+  recorded in §2 R1, plus the
   per-anomaly statistical evidence (baseline, per-signal change percentages,
-  correlated events, data-quality flag) are all in place. §3 is the frontend-only
-  markdown decision.
+  correlated events, data-quality flag) are all in place) and one ask that is
+  still **open**: **R3**, the asynchronous analysis lifecycle.
+- §3 of the same document is the frontend-only markdown decision.
 - [`docs/routes.md`](routes.md) — the routes each page consumes today and the three
   RTK Query slices that declare them.
 - The backend repository's own `docs/endpoints.md` and its router/handlers
