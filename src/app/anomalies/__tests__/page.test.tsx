@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { Anomaly } from "@/types/backend";
 import AnomaliesPage from "../page";
 
@@ -162,6 +162,41 @@ function linkNames(): string[] {
   return screen.getAllByRole("link").map((link) => link.textContent ?? "");
 }
 
+/** Builds `count` distinct anomalies so a page's rows can be told apart. */
+function manyAnomalies(count: number): Anomaly[] {
+  return Array.from({ length: count }, (_unused, index) => ({
+    ...anomalies[0],
+    id: `A-${String(index + 1).padStart(3, "0")}`,
+    meter_id: `M-${100 + index}`,
+    priority: index + 1,
+    // One DATA_QUALITY row, so the type filter has exactly one match.
+    type: index === count - 1 ? "DATA_QUALITY" : "REAL_ANOMALY",
+  }));
+}
+
+/** The anomaly links currently on screen, in row order (meter links excluded). */
+function anomalyRowIds(): string[] {
+  return screen
+    .queryAllByRole("link")
+    .filter((link) => link.getAttribute("href")?.startsWith("/anomalies/"))
+    .map((link) => link.textContent ?? "");
+}
+
+function rowIdsFrom(from: number, to: number): string[] {
+  return Array.from({ length: to - from + 1 }, (_unused, index) =>
+    `A-${String(from + index).padStart(3, "0")}`,
+  );
+}
+
+/** The paginator's own subtree, so page items cannot be confused with rows. */
+function paginatorOf(container: HTMLElement) {
+  const element = container.querySelector(".ant-pagination");
+  if (!element) {
+    throw new Error("expected the table to render a paginator");
+  }
+  return within(element as HTMLElement);
+}
+
 async function chooseOption(label: string, optionTitle: string): Promise<void> {
   fireEvent.mouseDown(screen.getByLabelText(label));
   fireEvent.click(await screen.findByTitle(optionTitle));
@@ -238,14 +273,14 @@ describe("AnomaliesPage", () => {
       screen.getByText("El backend no reportó anomalías."),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Showing 0 of 0 anomalies"),
+      screen.getByText("0 de 0 anomalías coinciden con los filtros."),
     ).toBeInTheDocument();
   });
 
   it("renders the filtered count and the rows in the API priority order", () => {
     render(<AnomaliesPage />);
 
-    expect(screen.getByText("Showing 2 of 2 anomalies")).toBeInTheDocument();
+    expect(screen.getByText("2 de 2 anomalías coinciden con los filtros.")).toBeInTheDocument();
     // The API returns the array sorted by ascending priority: M-109 (1) before
     // M-112 (2). The default view leaves that order untouched. Each row now has
     // two links: the anomaly id first (Anomaly column), then its meter id
@@ -319,7 +354,7 @@ describe("AnomaliesPage", () => {
     await chooseOption("Filter by type", "Data quality issue");
 
     await waitFor(() => {
-      expect(screen.getByText("Showing 1 of 2 anomalies")).toBeInTheDocument();
+      expect(screen.getByText("1 de 2 anomalías coinciden con los filtros.")).toBeInTheDocument();
     });
     expect(linkNames()).toEqual(["M-112-2026-09-10T09:00:00Z", "M-112"]);
     expect(screen.getByText("DATA_QUALITY")).toBeInTheDocument();
@@ -330,13 +365,13 @@ describe("AnomaliesPage", () => {
 
     await chooseOption("Filter by type", "Data quality issue");
     await waitFor(() => {
-      expect(screen.getByText("Showing 1 of 2 anomalies")).toBeInTheDocument();
+      expect(screen.getByText("1 de 2 anomalías coinciden con los filtros.")).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
 
     await waitFor(() => {
-      expect(screen.getByText("Showing 2 of 2 anomalies")).toBeInTheDocument();
+      expect(screen.getByText("2 de 2 anomalías coinciden con los filtros.")).toBeInTheDocument();
     });
   });
 
@@ -440,7 +475,7 @@ describe("AnomaliesPage", () => {
     expect(
       screen.getByText("Lista de medidores no disponible"),
     ).toBeInTheDocument();
-    expect(screen.getByText("Showing 2 of 2 anomalies")).toBeInTheDocument();
+    expect(screen.getByText("2 de 2 anomalías coinciden con los filtros.")).toBeInTheDocument();
   });
 
   it("pre-filters by meter_id read from the URL without re-querying", () => {
@@ -448,7 +483,7 @@ describe("AnomaliesPage", () => {
 
     render(<AnomaliesPage />);
 
-    expect(screen.getByText("Showing 1 of 2 anomalies")).toBeInTheDocument();
+    expect(screen.getByText("1 de 2 anomalías coinciden con los filtros.")).toBeInTheDocument();
     expect(linkNames()).toEqual(["M-109-2026-09-12T14:00:00Z", "M-109"]);
   });
 
@@ -463,7 +498,7 @@ describe("AnomaliesPage", () => {
 
     render(<AnomaliesPage />);
 
-    expect(screen.getByText("Showing 1 of 2 anomalies")).toBeInTheDocument();
+    expect(screen.getByText("1 de 2 anomalías coinciden con los filtros.")).toBeInTheDocument();
     expect(linkNames()).toEqual(["M-109-2026-09-12T14:00:00Z", "M-109"]);
     // The URL sort is reflected in the header, so a shared link shows the arrow
     // for the order it carries instead of silently defaulting.
@@ -485,7 +520,7 @@ describe("AnomaliesPage", () => {
       });
     });
     expect(pushUrl).not.toHaveBeenCalled();
-    expect(screen.getByText("Showing 1 of 2 anomalies")).toBeInTheDocument();
+    expect(screen.getByText("1 de 2 anomalías coinciden con los filtros.")).toBeInTheDocument();
   });
 
   it("writes a deep-linkable sort from a header click and clears it on a second click", async () => {
@@ -563,7 +598,7 @@ describe("AnomaliesPage", () => {
     render(<AnomaliesPage />);
 
     // Every invalid value falls back to its default, so the list is unfiltered...
-    expect(screen.getByText("Showing 2 of 2 anomalies")).toBeInTheDocument();
+    expect(screen.getByText("2 de 2 anomalías coinciden con los filtros.")).toBeInTheDocument();
     // ...and no header shows an arrow, which is how the untouched API order is
     // represented...
     for (const name of ["Priority", "Detected at", "Severity", "Confidence"]) {
@@ -588,7 +623,7 @@ describe("AnomaliesPage", () => {
     render(<AnomaliesPage />);
 
     expect(searchBox()).toHaveValue("m-112");
-    expect(screen.getByText("Showing 1 of 2 anomalies")).toBeInTheDocument();
+    expect(screen.getByText("1 de 2 anomalías coinciden con los filtros.")).toBeInTheDocument();
     expect(linkNames()).toEqual(["M-112-2026-09-10T09:00:00Z", "M-112"]);
   });
 
@@ -599,7 +634,7 @@ describe("AnomaliesPage", () => {
 
     // "spike" appears only in the first anomaly's free text, not in any id.
     await waitFor(() => {
-      expect(screen.getByText("Showing 1 of 2 anomalies")).toBeInTheDocument();
+      expect(screen.getByText("1 de 2 anomalías coinciden con los filtros.")).toBeInTheDocument();
     });
     expect(linkNames()).toEqual(["M-109-2026-09-12T14:00:00Z", "M-109"]);
   });
@@ -647,7 +682,7 @@ describe("AnomaliesPage", () => {
     fireEvent.click(emptyStateClear);
 
     await waitFor(() => {
-      expect(screen.getByText("Showing 2 of 2 anomalies")).toBeInTheDocument();
+      expect(screen.getByText("2 de 2 anomalías coinciden con los filtros.")).toBeInTheDocument();
     });
   });
 
@@ -693,12 +728,108 @@ describe("AnomaliesPage", () => {
 
     // And the term must not come back after the debounce window elapses.
     await waitFor(() => {
-      expect(screen.getByText("Showing 2 of 2 anomalies")).toBeInTheDocument();
+      expect(screen.getByText("2 de 2 anomalías coinciden con los filtros.")).toBeInTheDocument();
     });
     expect(searchBox()).toHaveValue("");
     expect(replaceUrl).not.toHaveBeenCalledWith(
       expect.stringContaining("q=zzz"),
       expect.anything(),
+    );
+  });
+
+  it("paginates the anomaly list ten rows at a time", () => {
+    mockLoaded(manyAnomalies(25));
+    const { container } = render(<AnomaliesPage />);
+
+    expect(anomalyRowIds()).toEqual(rowIdsFrom(1, 10));
+
+    fireEvent.click(paginatorOf(container).getByTitle("2"));
+
+    expect(anomalyRowIds()).toEqual(rowIdsFrom(11, 20));
+    // Moving between pages is not a filter or sort change, so the URL is left
+    // exactly as it was.
+    expect(replaceUrl).not.toHaveBeenCalled();
+  });
+
+  it("keeps the filter and the sort while moving between pages", () => {
+    mockedUseSearchParams.mockReturnValue(
+      new URLSearchParams("type=REAL_ANOMALY&sort=priority"),
+    );
+    mockLoaded(manyAnomalies(25));
+    const { container } = render(<AnomaliesPage />);
+
+    // 24 of the 25 rows match the type filter; the last one is DATA_QUALITY.
+    expect(
+      screen.getByText("24 de 25 anomalías coinciden con los filtros."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "Priority" }),
+    ).toHaveAttribute("aria-sort", "ascending");
+
+    fireEvent.click(paginatorOf(container).getByTitle("2"));
+
+    expect(anomalyRowIds()).toEqual(rowIdsFrom(11, 20));
+    // The filter still counts 24 matches and the header still shows the sort:
+    // paging did not drop either.
+    expect(
+      screen.getByText("24 de 25 anomalías coinciden con los filtros."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "Priority" }),
+    ).toHaveAttribute("aria-sort", "ascending");
+    expect(replaceUrl).not.toHaveBeenCalled();
+  });
+
+  it("does not strand the user on a page a filter removes", async () => {
+    mockLoaded(manyAnomalies(25));
+    const { container } = render(<AnomaliesPage />);
+
+    fireEvent.click(paginatorOf(container).getByTitle("3"));
+    expect(anomalyRowIds()).toEqual(rowIdsFrom(21, 25));
+
+    await chooseOption("Filter by type", "Data quality issue");
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("1 de 25 anomalías coinciden con los filtros."),
+      ).toBeInTheDocument();
+    });
+    // Page 3 no longer exists, so the single matching row must be on screen and
+    // the paginator back on page 1 instead of an empty page.
+    expect(anomalyRowIds()).toEqual(["A-025"]);
+    expect(paginatorOf(container).getByTitle("1")).toHaveClass(
+      "ant-pagination-item-active",
+    );
+  });
+
+  it("states the filter match count without claiming every match is visible", () => {
+    mockLoaded(manyAnomalies(25));
+    render(<AnomaliesPage />);
+
+    // The status line reports how many rows MATCH the filters, which is 25 here,
+    // while the paginated table shows only one page of them. The wording never
+    // says those 25 rows are all on screen -- antd's paginator, not this line,
+    // conveys the page window -- so the two cannot be read as contradictory.
+    expect(
+      screen.getByText("25 de 25 anomalías coinciden con los filtros."),
+    ).toBeInTheDocument();
+    expect(anomalyRowIds()).toHaveLength(10);
+    expect(
+      screen.queryByText(/Mostrando \d+ de \d+ anomal/),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows every row and one page when the result set fits exactly one page", () => {
+    mockLoaded(manyAnomalies(10));
+    const { container } = render(<AnomaliesPage />);
+
+    expect(anomalyRowIds()).toEqual(rowIdsFrom(1, 10));
+    expect(
+      screen.getByText("10 de 10 anomalías coinciden con los filtros."),
+    ).toBeInTheDocument();
+    expect(container.querySelectorAll(".ant-pagination-item")).toHaveLength(1);
+    expect(paginatorOf(container).getByTitle("1")).toHaveClass(
+      "ant-pagination-item-active",
     );
   });
 });

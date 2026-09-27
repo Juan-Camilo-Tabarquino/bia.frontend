@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import type { Anomaly } from "@/types/backend";
 import { anomalySortDefinitions } from "../anomalyFiltering";
 import { AnomalyTable } from "../AnomalyTable";
@@ -65,6 +65,39 @@ const dataQualityAnomaly: Anomaly = {
   ],
   data_quality: { flagged: true, reason: "power factor 0.720 below 0.85" },
 };
+
+/** Builds `count` distinct anomalies so a page's rows can be told apart. */
+function makeAnomalies(count: number): Anomaly[] {
+  return Array.from({ length: count }, (_unused, index) => ({
+    ...realAnomaly,
+    id: `A-${String(index + 1).padStart(3, "0")}`,
+    meter_id: `M-${100 + index}`,
+    priority: index + 1,
+  }));
+}
+
+/** The anomaly links currently on screen, in row order (meter links excluded). */
+function renderedAnomalyIds(): string[] {
+  return screen
+    .queryAllByRole("link")
+    .filter((link) => link.getAttribute("href")?.startsWith("/anomalies/"))
+    .map((link) => link.textContent ?? "");
+}
+
+function anomalyIds(from: number, to: number): string[] {
+  return Array.from({ length: to - from + 1 }, (_unused, index) =>
+    `A-${String(from + index).padStart(3, "0")}`,
+  );
+}
+
+/** The paginator's own subtree, so page items cannot be confused with cells. */
+function paginatorOf(container: HTMLElement) {
+  const element = container.querySelector(".ant-pagination");
+  if (!element) {
+    throw new Error("expected the table to render a paginator");
+  }
+  return within(element as HTMLElement);
+}
 
 describe("AnomalyTable", () => {
   it("renders every required field for each anomaly", () => {
@@ -331,5 +364,158 @@ describe("AnomalyTable header sorting", () => {
     expect(
       screen.getByRole("columnheader", { name: "Priority" }),
     ).not.toHaveAttribute("aria-sort");
+  });
+});
+
+describe("AnomalyTable pagination", () => {
+  it("splits the list across pages at the readings table page size", () => {
+    const { container } = render(
+      <AnomalyTable anomalies={makeAnomalies(25)} onSortChange={jest.fn()} />,
+    );
+
+    // Ten rows, the same page size `ReadingsTable` uses, and the page buttons
+    // antd derives from the row count.
+    expect(renderedAnomalyIds()).toEqual(anomalyIds(1, 10));
+    expect(paginatorOf(container).getByTitle("3")).toBeInTheDocument();
+
+    fireEvent.click(paginatorOf(container).getByTitle("2"));
+    expect(renderedAnomalyIds()).toEqual(anomalyIds(11, 20));
+
+    fireEvent.click(paginatorOf(container).getByTitle("3"));
+    expect(renderedAnomalyIds()).toEqual(anomalyIds(21, 25));
+  });
+
+  it("keeps the dashboard preview control-free and renders every row", () => {
+    // The dashboard passes no `onSortChange`, which is what marks the table as a
+    // static preview. It must gain neither a sort arrow nor a paginator.
+    const { container } = render(<AnomalyTable anomalies={makeAnomalies(5)} />);
+
+    expect(container.querySelector(".ant-pagination")).toBeNull();
+    expect(renderedAnomalyIds()).toHaveLength(5);
+  });
+
+  it("uses antd's own single-page paginator for an interactive list", () => {
+    // antd shows the paginator even for a single page; the full list keeps that
+    // default (like `ReadingsTable`), unlike the preview above, which opts out.
+    const { container } = render(
+      <AnomalyTable anomalies={makeAnomalies(10)} onSortChange={jest.fn()} />,
+    );
+
+    expect(renderedAnomalyIds()).toEqual(anomalyIds(1, 10));
+    expect(container.querySelectorAll(".ant-pagination-item")).toHaveLength(1);
+    expect(paginatorOf(container).getByTitle("1")).toHaveClass(
+      "ant-pagination-item-active",
+    );
+  });
+
+  it("honours an explicit pagination opt-out", () => {
+    const { container } = render(
+      <AnomalyTable
+        anomalies={makeAnomalies(25)}
+        onSortChange={jest.fn()}
+        pagination={false}
+      />,
+    );
+
+    expect(container.querySelector(".ant-pagination")).toBeNull();
+    expect(renderedAnomalyIds()).toHaveLength(25);
+  });
+
+  it("does not leave the user on a page the list no longer has", () => {
+    const { container, rerender } = render(
+      <AnomalyTable anomalies={makeAnomalies(25)} onSortChange={jest.fn()} />,
+    );
+
+    fireEvent.click(paginatorOf(container).getByTitle("3"));
+    expect(renderedAnomalyIds()).toEqual(anomalyIds(21, 25));
+
+    // The list shrinks to a single page: page 3 cannot survive it.
+    rerender(
+      <AnomalyTable anomalies={makeAnomalies(4)} onSortChange={jest.fn()} />,
+    );
+
+    expect(renderedAnomalyIds()).toEqual(anomalyIds(1, 4));
+    expect(paginatorOf(container).getByTitle("1")).toHaveClass(
+      "ant-pagination-item-active",
+    );
+  });
+
+  it("does not jump back to an abandoned page when the list grows again", () => {
+    const { container, rerender } = render(
+      <AnomalyTable anomalies={makeAnomalies(25)} onSortChange={jest.fn()} />,
+    );
+
+    fireEvent.click(paginatorOf(container).getByTitle("3"));
+    expect(renderedAnomalyIds()).toEqual(anomalyIds(21, 25));
+
+    rerender(
+      <AnomalyTable anomalies={makeAnomalies(4)} onSortChange={jest.fn()} />,
+    );
+    rerender(
+      <AnomalyTable anomalies={makeAnomalies(25)} onSortChange={jest.fn()} />,
+    );
+
+    // The page was RESET when the list shrank, so growing it back starts at the
+    // top instead of resurrecting page 3 the user already left behind. Clamping
+    // alone would resurrect it.
+    expect(renderedAnomalyIds()).toEqual(anomalyIds(1, 10));
+    expect(paginatorOf(container).getByTitle("1")).toHaveClass(
+      "ant-pagination-item-active",
+    );
+  });
+
+  it("never shows a page that no longer exists when the page count shrinks", () => {
+    const { container, rerender } = render(
+      <AnomalyTable anomalies={makeAnomalies(25)} onSortChange={jest.fn()} />,
+    );
+
+    fireEvent.click(paginatorOf(container).getByTitle("3"));
+    expect(renderedAnomalyIds()).toEqual(anomalyIds(21, 25));
+
+    // A larger page size turns the three pages into one. The row count is
+    // unchanged, so the reset above cannot fire: antd's own current-clamping is
+    // what has to keep the user off a page that no longer exists.
+    rerender(
+      <AnomalyTable
+        anomalies={makeAnomalies(25)}
+        onSortChange={jest.fn()}
+        pagination={{ pageSize: 25 }}
+      />,
+    );
+
+    expect(renderedAnomalyIds()).toEqual(anomalyIds(1, 25));
+    expect(container.querySelectorAll(".ant-pagination-item")).toHaveLength(1);
+    expect(paginatorOf(container).getByTitle("1")).toHaveClass(
+      "ant-pagination-item-active",
+    );
+  });
+
+  it("renders no paginator for an empty list", () => {
+    // The page never reaches this state (it shows its own empty state instead),
+    // but the component must still be sane: antd itself drops the paginator when
+    // there is nothing to page, which is the one-page boundary already handled.
+    const { container } = render(
+      <AnomalyTable anomalies={[]} onSortChange={jest.fn()} />,
+    );
+
+    expect(renderedAnomalyIds()).toEqual([]);
+    expect(container.querySelector(".ant-pagination")).toBeNull();
+    expect(container.querySelectorAll("tbody tr")).toHaveLength(1);
+  });
+
+  it("leaves the paginator's strings to antd and keeps its controls reachable", () => {
+    const { container } = render(
+      <AnomalyTable anomalies={makeAnomalies(25)} onSortChange={jest.fn()} />,
+    );
+    const paginator = paginatorOf(container);
+
+    // antd's own (still English; phase 6 localises them) control names and page
+    // numbers are all reachable...
+    expect(paginator.getByTitle("Previous Page")).toBeInTheDocument();
+    expect(paginator.getByTitle("Next Page")).toBeInTheDocument();
+    expect(paginator.getByTitle("2")).toBeInTheDocument();
+    // ...and this table adds no total label of its own that could stay
+    // untranslated or restate the count the page status owns.
+    expect(container.querySelector(".ant-pagination-total-text")).toBeNull();
   });
 });

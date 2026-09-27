@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { Table, Tag } from "antd";
 import type { TableColumnsType } from "antd";
 import type {
@@ -23,6 +24,16 @@ import {
 } from "./anomalyFiltering";
 import styles from "./AnomalyTable.module.scss";
 
+/**
+ * Rows per page for the full list.
+ *
+ * Deliberately the same `pageSize` `ReadingsTable` uses, so the two tables page
+ * identically. antd's own defaults are left untouched everywhere else (no
+ * `showSizeChanger`, no `showQuickJumper`, no `showTotal`, no locale override),
+ * which is what keeps the two paginators consistent.
+ */
+const DEFAULT_PAGE_SIZE = 10;
+
 interface AnomalyTableProps {
   anomalies: Anomaly[];
   /**
@@ -42,6 +53,24 @@ interface AnomalyTableProps {
    * the change.
    */
   onSortChange?: (sortKey: AnomalySortKey) => void;
+  /**
+   * Pagination for the list.
+   *
+   * `undefined` (the default) resolves from what the table *is*, mirroring how
+   * the sort props above are optional:
+   *
+   * - an interactive list (a caller passed `onSortChange`) paginates exactly
+   *   like `ReadingsTable` -- page size 10, antd's own defaults -- so
+   *   `/anomalies` gets pagination without passing anything;
+   * - a static preview (no `onSortChange`, which is the dashboard's fixed
+   *   `slice(0, 5)` overview) renders every row with **no paginator at all**.
+   *   The dashboard owns no state to hold a page, so a paginator there would
+   *   lead nowhere, exactly like a sort arrow would.
+   *
+   * Pass `false` to force a control-free table regardless, or a config to page
+   * with a different size.
+   */
+  pagination?: { pageSize: number } | false;
 }
 
 /** The sort fields the table can expose, derived from the single registry. */
@@ -72,15 +101,61 @@ function isSortField(value: unknown): value is AnomalySortField {
  *   question than "what should I look at first".
  * - `type` and `status` are categories with no natural order; offering a sort
  *   would invent a ranking the domain does not have.
+ *
+ * Pagination is client-side over the already-filtered array (the endpoint takes
+ * no query parameters): the full list pages at `DEFAULT_PAGE_SIZE` rows, and a
+ * static preview -- the dashboard overview -- renders every row it was given
+ * with no paginator. See the `pagination` prop for the exact rule.
  */
 export function AnomalyTable({
   anomalies,
   sortKey = "backend",
   onSortChange,
+  pagination,
 }: AnomalyTableProps) {
   // A header that cannot write the sort it asks for is worse than no header:
   // interactive sorting exists only when the caller owns the state.
   const interactive = onSortChange !== undefined;
+
+  // See the `pagination` prop: an interactive list pages, a static preview does
+  // not. An explicit `pagination` value always wins.
+  const paginationConfig =
+    pagination !== undefined
+      ? pagination
+      : interactive
+        ? { pageSize: DEFAULT_PAGE_SIZE }
+        : false;
+
+  const [pagedList, setPagedList] = useState({
+    page: 1,
+    // The row count the page was chosen for, so a change of list can be spotted.
+    length: anomalies.length,
+  });
+
+  // The page the user is on belongs to the set of rows it was drawn from. That
+  // set changes whenever the caller's filters or sort produce a different list
+  // (or a refetch changes the count), and the old page can stop existing -- page
+  // 3 of a result set that just shrank to 4 rows. Resetting to the first page is
+  // the honest destination when the underlying list changes.
+  //
+  // This adjusts the state during render (React's documented pattern, already
+  // used in `AnomalyFilters`) instead of from an effect: an effect would commit
+  // one stale page first, and this repo's `react-hooks` rules reject a
+  // synchronous `setState` in an effect body outright. Keying on the row COUNT,
+  // a primitive, makes it a one-shot adjustment -- the dashboard rebuilds its
+  // preview array with `slice()` on every render, so an identity-keyed check
+  // could never settle.
+  const listChanged = pagedList.length !== anomalies.length;
+  if (listChanged) {
+    setPagedList({ page: 1, length: anomalies.length });
+  }
+
+  // The render that adjusts the state still holds the OLD `pagedList`, so fall
+  // back to page 1 immediately rather than showing a page that was just
+  // invalidated. (antd also clamps an out-of-range `current`, e.g. when the page
+  // size changes under a fixed row count; this makes the reset part of this
+  // component's own output instead of an antd side effect.)
+  const currentPage = listChanged ? 1 : pagedList.page;
 
   /**
    * The antd props that make one column sortable by its registry definition.
@@ -183,25 +258,43 @@ export function AnomalyTable({
       rowKey="id"
       columns={columns}
       dataSource={anomalies}
-      pagination={false}
+      pagination={
+        paginationConfig === false
+          ? false
+          : { pageSize: paginationConfig.pageSize, current: currentPage }
+      }
       size="middle"
       tableLayout="auto"
       aria-label="Anomaly list"
       rowClassName={(anomaly) =>
         isDataQuality(anomaly.type) ? styles.dataQualityRow : ""
       }
-      onChange={(_pagination, _filters, sorter) => {
+      onChange={(paginationInfo, _filters, sorter) => {
+        // antd reports the page the user navigated to alongside any sort change.
+        if (typeof paginationInfo.current === "number") {
+          setPagedList({
+            page: paginationInfo.current,
+            length: anomalies.length,
+          });
+        }
         if (!onSortChange) {
           return;
         }
         const active = Array.isArray(sorter) ? sorter[0] : sorter;
         // No active sorter (the user clicked the active header to turn it off)
         // means the untouched API order, which the URL already names `backend`.
-        if (active?.order && isSortField(active.columnKey)) {
-          onSortChange(active.columnKey);
-          return;
+        const nextSort: AnomalySortKey =
+          active?.order && isSortField(active.columnKey)
+            ? active.columnKey
+            : "backend";
+        // antd funnels pagination and sorting through this one callback. Only
+        // report an ORDERING change: a page click carries the ordering that is
+        // already active, and reporting it (or defaulting it to `backend`) here
+        // would rewrite -- or silently drop -- the sort the user chose just
+        // because they moved to the next page.
+        if (nextSort !== sortKey) {
+          onSortChange(nextSort);
         }
-        onSortChange("backend");
       }}
     />
   );

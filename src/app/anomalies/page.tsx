@@ -62,6 +62,12 @@ export default function AnomaliesPage() {
  * link keeps working) and every change is written back with `router.replace`,
  * so refreshing or sharing the URL restores the same view without adding a
  * history entry and without the backend ever seeing these parameters.
+ *
+ * Paging is client-side and stays out of the URL: the table pages the filtered
+ * array at its own default size and owns the page number internally. That keeps
+ * a page change from touching the filters or the sort, and the table resets to
+ * page 1 whenever the filtered count changes, so a filter can never strand the
+ * user on a page that no longer exists.
  */
 function AnomaliesContent() {
   const [urlState, setUrlState] = useUrlState<AnomalyUrlState>(anomalyUrlSchema);
@@ -141,8 +147,17 @@ function AnomaliesContent() {
       </section>
 
       <section aria-label="Anomaly results" style={{ marginTop: "1.5rem" }}>
+        {/* The list below is paginated, so this count may only speak about how
+            many anomalies MATCH the filters -- the old "Showing X of Y" claimed
+            every X was on screen while antd renders a single page. Keeping it as
+            the match count (against the fetched total) and letting antd's
+            paginator convey which page is on screen is the resolution this task
+            chose: the two numbers here are both filter/total facts, and the
+            paginator owns the page window, so nothing on the page can be read as
+            "these many are visible" when they are not. */}
         <Text role="status" style={{ display: "block", marginBottom: "1rem" }}>
-          Showing {visibleAnomalies.length} of {anomalies.length} anomalies
+          {visibleAnomalies.length} de {anomalies.length} anomalías coinciden con
+          los filtros.
         </Text>
 
         {anomalies.length === 0 ? (

@@ -1,6 +1,6 @@
 # Feature: refactor/improve-ui — phase 4 (Interactividad)
 
-**Status: IN PROGRESS — 5/8 (T1, T2, T2b, T3, T5 done).** Branch `refactor/improve-ui`, base `cdb610b` (phase 3 complete).
+**Status: IN PROGRESS — 6/8 (T1, T2, T2b, T3, T4, T5 done; 1 debt task open).** Branch `refactor/improve-ui`, base `cdb610b` (phase 3 complete).
 
 **Reference:** `odd/tasks/refactor-improve-ui.md` (the whole feature and its phases),
 `docs/ui-refactor-plan.md` (the resume entry point), and the 12 open advisories recorded there.
@@ -114,8 +114,11 @@ Measured against the branch at `cdb610b`. Corrections to the plan's assumptions 
 - [ ] **T3 — Header sorting on `AnomalyTable`.** Move sorting onto antd column `sorter` props, keeping the
       existing `applyAnomalySort` semantics (and the "API order" default) so the page's `Select` and the
       header do not fight. `priority` stays the API value, never re-derived.
-- [ ] **T4 — Consistent pagination.** `AnomalyTable` paginates like `ReadingsTable` instead of rendering
-      every row, with a page size that suits the list and a row count the user can read.
+- [x] **T4 — Consistent pagination.** Done: `AnomalyTable` paginates at `ReadingsTable`'s page size, the dashboard
+      preview stays control-free, page stranding is impossible, and the ambiguous count wording was removed. See the
+      T4 result below.
+- [ ] **T-SUITE — Reduce the page suite's runtime.** ~2.3 s per test against Jest's 5 s default; one flaky timeout
+      observed. See the open-debt section above.
 - [ ] **T5 — Cross-links meter ↔ anomaly.** `meter_id` becomes a link to `/meter/{id}` on the anomaly detail
       and in the table; the anomaly list keeps filtering by the same id without navigating.
 - [ ] **T6 — Readable dates.** One formatting helper, used everywhere a date is rendered to the user
@@ -135,7 +138,8 @@ Measured against the branch at `cdb610b`. Corrections to the plan's assumptions 
 | T2b | `a533122` | eslint 0 · tsc 0 · **26 suites / 177 tests** · next build 0 (7 routes) | 2 gate mutations by the verifier; real-Chrome probes by the parent | `gentle-ai-verify`: PASS WITH FINDINGS, no BLOCKER. 3 findings fixed; 4 recorded |
 | T3 | _(this commit)_ | eslint 0 · tsc 0 · **26 suites / 196 tests** · next build 0 (7 routes) | 2 gate mutations by the parent | `gentle-ai-verify`: PASS WITH FINDINGS, no BLOCKER. 1 finding fixed; 4 recorded |
 | T5 | _(this commit)_ | eslint 0 · tsc 0 · **26 suites / 202 tests** · next build 0 (7 routes) | n/a — verified by reading the whole diff (small, presentation-only) | parent audit: code matches the `MeterDetail.tsx:72` precedent; assertions strengthened, none loosened |
-| T4 | — | — | — | — |
+| T4 | _(this commit)_ | eslint 0 · tsc 0 · **26 suites / 217 tests** · next build 0 (7 routes) | 3 mutations by the worker, 1 load-bearing | parent audit: the `onChange` guard fixes a URL-rewrite bug the new tests caught |
+| **T-SUITE** | — | — | — | **OPEN DEBT**: the page suite runs ~2.3 s/test (~90 s total, was ~15 s at `cdb610b`). One flaky timeout observed. See below. |
 | T5 | — | — | — | — |
 | T6 | — | — | — | — |
 | T7 | — | — | — | — |
@@ -320,6 +324,48 @@ legitimately gained a link, so the counts changed. The audit confirmed every one
 the full ordered list of links on the page — now also pinning each meter link's position between its row's
 anomaly link and the next row. One table-suite expectation was changed from `getByText("M-109")` to a role+name
 lookup plus an href assertion, which is strictly stronger.
+
+### T4 result — consistent pagination, and a URL bug the new tests caught
+
+`AnomalyTable` now paginates at page size 10 — the same size `ReadingsTable` already used, so the two tables finally agree —
+through an optional `pagination` prop whose default follows the same rule as the sort props: an **interactive** list
+(a caller passed `onSortChange`, which is `/anomalies`) pages with antd's defaults, while a **static preview** (no
+`onSortChange`, which is the dashboard's fixed 5-row overview) renders every row and no paginator. `ReadingsTable`
+was deliberately left unchanged: its `pagination={{ pageSize: 10 }}` is exactly the reference being reproduced, so
+touching it would churn the readings page for nothing.
+
+**The bug the new tests caught, which is the most valuable part of this task.** antd funnels pagination and sorting
+through the **same** table `onChange`. The previous version reported the sort on every call, so clicking to the next
+page re-reported the active ordering — and when no sorter was active it fell through to `onSortChange("backend")`,
+**rewriting the URL and discarding the ordering the user had chosen**. That is the single most common interaction on
+the page. The fix reports an ordering only when it genuinely changed (`nextSort !== sortKey`), and removing that
+guard fails two of the new page tests.
+
+**Count ambiguity resolved** by removing the word that caused it. The line read `Showing X of Y anomalies`, which
+implied every match was visible; it now reads
+`25 de 25 anomalías coinciden con los filtros.` The visible window is conveyed by antd's own paginator, which keeps
+the "same antd defaults" requirement intact (`showTotal` would have broken it).
+
+**Page stranding handled at the source.** The current page is controlled and reset during render whenever the row
+count the caller passes changes, so a filter or sort that shrinks the result set cannot leave the user on page 3 of
+one page, and growing it again does not resurrect an abandoned page. A mutation proved the reset load-bearing.
+
+**Recorded risk:** the dashboard's lack of a paginator is guaranteed *structurally* (it passes no interactive
+props) but **implicitly** — `src/app/dashboard/page.tsx` was outside the allowed surfaces, so it does not pass an
+explicit `pagination={false}`, and a future dashboard change that started passing `onSortChange` would silently gain
+a paginator. Worth making explicit when that file is next authorized.
+
+### OPEN DEBT — the page suite is near the Jest timeout
+
+Measured during T4: `src/app/anomalies/__tests__/page.test.tsx` runs **30 tests in ~69 s (~2.3 s per test)**, while
+the equivalent `ReadingsTable` suite does 6 tests in ~2 s. The full suite went from ~15 s at `cdb610b` to ~90 s.
+Jest's default per-test timeout is 5 s and `jest.config.js` sets none, so the tests now sit close enough to the limit
+to flake: **one timeout failure was observed and could not be reproduced in two subsequent clean runs.**
+
+The cause is that 31 tests each render the full page, and the page now renders an antd table *with a paginator*.
+This is pre-existing debt that this task aggravated rather than introduced. It was deliberately NOT papered over with a
+raised `testTimeout`, and it was NOT bundled into T4's commit: it is its own task. Left unattended, the next phase that
+adds tests will turn it into a genuine red suite and the failure will be blamed on whatever code is in flight.
 
 ## Verification plan (phase 4)
 

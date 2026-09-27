@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import ReadingsTable from '../ReadingsTable';
 import type { Reading } from '@/types/backend';
 
@@ -86,5 +86,26 @@ describe('ReadingsTable', () => {
     expect(
       screen.getByRole('table', { name: /Current \(A\), Power factor, Status/ }),
     ).toBeInTheDocument();
+  });
+
+  // This is the pagination contract `AnomalyTable` was aligned to: page size 10,
+  // antd's own defaults, and reachable controls. If this changes, the two
+  // tables are no longer consistent.
+  it('paginates readings ten rows at a time with reachable controls', () => {
+    const many: Reading[] = Array.from({ length: 25 }, (_unused, index) => ({
+      ...sampleData[0],
+      Timestamp: `2024-01-${String(index + 1).padStart(2, '0')}T00:00:00Z`,
+    }));
+
+    const { container } = render(<ReadingsTable data={many} loading={false} />);
+
+    expect(container.querySelectorAll('tbody tr')).toHaveLength(10);
+
+    const paginator = container.querySelector('.ant-pagination') as HTMLElement;
+    expect(within(paginator).getByTitle('1')).toBeInTheDocument();
+    expect(within(paginator).getByTitle('2')).toBeInTheDocument();
+    expect(within(paginator).getByTitle('3')).toBeInTheDocument();
+    expect(within(paginator).getByTitle('Next Page')).toBeInTheDocument();
+    expect(within(paginator).getByTitle('Previous Page')).toBeInTheDocument();
   });
 });
