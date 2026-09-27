@@ -16,11 +16,11 @@ operativo.
 | | |
 | --- | --- |
 | Rama | `refactor/improve-ui`, desde `main` (`ab85e7e8`) |
-| Fases hechas | **0+1, 2, 3, 4, 5** (más el arreglo del tema); la **6** está implementada y comiteada, falta el cierre |
-| Fases pendientes | **Cierre de la fase 6**: registrar y revisar lo ya comiteado |
+| Fases hechas | **0+1, 2, 3, 4, 5 y 6** (más el arreglo del tema) |
+| Fases pendientes | **Ninguna.** El refactor está cerrado; lo que queda es la decisión de merge a `main` |
 | Suite | **32 suites / 279 tests** en `55399056` (arrancó en 18/118, y era 24/155 al cerrar la fase 3) |
 | Gates | `lint` 0 · `tsc --noEmit` 0 · `test` 279/279 · `next build` 0 (8 rutas) en `55399056` |
-| Review nativo | Último estado **registrado** (fase 3): **4 recibos, los 4 aprobados**, autoridad quemada. Las fases 4 y 5 se cerraron con **verificación independiente** (`gentle-ai-verify`, PASS WITH FINDINGS) registrada en sus propios ODD; **si cada una tiene un recibo de review nativo no se puede leer de los documentos → desconocido**. La fase 6 está comiteada y su review nativo sigue **pendiente** |
+| Review nativo | Último estado **registrado** (fase 3): **4 recibos, los 4 aprobados**, autoridad quemada. Las fases 4 y 5 se cerraron con **verificación independiente** (`gentle-ai-verify`, PASS WITH FINDINGS) registrada en sus propios ODD; **si cada una tiene un recibo de review nativo no se puede leer de los documentos → desconocido**. La fase 6 tiene recibo propio: **APROBADA** (lineage `review-ea04c99651f669cf`), autoridad quemada, 3 advisories no bloqueantes |
 | Decisiones fijadas | 3 destinos con `/meters` como entrada · **dark por defecto + toggle** · teal de Bia · health como **toast al arrancar** (sin polling ni chip) · **Inter** · `@ant-design/icons` permitido (solo componentes gratis de antd) |
 
 ## Fases hechas
@@ -33,7 +33,7 @@ operativo.
 | **3 — Estados y feedback** | `4820b93f` | **Un solo vocabulario de error con "Reintentar"** (eran seis presentaciones sin salida), **toast de health al arrancar** (dispara exactamente una vez, sin polling), `Skeleton` y `Empty` donde había regiones en blanco, `"Actualizando…"` para que un refetch sea visible sin blanquear contenido, y las deprecaciones de antd 6 saneadas (`Spin tip`, `Descriptions children`). `HealthStatus.tsx` eliminado (estaba muerto) |
 | **4 — Interactividad** | `62dceaa6` … `026794d1` (T1–T8 + verificación) · registro `64c069bc` · `1147bc71` · `d3f5ca19` | Búsqueda con debounce en medidores y anomalías (con el gate que la limpieza necesitaba), orden desde los headers con un registro único, paginación consistente, **deep links de filtros y orden** por URL, cross-links medidor ↔ anomalía, fechas por un formateador único, **KPI con pastilla de delta** y banner de insight. Cierra `R3-retry-loading-flag` y `R3-breadcrumb-encoding` |
 | **5 — Chart** | `a845fc24` (código + registro en el mismo commit) | **Línea de referencia del baseline** (el `baseline.mean` existía en el DTO y el mapeo lo descartaba; la línea se dibuja solo en Consumo y en las otras señales hay un `role="note"` que lo explica), leyenda con swatches, grid suave, unidad en el eje Y y tooltip tematizado. Los tres mocks inline de recharts se unificaron en `src/test-support/rechartsMock.ts` |
-| **6 — Español** | `55399056` (implementación) · registro en `odd/tasks/refactor-improve-ui-phase-6.md`, **pendiente de commitear** | App traducida al español y antd con `locale={esES}` + `dayjs.locale("es")`; los cuatro mapas de labels que faltaban. Gates: 32 suites / 279 tests, los cuatro en 0. La review nativa **todavía no corrió** |
+| **6 — Español** | `55399056` (implementación) · registro `a07a1c16` | App traducida al español y antd con `locale={esES}` + `dayjs.locale("es")`; los cuatro mapas de labels que faltaban. Gates: 32 suites / 279 tests, los cuatro en 0. Review nativo **APROBADO** (lineage `review-ea04c99651f669cf`), autoridad quemada, 3 advisories no bloqueantes |
 
 ### Dos cosas que valen más que el código
 
@@ -76,15 +76,23 @@ Estas no son sugerencias: son cosas que ya costaron un ciclo cada una.
 
 ## Fases pendientes
 
-Queda **cerrar la fase 6**: su implementación ya está comiteada (`55399056`), faltan el registro ODD y la
-review nativa.
+**Ninguna.** Las fases 0+1 a 6 están hechas, comiteadas, pusheadas y (la 6) con review nativo aprobado.
 
-### Fase 6 — cierre
+### El refactor está cerrado — queda la decisión de merge
 
-- **Registro**: `odd/tasks/refactor-improve-ui-phase-6.md`, hoy **untracked** y pendiente de commitear.
-- **Review nativo**: el preflight (`inspect` → `start` → `status` → `capture` → `acknowledge-approved`) todavía
-  **no corrió** para este candidato.
+- **Merge a `main`**: es tuya, no del flujo de trabajo. `refactor/improve-ui` está 25 commits adelante de `main`.
+- **El review de la rama acumulada ya no es posible.** El primer `START` falló con `lens_context_budget_exceeded`
+  sobre el candidato por defecto (`main` → rama: 86 paths, fases 3 a 6). No se creó autoridad y nada quedó que
+  reparar; revisar la fase 6 sola necesitó `baseRef` en la punta de la fase 5 y bajó a 38 paths. Cualquier fase
+  que se agregue de acá en adelante necesita su propia rebanada revisada.
+- **Registro**: `odd/tasks/refactor-improve-ui-phase-6.md`, ya comiteado (`a07a1c16`). El export de sesión
+  `docs/01a0decd-bia-frontend-2026-09-26.jsonl` quedó fuera del inventario vía `.git/info/exclude` (local, nunca
+  comiteado), no como parte del entregable.
 - **Deuda arrastrada**: `T-SUITE` (~2.3 s/test contra el default de 5 s de Jest); ni confirmada ni refutada.
+- **Config del entorno que hubo que arreglar** (no es de este repo): `~/.pi/gentle-ai/models.json` no tenía ninguna
+  entrada, y **no hay modelo ambiente de fallback** por diseño, así que el relay de la lente se rehusó con
+  `reviewer-config-invalid` antes de correr nada. Se configuraron las seis claves: las cuatro lentes más
+  `review-refuter` y `review-validator`.
 
 ## Alcance original de las fases 4 y 5 (ya hechas — se conserva como historia)
 
@@ -118,7 +126,7 @@ en el eje Y y tooltip tematizado — todo mirando su producto, que tiene exactam
 
 ---
 
-## Advisories (15 registrados: 12 de la fase 3 + 3 de la fase 6, más hallazgos del verificador)
+## Advisories (18 registrados: 12 de la fase 3 + 3 de la fase 6 + 3 del review nativo, más hallazgos del verificador)
 
 Todos **no bloqueantes** y explícitamente **no** razón para re-revisar su candidato. De los 12 de la fase 3,
 **3 ya están resueltos** (`R3-1` por `8c7c4982`, y `R3-retry-loading-flag` + `R3-breadcrumb-encoding` en la
@@ -142,6 +150,9 @@ fase 4); el resto sigue abierto. Consolidados también en memoria
 | `status-column-raw-value` | SUGGESTION | `AnomalyTable.tsx:262-265` | La columna **Estado** rinde solo el label, mientras las columnas vecinas muestran el valor crudo al lado. Comportamiento **pre-existente**, que la fase 6 no introdujo. Texto completo en `odd/tasks/refactor-improve-ui-phase-6.md` |
 | `pagination-nesting-spy-order` | SUGGESTION | `src/components/__tests__/paginationLabels.test.tsx` | El spy de `console.error` para `validateDOMNesting` está acoplado al orden de render. Texto completo en `odd/tasks/refactor-improve-ui-phase-6.md` |
 | `pagination-two-tooltips` | SUGGESTION | `src/components/paginationLabels.tsx` | El botón clonado lleva `title` español y el `<li>` conserva el suyo; nunca se midió con un hover real. Texto completo en `odd/tasks/refactor-improve-ui-phase-6.md` |
+| `R3-dashboard-health-raw-value` | SUGGESTION | `src/app/dashboard/page.tsx:195` | Del review nativo (lente `review-reliability`), informativo. Ninguno de los tres abrió corrección. **El texto del claim no se conserva en ningún lado legible**: el recibo está quemado y el registro de consumo terminal guarda solo hashes. Fila con id, lente, ubicación, severidad y disposición, sin parafrasear |
+| `R3-detail-severity-label` | SUGGESTION | `src/components/anomalies/__tests__/anomalyLabels.test.tsx:71-84` | Misma procedencia y misma limitación: `review-reliability`, informativo, claim no conservado |
+| `R3-pagination-wiring` | SUGGESTION | `src/components/__tests__/paginationLabels.test.tsx:35-41` | Misma procedencia y misma limitación: `review-reliability`, informativo, claim no conservado |
 
 **Resuelto en la fase 4, aunque no tuviera advisory propio:** los dos controles de limpieza de `/anomalies` ya
 no comparten nombre accesible — `Limpiar filtros` en la barra de filtros

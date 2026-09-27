@@ -1,7 +1,7 @@
 # Feature: refactor/improve-ui — phase 6 (Spanish)
 
-**Status: CLOSING — implementation committed as `5539905`, all four gates green; C1, C1b and C2 done and
-recorded; C4 and C5 in progress; native review pending (C6).**
+**Status: CLOSED — implementation committed as `5539905`, record as `a07a1c1`, all four gates green, and the
+native review APPROVED with its authority burned (lineage `review-ea04c99651f669cf`).**
 Branch `refactor/improve-ui`, base `a845fc2` (phase 5 done and pushed). The phase-6 implementation landed in
 `5539905` "feat(i18n): translate the app to Spanish, and give antd its es_ES locale" (35 files, 1040 insertions,
 372 deletions).
@@ -61,7 +61,7 @@ The measured scope of our own strings, by file: `AnomalyFilters` 12, `AnomalyDet
 
 | Task | Commit | Gates | Mutation experiment | Review |
 | --- | --- | --- | --- | --- |
-| Phase 6 | `5539905` (35 files, 1040 insertions / 372 deletions) | `npx eslint .` 0 · `npx tsc --noEmit` 0 · `npm test -- --ci` **32 suites / 279 tests** (51.785 s) · `npx next build` 0 (8 routes: 5 static, 3 dynamic) | C1: three mutations on the new suite, each producing its matching failure (M1 removed the `aria-label` → name assertions failed; M2 made the replacement swallow the click → the paging assertion failed; M3 dropped the arrow child → the icon assertion failed). C1b: the decisive mutation is **restoring the wrapping implementation** — the four ORIGINAL assertions still passed while all three new ones failed | **PENDING** — the native review has not run yet (C6). No receipt exists for this candidate |
+| Phase 6 | `5539905` (35 files, 1040 insertions / 372 deletions) | `npx eslint .` 0 · `npx tsc --noEmit` 0 · `npm test -- --ci` **32 suites / 279 tests** (51.785 s) · `npx next build` 0 (8 routes: 5 static, 3 dynamic) | C1: three mutations on the new suite, each producing its matching failure (M1 removed the `aria-label` → name assertions failed; M2 made the replacement swallow the click → the paging assertion failed; M3 dropped the arrow child → the icon assertion failed). C1b: the decisive mutation is **restoring the wrapping implementation** — the four ORIGINAL assertions still passed while all three new ones failed | **APPROVED, authority burned** — lineage `review-ea04c99651f669cf`, target `sha256:c6a8998e…d831`, consumed receipt revision `sha256:2635eb02…4391`, tier `medium`, lens `review-reliability`, 38 paths / 1681 changed lines, correction budget 200 with **no correction opened**. Three non-blocking advisories, listed below |
 
 ## Closing plan (6 tasks)
 
@@ -73,10 +73,36 @@ Tasks are ordered; each closes with a work-unit commit.
 | C1 | **Guard the replaced paginator arrow.** `paginationLabels.tsx` had no test: nothing asserted the Spanish accessible name the `itemRender` produces, and nothing asserted that the replaced `<button>` still advances the page (every existing pagination test clicks a page NUMBER, never the arrow). **Done**: `src/components/__tests__/paginationLabels.test.tsx`, 4 tests, mutation-proven three ways (M1 removed the `aria-label` → name assertions failed; M2 made the replacement swallow the click → the paging assertion failed; M3 dropped the arrow child → the icon assertion failed). `paginationLabels.tsx` left byte-identical, sha256 `786f1296…adc97` before and after all three mutations. 3 suites / 35 tests green. | **done** |
 | C1b | **Fix the defect C1's guard exposed: the replacement NESTED a button inside a button.** `itemRender`'s `element` for `prev`/`next` is already the whole `<button class="ant-pagination-item-link">` antd built, so wrapping it produced invalid HTML, a React `validateDOMNesting` error in dev, and a control still named `left`/`right`. **Done**: `renderPaginationItem` now `cloneElement`s antd's own button with `aria-label` / `title` / `type="button"` and adds no DOM level. Verified in the rendered DOM — exactly one `<button>` per control, with the `<li>` as its parent. Three new assertions added (no `button` inside a `button`, no control named `left`/`right`, and no React nesting warning via a `console.error` spy), for 7 tests in the file. The decisive mutation is **M2, restoring the wrapping implementation**: the four ORIGINAL assertions still passed under it while all three new ones failed — direct proof the old guard could not see the defect that shipped. 3 suites / 38 tests, eslint 0, tsc 0. | **done** |
 | C2 | **Real-browser locale evidence.** The phase exists to fix strings invisible to grep, and `paginationLabels.tsx`'s whole premise is a browser-measured accessible name, so both belong in a real browser. **Done**: all seven items measured over CDP against `next dev` with a stand-in backend, zero console errors and zero hydration warnings across 6 routes (14 messages total, which is what makes the negative falsifiable). See *Real-browser evidence* below. | **done** |
-| C3 | **Commit the phase as work units.** Implementation as one commit, its guard test with it, the record separately. | **in progress** — the implementation landed as `5539905` (guard test included); the record commit is still pending |
-| C4 | **Fill this file's deliverable table** with commit hashes, the gate numbers, the mutation result and the review outcome. | **in progress** — filled above; the Review cell stays `PENDING` until C6 |
-| C5 | **Repair the record drift.** `odd/tasks/refactor-improve-ui.md:3` still reads "phase 0+1 and phase 2 done, 4 phases left" and its phase table marks 4, 5 and 6 `todo`; `docs/ui-refactor-plan.md` still says "Fases pendientes 4, 5, 6", "24 suites / 155 tests", "4 recibos", and lists advisories that are already fixed (at least `R3-retry-loading-flag`). Replacing a phase does not update the text that described it. | **in progress** |
-| C6 | **Native review** of the candidate, then the push decision. | todo |
+| C3 | **Commit the phase as work units.** **Done**: the implementation landed as `5539905` with its guard test inside it, and the record as `a07a1c1`. | **done** |
+| C4 | **Fill this file's deliverable table** with commit hashes, the gate numbers, the mutation result and the review outcome. | **done** |
+| C5 | **Repair the record drift.** `odd/tasks/refactor-improve-ui.md:3` still read "phase 0+1 and phase 2 done, 4 phases left" and its phase table marked 4, 5 and 6 `todo`; `docs/ui-refactor-plan.md` still said "Fases pendientes 4, 5, 6", "24 suites / 155 tests", "4 recibos", and listed advisories that are already fixed (at least `R3-retry-loading-flag`). Replacing a phase does not update the text that described it. **Done** in `a07a1c1`: both documents now describe the branch as it is, the phase-4 and phase-5 scope is kept under a history heading rather than deleted, and the plan's receipt claim was narrowed to what the documents can actually support. | **done** |
+| C6 | **Native review** of the candidate. **Done and APPROVED** — see *The review, and the one obstacle it hit* below. The push is done too: `origin/refactor/improve-ui` is at `a07a1c1`. | **done** |
+
+## The review, and the one obstacle it hit
+
+The first `START` **failed with no authority created**: `lens_context_budget_exceeded` over the candidate the
+provider derives by default, which is the WHOLE branch — 86 paths, phases 3 through 6 accumulated against `main`.
+Nothing had to be abandoned or repaired (`mutation_outcome: not_started`), and retrying that exact candidate
+cannot succeed. The fix was to review the phase as its own work unit, with `baseRef` on phase 5's tip
+(`a845fc24dff084761081cdab024c00f3ecda721d`) and `committedOnly: true`, which cut the candidate to 38 paths and
+let `START` create the lineage.
+
+**That is the durable finding, and it is about the merge, not about phase 6:** the branch cannot be reviewed as
+one candidate. `main` → `refactor/improve-ui` now exceeds the reviewer lens context budget, so whichever phases
+land next will each need their own reviewed slice, and a single review of the whole accumulation is not available.
+
+Two configuration facts learned the hard way, both now fixed and neither about this repository:
+
+- The lens's model comes from `~/.pi/gentle-ai/models.json` keyed by the lens's routing key (`review-<lens>`), and
+there is **no ambient model fallback** by design. No entry existed for any lens, so the first relay refusal was
+`reviewer-config-invalid`, not a candidate problem. The keys are the four lenses plus two host-mediated role keys,
+`review-refuter` and `review-validator`.
+- The `~/.pi/agent/subagents.json` model profiles are a DIFFERENT store: they are `effort`-shaped, while the
+routing config is `thinking`-shaped, and the review lane reads the latter.
+
+Also kept out of every candidate, locally: the session export `docs/01a0decd-bia-frontend-2026-09-26.jsonl` was
+added to `.git/info/exclude` (local-only, never committed) so it stops appearing in the untracked inventory that
+the review's selection step walks.
 
 **Carried debt, not part of this phase:** `T-SUITE` (~2.3 s/test against Jest's 5 s default; one flaky timeout
 observed once in phase 4). The clean 272/272 run in 54.46 s neither confirmed nor refuted it — the flakiness stays
@@ -169,6 +195,9 @@ smoothed over:
 | `status-column-raw-value` | SUGGESTION | `AnomalyTable.tsx:262-265` | The **Estado** column renders the label ALONE (`Sin explicación`), while the two neighbouring enum columns render the raw wire value next to the label (`HIGH \| Alta`, `REAL_ANOMALY \| Anomalía real`) and the detail page renders `Sin explicación (unexplained)`. A reader cross-referencing the API payload cannot see `explained`/`unexplained` in the list. **Pre-existing behaviour phase 6 did not introduce** — phase 6 changed only the column's `title`. Not changed here because it is a user-visible UI decision on a surface under evaluation; the `anomalyLabels.ts` header comment was corrected instead, since it claimed "both halves are required" for a render site that does not do that. |
 | `pagination-nesting-spy-order` | SUGGESTION | `__tests__/paginationLabels.test.tsx` | The `console.error` nesting spy is **order-coupled**: React reports `validateDOMNesting` once per `(child, ancestor)` pair for the life of its module registry, so that test must stay the first paginator render in the file or the spy goes silently vacuous. The DOM assertions still fail on the defect regardless of order. |
 | `pagination-two-tooltips` | SUGGESTION | `paginationLabels.tsx` | The cloned button now carries `title="Página anterior"` while the `<li>` carries antd's own title. Under `locale={esES}` both are the same Spanish string, but a no-locale render would have two competing tooltips. Never measured with a real hover. |
+| `R3-dashboard-health-raw-value` | SUGGESTION | `src/app/dashboard/page.tsx:195` | Raised by the native review's `review-reliability` lens against this candidate. Non-blocking and informational: the review states none of its findings opened a correction and none reopens the review. **The claim text is not retained anywhere readable** — the receipt is burned and the terminal-consumption record keeps only repository, target and lineage hashes — so this row carries exactly the id, lens, location, severity and disposition that the acknowledgement did, and nothing paraphrased from them. |
+| `R3-detail-severity-label` | SUGGESTION | `src/components/anomalies/__tests__/anomalyLabels.test.tsx:71-84` | Same provenance and the same limitation as the row above: `review-reliability`, informational, claim text not retained. The location is in the label-map suite's render-site assertions. |
+| `R3-pagination-wiring` | SUGGESTION | `src/components/__tests__/paginationLabels.test.tsx:35-41` | Same provenance and the same limitation: `review-reliability`, informational, claim text not retained. The location is the suite's structural locator for the replaced control — the helper that finds it by CSS path instead of by the name under test, which is the same tension the `pagination-nesting-spy-order` row above describes from the mutation side. |
 
 ## Verification plan (phase 6)
 
