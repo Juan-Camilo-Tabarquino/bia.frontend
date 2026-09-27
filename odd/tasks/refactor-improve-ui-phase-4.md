@@ -108,9 +108,11 @@ Measured against the branch at `cdb610b`. Corrections to the plan's assumptions 
       URL and write changes back, without breaking the static prerender (`useSearchParams` already forces the
       Suspense boundary) and without a history entry per keystroke. Round-trip: refresh and a shared link both
       restore the exact view. **Done** — see the T1 result below.
-- [ ] **T2 — Search in `MeterList` and `AnomalyTable`.** Client-side filtering over the already-fetched
-      arrays, with a debounce the tests can control, an accessible label, and an honest empty state
-      distinguished from "the backend reported nothing".
+- [ ] **T2 — Search in `MeterList` and `AnomalyTable`.** **Partially done.** `MeterList` search and the
+      `useDebouncedValue` hook shipped. The **anomaly** search was reverted after the verification reproduced a
+      BLOCKER (a clear racing the debounce resurrects the cleared term); see the T2 result for the evidence and
+      the six failed attempts. Re-attempt it with an explicit reset in the state the box is given, rather than
+      inferring the reset from the value.
 - [ ] **T3 — Header sorting on `AnomalyTable`.** Move sorting onto antd column `sorter` props, keeping the
       existing `applyAnomalySort` semantics (and the "API order" default) so the page's `Select` and the
       header do not fight. `priority` stays the API value, never re-derived.
@@ -131,7 +133,7 @@ Measured against the branch at `cdb610b`. Corrections to the plan's assumptions 
 | Task | Commit | Gates | Mutation experiment | Review |
 | --- | --- | --- | --- | --- |
 | T1 | `62dceaa` | eslint 0 · tsc 0 · **25 suites / 170 tests** · next build 0 (7 routes, `/anomalies` still static) | 2 by the writer, 3 probes by the verifier | `gentle-ai-verify`: PASS WITH FINDINGS, no BLOCKER. 3 of 7 findings fixed here; 4 recorded below |
-| T2 | — | — | — | — |
+| T2 | `cf5cb04` | eslint 0 · tsc 0 · **26 suites / 171 tests** · next build 0 (7 routes) | 1 probe proving the stale-closure fix | `gentle-ai-verify`: **FAIL**, 1 BLOCKER. Scope reduced by owner decision — see below |
 | T3 | — | — | — | — |
 | T4 | — | — | — | — |
 | T5 | — | — | — | — |
@@ -185,6 +187,45 @@ Both reverted and re-verified.
   parser) and therefore never filters inconsistently — only loose link validation.
 
 ## Verification plan (phase 4)
+
+### T2 result — partially shipped, scope reduced on purpose
+
+**What shipped:** debounced search on `/meters` (`MeterList`), the generic `useDebouncedValue` hook, and a
+**real bug fix in `useUrlState`** (below). `MeterList` search filters the already-fetched id array
+case-insensitively, with an honest "mostrando X de Y" count and a search-empty state distinct from the
+backend-empty state.
+
+**What was deliberately removed: the anomaly search box.** The independent verification returned **FAIL with a
+reproduced BLOCKER**: pressing "Clear filters" while a search draft is still inside the debounce window
+re-commits the term the user asked to clear, because `q` was already `null`, so the clear produces no observable
+change in the value the box receives. Six implementation attempts failed to close it — a `value`-keyed effect, a
+separate external ref, comparing against the draft, a `key`-based remount, an imperative `reset()` through
+`useImperativeHandle`, and moving the draft into the caller. Each was validated by a probe and each still lost.
+Rather than ship a known-broken interaction, or delete the test that catches it to make the suite look green,
+the owner chose to **reduce scope**: `AnomalyFilters.tsx` is reverted to its `cdb610b` state and the defect is
+recorded here as the next attempt's input.
+
+**The bug this task DID fix, found while chasing the above: a stale closure in the page.** The page merged
+filter patches into a captured value:
+
+```ts
+onChange={(next) => setUrlState({ ...urlState, ...next })}
+```
+
+`urlState` is the value captured at render time, so **two updates landing before a re-render silently dropped
+one**. Proven by probe: setting `meterId` and then `severity` in the same tick produced only `severity`. That is
+silent data loss reachable by the ordinary user path — the debounce publishes a term one render after the filter
+state it merges into. `useUrlState` now accepts a value **or an updater**, exactly like `useState`'s setter, and
+every call site uses the updater form. Re-probed after the fix: both updates survive. This is the highest-value
+change in T2 and it was invisible until the falsification round forced a closer look.
+
+**Removed with the search box:** the `q` field in `AnomalyFilterValues`/`emptyAnomalyFilters`/`hasActiveFilters`,
+the `matchesAnomalySearch` predicate, the `q` entry in `anomalyUrlSchema`, and the 20 tests covering them (12 in
+`anomalyFiltering.test.ts`, 8 in the page suite). Test count went 199 to 171.
+
+**Carried forward:** the anomaly search needs a design where a clear cannot race the debounce. The six failures
+are recorded above so the next attempt does not repeat them; the strongest signal is that every one of them came
+from *inferring* the reset instead of making it an explicit part of the state the box is given.
 
 - `npx eslint .`, `npx tsc --noEmit`, `npm test`, `npx next build` — all four, per work unit.
 - **Route truth**: `/anomalies?meter_id=M-109&severity=HIGH` and a refresh restore the same filtered and

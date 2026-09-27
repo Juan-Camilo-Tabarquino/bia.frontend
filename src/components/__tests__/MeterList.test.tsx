@@ -1,5 +1,5 @@
-import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import React, { StrictMode } from 'react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MeterList } from '../MeterList';
 
 jest.mock('@/features/api/apiSlice', () => ({
@@ -80,5 +80,98 @@ describe('MeterList component', () => {
       'href',
       '/meter/M-102',
     );
+  });
+
+  function mockMeters(data: string[]): void {
+    mockedUseGetMetersQuery.mockReturnValue({
+      data,
+      isLoading: false,
+      error: undefined,
+      refetch,
+    });
+  }
+
+  it('filters the list by a case-insensitive substring typed into the search box', async () => {
+    mockMeters(['M-101', 'M-102', 'M-201']);
+
+    render(<MeterList />);
+
+    // Lowercase input must still find the uppercase ids.
+    fireEvent.change(screen.getByLabelText('Buscar medidor'), {
+      target: { value: 'm-10' },
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('link', { name: 'M-201' }),
+      ).not.toBeInTheDocument();
+    });
+    expect(screen.getByRole('link', { name: 'M-101' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'M-102' })).toBeInTheDocument();
+    expect(
+      screen.getByText('Mostrando 2 de 3 medidores.'),
+    ).toBeInTheDocument();
+  });
+
+  it('shows every meter for an empty or whitespace-only query', async () => {
+    mockMeters(['M-101', 'M-102']);
+
+    render(<MeterList />);
+
+    fireEvent.change(screen.getByLabelText('Buscar medidor'), {
+      target: { value: '   ' },
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Mostrando 2 de 2 medidores.'),
+      ).toBeInTheDocument();
+    });
+    expect(screen.getByRole('link', { name: 'M-101' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'M-102' })).toBeInTheDocument();
+  });
+
+  it('shows the search empty state, not the backend empty state, when nothing matches', async () => {
+    mockMeters(['M-101', 'M-102']);
+
+    render(<MeterList />);
+
+    fireEvent.change(screen.getByLabelText('Buscar medidor'), {
+      target: { value: 'zzz' },
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Ningún medidor coincide con la búsqueda.'),
+      ).toBeInTheDocument();
+    });
+    // The backend did return meters: the list is empty because of the search.
+    expect(
+      screen.queryByText('No hay medidores para mostrar.'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText('Mostrando 0 de 2 medidores.'),
+    ).toBeInTheDocument();
+  });
+
+  it('keeps the search working under StrictMode\'s double-invoked effects', async () => {
+    mockMeters(['M-101', 'M-102']);
+
+    render(
+      <StrictMode>
+        <MeterList />
+      </StrictMode>,
+    );
+
+    fireEvent.change(screen.getByLabelText('Buscar medidor'), {
+      target: { value: 'm-102' },
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Mostrando 1 de 2 medidores.'),
+      ).toBeInTheDocument();
+    });
+    expect(screen.getByRole('link', { name: 'M-102' })).toBeInTheDocument();
   });
 });

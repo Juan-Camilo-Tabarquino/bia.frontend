@@ -431,4 +431,5 @@ describe("AnomaliesPage", () => {
     ).not.toBeInTheDocument();
     expect(replaceUrl).not.toHaveBeenCalled();
   });
+
 });

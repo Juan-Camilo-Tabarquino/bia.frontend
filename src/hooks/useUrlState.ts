@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 /**
@@ -120,10 +120,17 @@ export function serializeUrlState<T extends object>(
  * there is no back/forward step to re-synchronize from. The local state stays
  * authoritative for rendering, which also keeps the write path from turning
  * into a render loop.
+ *
+ * `update` accepts a value or an updater, exactly like `useState`'s setter, and
+ * callers that merge into the current state **must use the updater form**.
+ * Spreading a captured value (`{ ...state, ...patch }`) silently drops an
+ * earlier update whenever two land before a re-render, which is exactly what
+ * happens here: the search box publishes a settled term and the filter state it
+ * merges into was captured one render earlier.
  */
 export function useUrlState<T extends object>(
   schema: UrlStateSchema<T>,
-): [T, (next: T) => void] {
+): [T, (next: T | ((previous: T) => T)) => void] {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
@@ -132,9 +139,16 @@ export function useUrlState<T extends object>(
     parseUrlState(schema, searchParams),
   );
 
+  // Holds the latest committed state so the URL write below reflects the value
+  // actually applied, including inside an updater call.
+  const stateRef = useRef(state);
+
   const update = useCallback(
-    (next: T) => {
-      setState(next);
+    (next: T | ((previous: T) => T)) => {
+      const resolved =
+        typeof next === "function" ? (next as (p: T) => T)(stateRef.current) : next;
+      stateRef.current = resolved;
+      setState(resolved);
 
       // `useRouter` is unavailable outside the App Router context (and in test
       // doubles that only stub `useSearchParams`). A missing router must not
@@ -160,7 +174,7 @@ export function useUrlState<T extends object>(
       for (const { param } of Object.values(schema) as RuntimeUrlStateField[]) {
         carried.delete(param);
       }
-      for (const [param, value] of serializeUrlState(schema, next).entries()) {
+      for (const [param, value] of serializeUrlState(schema, resolved).entries()) {
         carried.set(param, value);
       }
 

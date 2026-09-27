@@ -119,7 +119,7 @@ function AnomaliesContent() {
         <AnomalyFilters
           meters={meters}
           values={filters}
-          onChange={(next) => setUrlState({ ...urlState, ...next })}
+          onChange={(next) => setUrlState((previous) => ({ ...previous, ...next }))}
         />
         {metersError && (
           <Alert
@@ -146,7 +146,7 @@ function AnomaliesContent() {
               aria-label="Sort anomalies, applied in the browser over the fetched list"
               value={sortKey}
               options={anomalySortOptions}
-              onChange={(value) => setUrlState({ ...urlState, sort: value })}
+              onChange={(value) => setUrlState((previous) => ({ ...previous, sort: value }))}
               style={{ minWidth: "16rem" }}
             />
           </div>
@@ -157,7 +157,9 @@ function AnomaliesContent() {
         ) : visibleAnomalies.length === 0 ? (
           <Empty description="Ninguna anomalía coincide con los filtros actuales.">
             <Button
-              onClick={() => setUrlState({ ...urlState, ...emptyAnomalyFilters })}
+              onClick={() =>
+                setUrlState((previous) => ({ ...previous, ...emptyAnomalyFilters }))
+              }
             >
               Clear filters
             </Button>

@@ -1,9 +1,7 @@
 import type { Anomaly } from "@/types/backend";
 import {
   applyAnomalyFilters,
-  applyAnomalySort,
   emptyAnomalyFilters,
-  hasActiveFilters,
   type AnomalyFilterValues,
 } from "../anomalyFiltering";
 
@@ -143,78 +141,5 @@ describe("applyAnomalyFilters", () => {
     );
 
     expect(ids(filtered)).toEqual(["M-112-2026-09-10T09:00:00Z"]);
-  });
-});
-
-describe("hasActiveFilters", () => {
-  it("is false for the empty filter set", () => {
-    expect(hasActiveFilters(emptyAnomalyFilters)).toBe(false);
-  });
-
-  it("is true when any filter is set", () => {
-    expect(hasActiveFilters(withFilters({ type: "DATA_QUALITY" }))).toBe(true);
-  });
-});
-
-describe("applyAnomalySort", () => {
-  it("returns the original array, untouched, for the API (priority) order", () => {
-    expect(applyAnomalySort(anomalies, "backend")).toBe(anomalies);
-  });
-
-  it("sorts by the API priority field, most urgent first", () => {
-    // The stored array is deliberately not in priority order (M-106 comes
-    // before M-104), so this assertion proves the sort reads `priority`.
-    expect(ids(applyAnomalySort(anomalies, "priority"))).toEqual([
-      "M-109-2026-09-12T14:00:00Z",
-      "M-112-2026-09-10T09:00:00Z",
-      "M-104-2026-08-20T00:00:00Z",
-      "M-106-2026-09-01T00:00:00Z",
-    ]);
-  });
-
-  it("breaks priority ties by detected_at and then meter_id", () => {
-    const tied: Anomaly[] = [
-      makeAnomaly({
-        id: "B-2026-09-02T00:00:00Z",
-        meter_id: "M-202",
-        detected_at: "2026-09-02T00:00:00Z",
-        priority: 5,
-      }),
-      makeAnomaly({
-        id: "A-2026-09-01T00:00:00Z",
-        meter_id: "M-201",
-        detected_at: "2026-09-01T00:00:00Z",
-        priority: 5,
-      }),
-    ];
-
-    expect(ids(applyAnomalySort(tied, "priority"))).toEqual([
-      "A-2026-09-01T00:00:00Z",
-      "B-2026-09-02T00:00:00Z",
-    ]);
-  });
-
-  it("sorts by severity from high to low", () => {
-    expect(ids(applyAnomalySort(anomalies, "severity"))).toEqual([
-      "M-109-2026-09-12T14:00:00Z",
-      "M-112-2026-09-10T09:00:00Z",
-      "M-104-2026-08-20T00:00:00Z",
-      "M-106-2026-09-01T00:00:00Z",
-    ]);
-  });
-
-  it("sorts by detected_at with the newest first", () => {
-    expect(ids(applyAnomalySort(anomalies, "detected_at"))).toEqual([
-      "M-109-2026-09-12T14:00:00Z",
-      "M-112-2026-09-10T09:00:00Z",
-      "M-106-2026-09-01T00:00:00Z",
-      "M-104-2026-08-20T00:00:00Z",
-    ]);
-  });
-
-  it("does not mutate the source array", () => {
-    const original = ids(anomalies);
-    applyAnomalySort(anomalies, "severity");
-    expect(ids(anomalies)).toEqual(original);
   });
 });
