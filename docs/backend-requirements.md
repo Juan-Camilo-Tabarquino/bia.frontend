@@ -5,12 +5,12 @@
 **Status:** the HTTP contract below is **confirmed** against the backend. The
 backend repository's `docs/endpoints.md` remains the definitive backend
 reference; this file is the frontend-facing summary of that contract, the
-requests the backend has since resolved, one frontend-only decision, and the
-operational notes needed to run against it.
+backend requests (the resolved ones and the open **R3**), one frontend-only
+decision, and the operational notes needed to run against it.
 
 The earlier version of this handoff was written against a speculative API and
 listed defects that the backend has since fixed. Those sections were removed; see
-[Resolved by the backend](#2-resolved-by-the-backend).
+[Backend requests](#2-backend-requests).
 
 ---
 
@@ -211,8 +211,22 @@ asserts the ascending `priority` sequence.
 **Frontend consumer:** the `/anomalies` page mounts `AiReanalysis`, which is the
 only UI path to these two routes. Because `POST /api/ai/analyze` is synchronous
 and runs the LLM once per evidence item, the request can stay pending for about
-a minute; the UI states that latency in the page instead of hiding it, and it
-does **not** poll: every response observed so far carried `status: "completed"`, and the DTO in `src/types/backend.ts` also lists `"queued"` among the observed values, so a future run could differ. The action is
+a minute; the UI states that latency in the page instead of hiding it.
+
+The block **reads `status`** and polls this endpoint every 3 s
+(`ANALYSIS_POLL_INTERVAL_MS`) while the reported value is `"queued"` or
+`"running"` — the only two statuses the frontend treats as pending. Every other
+value stops the polling: `"completed"`, `"failed"`, and **any status the
+frontend does not recognise**, which is reported as unrecognised rather than
+rendered as a finished analysis. The list of non-terminal statuses is
+deliberately an allow-list, so a future or malformed value can never turn into
+an unbounded request loop.
+
+The frontend is therefore already ready for an **asynchronous** run, but the
+current backend answers synchronously, so the polling never engages today. The
+contract it assumes (and the fields it would need to render progress and a
+failure reason) is the open request R3 in §2, recorded in Engram under
+`bia-backend/ai-reanalysis-async-contract`. The action is
 additive: it never replaces the deterministic anomaly list already on the page.
 
 ### `GET /api/dashboard/summary`
@@ -235,7 +249,7 @@ anomaly DTO. This route is not consumed by the frontend.
 
 ---
 
-## 2. Resolved by the backend
+## 2. Backend requests
 
 The defects listed in the earlier handoff are fixed:
 
@@ -256,6 +270,32 @@ The defects listed in the earlier handoff are fixed:
 - **A real LLM provider is wired in.** `llm_analysis` is produced by the real
   Ollama provider and exposed on the anomaly DTO (and inside the analysis
   result).
+
+### Request R3 — asynchronous analysis with a real status lifecycle (OPEN)
+
+The frontend side is done: the re-analysis block branches on `status` and polls
+while the value is non-terminal (see the frontend-consumer note under
+`GET /api/ai/analysis/{id}` in §1). What it cannot do by itself is make the flow
+end to end, because today `POST /api/ai/analyze` blocks for ~80 s and the read
+endpoint only ever reports `"completed"`.
+
+Recorded in Engram under **`bia-backend/ai-reanalysis-async-contract`** for the
+backend work. In short:
+
+- `POST /api/ai/analyze` returns **immediately** with `{ analysisId, status:
+  "queued" }` and runs the deterministic pipeline plus the LLM asynchronously.
+- `GET /api/ai/analysis/{id}` reports a real lifecycle: `queued` → `running` →
+  `completed` \| `failed`, and **every run reaches a terminal state within a
+  bounded time** (the frontend polls indefinitely while the status is
+  non-terminal, by design).
+- A failed run carries a machine-readable reason, and a running run optionally
+  carries progress.
+- Concurrent `POST`s stay independent, and the snapshot store's retention is
+  documented.
+
+The frontend renders progress and a failure reason only **after** those fields
+exist in the contract; it deliberately does not invent them (see the DTO rule in
+§1: no field is stated as fact before the backend confirms it).
 
 ### Former request R1 — priority and ordering (resolved)
 

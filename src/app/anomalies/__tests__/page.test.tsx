@@ -12,6 +12,10 @@ jest.mock("@/features/api/apiSlice", () => ({
 // provider the page suite does not use. Mock them to the idle state so the
 // page's own behaviour stays under test without a Redux Provider.
 jest.mock("@/features/dashboards/dashboardAPI", () => ({
+  // `AiReanalysis` also imports the poll interval constant and the pending-status
+  // helper from that module, so keep the real exports and replace only the two
+  // hooks that need a store provider.
+  ...jest.requireActual("@/features/dashboards/dashboardAPI"),
   usePostAnalyzeMutation: jest.fn(),
   useGetAiAnalysisQuery: jest.fn(),
 }));

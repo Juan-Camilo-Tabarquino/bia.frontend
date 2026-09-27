@@ -4,11 +4,16 @@ import type { Anomaly, AnalysisResult } from "@/types/backend";
 import { AiReanalysis } from "../AiReanalysis";
 
 jest.mock("@/features/dashboards/dashboardAPI", () => ({
+  // The component also imports the poll interval constant and the pending-status
+  // helper from that module, so the factory must keep the real exports and
+  // replace only the two hooks that need a store provider.
+  ...jest.requireActual("@/features/dashboards/dashboardAPI"),
   usePostAnalyzeMutation: jest.fn(),
   useGetAiAnalysisQuery: jest.fn(),
 }));
 
 import {
+  ANALYSIS_POLL_INTERVAL_MS,
   useGetAiAnalysisQuery,
   usePostAnalyzeMutation,
 } from "@/features/dashboards/dashboardAPI";
@@ -206,5 +211,134 @@ describe("AiReanalysis", () => {
       "Análisis completado: no se devolvió ninguna anomalía.",
     );
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
+  });
+});
+
+describe("AiReanalysis status handling", () => {
+  const analysisId = "3f1c9d4e-uuid";
+
+  beforeEach(() => {
+    mockedUsePostAnalyzeMutation.mockReset();
+    mockedUseGetAiAnalysisQuery.mockReset();
+    mockMutation({ data: { analysisId } });
+  });
+
+  function button(): HTMLElement {
+    return screen.getByRole("button", {
+      name: "Reintentar el análisis de la plataforma",
+    });
+  }
+
+  it("reports a queued analysis as in progress, never as a completed one", () => {
+    mockQuery({ data: { ...result, status: "queued" } });
+
+    render(<AiReanalysis />);
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "El análisis sigue en curso (estado: queued). Se actualizará automáticamente.",
+    );
+    // A non-terminal status is never announced as a finished analysis.
+    expect(screen.queryByText(/Análisis completado/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    // A second analysis must not be spinnable on top of the first.
+    expect(button()).toBeDisabled();
+  });
+
+  it("keeps polling while the API reports running", () => {
+    mockQuery({ data: { ...result, status: "running" } });
+
+    render(<AiReanalysis />);
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "El análisis sigue en curso (estado: running). Se actualizará automáticamente.",
+    );
+    expect(screen.queryByText(/Análisis completado/)).not.toBeInTheDocument();
+    expect(button()).toBeDisabled();
+    expect(mockedUseGetAiAnalysisQuery).toHaveBeenLastCalledWith(analysisId, {
+      skip: false,
+      pollingInterval: ANALYSIS_POLL_INTERVAL_MS,
+    });
+  });
+
+  it("stops polling and re-enables the action once the status is completed", () => {
+    mockQuery({ data: result });
+
+    render(<AiReanalysis />);
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Análisis completado: se devolvieron 2 anomalías.",
+    );
+    expect(mockedUseGetAiAnalysisQuery).toHaveBeenLastCalledWith(analysisId, {
+      skip: false,
+      pollingInterval: 0,
+    });
+    expect(button()).toBeEnabled();
+  });
+
+  it("surfaces a failed status as an error without claiming completion", () => {
+    mockQuery({ data: { ...result, status: "failed" } });
+
+    render(<AiReanalysis />);
+
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveClass("ant-alert-error");
+    expect(alert).toHaveTextContent("El análisis falló");
+    expect(alert).toHaveTextContent(
+      "El backend informó que el análisis falló. Vuelve a intentarlo.",
+    );
+    expect(screen.queryByText(/Análisis completado/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    expect(mockedUseGetAiAnalysisQuery).toHaveBeenLastCalledWith(analysisId, {
+      skip: false,
+      pollingInterval: 0,
+    });
+  });
+
+  it("warns and stops polling on a status the interface does not recognise", () => {
+    // The guard for the allow-list safety property: `processing` is not one of
+    // the two non-terminal statuses, so the query must not keep asking forever,
+    // and the payload must never be read as a finished analysis.
+    mockQuery({ data: { ...result, status: "processing" } });
+
+    render(<AiReanalysis />);
+
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveClass("ant-alert-warning");
+    expect(alert).toHaveTextContent("Estado del análisis no reconocido");
+    expect(alert).toHaveTextContent(
+      'El análisis devolvió el estado "processing", que esta interfaz no reconoce. No se puede confirmar que haya terminado.',
+    );
+    expect(screen.queryByText(/Análisis completado/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+    expect(mockedUseGetAiAnalysisQuery).toHaveBeenLastCalledWith(analysisId, {
+      skip: false,
+      pollingInterval: 0,
+    });
+  });
+
+  it("stops polling once a pending analysis reports a terminal status", () => {
+    // Triangulation of the interval itself: the `completed` test above starts
+    // from a terminal status, so only this one exercises the pending -> terminal
+    // transition that has to turn the interval back to 0 for good.
+    mockQuery({ data: { ...result, status: "queued" } });
+    const { rerender } = render(<AiReanalysis />);
+
+    expect(mockedUseGetAiAnalysisQuery).toHaveBeenLastCalledWith(analysisId, {
+      skip: false,
+      pollingInterval: ANALYSIS_POLL_INTERVAL_MS,
+    });
+
+    mockQuery({ data: result });
+    rerender(<AiReanalysis />);
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Análisis completado: se devolvieron 2 anomalías.",
+    );
+    expect(mockedUseGetAiAnalysisQuery).toHaveBeenLastCalledWith(analysisId, {
+      skip: false,
+      pollingInterval: 0,
+    });
+    expect(button()).toBeEnabled();
   });
 });

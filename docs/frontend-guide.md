@@ -161,7 +161,9 @@ Consecuencia práctica: el cache **no se invalida entre sí**. El conteo de anom
 entrada (`GET /dashboard/summary`) y **nunca se invalida**, así que puede quedar viejo durante toda la sesión. El
 header **depende deliberadamente** de que el shell nunca se desmonte entre rutas: como la suscripción al summary no
 se corta, la entrada no se descarta y `/dashboard` la reutiliza en vez de pedirla de nuevo. Es una limitación real,
-no un accidente, y es consistente con la decisión del dueño de **no hacer polling**.
+no un accidente, y es consistente con la decisión del dueño de **no hacer polling** — la única excepción es el
+re-análisis con IA de `/anomalies`, que poléa **por suscripción** y solo refresca su propia entrada
+(`GET /ai/analysis/{id}`); no invalida ninguna otra.
 
 ### `PrivateRoute` es un pass-through
 
@@ -398,6 +400,13 @@ Formato: **qué se ve**, **endpoints**, **estados** con su copia exacta, y **com
   - *Vacío del backend:* `El backend no reportó anomalías.`
   - *Vacío por filtros:* `Ninguna anomalía coincide con los filtros actuales.` + botón **Quitar filtros**
     (distinto del **Limpiar filtros** de la barra).
+  - *Análisis en curso:* `role="status"` **El análisis sigue en curso (estado: …). Se actualizará automáticamente.**,
+    con el botón de re-análisis deshabilitado, y la consulta al backend repetida cada 3 s mientras el `status` sea
+    `queued` o `running`.
+  - *Análisis fallido:* `Alert` error **El análisis falló** — con el mensaje del error cuando existe, y si no
+    **El backend informó que el análisis falló. Vuelve a intentarlo.**
+  - *Estado no reconocido:* `Alert` warning **Estado del análisis no reconocido**, que no afirma que el análisis
+    haya terminado (y que también detiene el polling).
 - **Notable:**
   - **Filtrado y ordenamiento en el navegador.** El endpoint devuelve la lista completa y **no acepta parámetros
     de consulta**; ningún control dispara un request.
@@ -407,8 +416,12 @@ Formato: **qué se ve**, **endpoints**, **estados** con su copia exacta, y **com
   - **La paginación NO está en la URL.** Es estado interno de la tabla (10 filas por página) y se resetea a la
     página 1 cuando cambia el conjunto filtrado.
   - **Re-análisis con IA a demanda:** el botón **Reintentar el análisis de la plataforma** dispara `POST /ai/analyze`
-    (sin body). Es **sincrónico** (puede tardar ~1 min), la UI lo dice en pantalla y **no hace polling**; el
-    resultado es **aditivo** (no reemplaza ni reordena la lista determinística).
+    (sin body) y, con el `analysisId` devuelto, consulta `GET /ai/analysis/{id}`. El bloque **lee el `status`**: repite la
+    consulta cada 3 s (`ANALYSIS_POLL_INTERVAL_MS`) solo mientras sea `queued` o `running`, y con `completed` muestra el
+    conteo, la anomalía más urgente y su narrativa. Con cualquier otro valor el polling se detiene, para que un estado
+    desconocido no se vuelva un bucle de requests. El resultado es **aditivo** (no reemplaza ni reordena la lista
+    determinística). Hoy el POST es **sincrónico** (~1 min) y la API responde `completed`, así que el polling no se
+    activa; la request abierta **R3** de `docs/backend-requirements.md` pide el ciclo asíncrono.
 
 ### `/anomalies/[id]` — Investigación de la anomalía
 
