@@ -95,7 +95,9 @@ export default function AnomalyInvestigationPage() {
   }
 
   return (
-    <div style={{ padding: "1rem" }}>
+    // The shell container owns the horizontal gutter on every route; this page
+    // keeps only the vertical padding so its title aligns at x=144.
+    <div style={{ paddingBlock: "1rem" }}>
       <Title level={1}>Investigación de la anomalía</Title>
       {content}
     </div>

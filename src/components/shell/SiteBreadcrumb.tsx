@@ -130,11 +130,21 @@ export function SiteBreadcrumb() {
     return null;
   }
 
+  /*
+   * The shared `shell-container` gutter and the vertical separation from the
+   * header both live on a plain WRAPPER, never on antd's own `<nav>`. antd's
+   * component reset (`:where(...).ant-breadcrumb { margin: 0; padding: 0 }`)
+   * ties a project class on specificity -- `:where()` contributes zero -- and
+   * wins on source order, because the antd reset ships after the Next global
+   * CSS chunk. On the nav that tie nullifies the gutter, `margin-inline: auto`,
+   * AND any `margin-top`, so the declared separation was dead. A plain wrapper
+   * cannot tie with an antd component reset, so all three survive any later
+   * stylesheet move. Do NOT escalate specificity or add `!important`: winning
+   * the tie would keep the fragile pattern.
+   */
   return (
-    <Breadcrumb
-      items={trail}
-      className={`shell-container ${styles.breadcrumb}`}
-      {...BREADCRUMB_NAV}
-    />
+    <div className={`shell-container ${styles.wrapper}`}>
+      <Breadcrumb items={trail} {...BREADCRUMB_NAV} />
+    </div>
   );
 }

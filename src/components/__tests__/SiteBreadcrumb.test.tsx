@@ -153,13 +153,52 @@ describe("SiteBreadcrumb", () => {
     expect(within(trail()).getByText("Lecturas")).toBeInTheDocument();
   });
 
+  // Regression guard for the reported bug (E1). antd's component reset
+  // `:where(...).ant-breadcrumb { margin: 0; padding: 0 }` ties the shared
+  // `.shell-container` class on specificity -- `:where()` contributes zero --
+  // and wins on source order, so a `shell-container` on antd's own `<nav>`
+  // loses its gutter and `margin-inline: auto`. The fix moves the class to a
+  // plain WRAPPER around the breadcrumb, which cannot tie. Putting the class
+  // back on the `<nav>` makes both assertions below fail.
+  it("keeps the shared gutter on a wrapper element, never on antd's nav", () => {
+    mockUsePathname.mockReturnValue("/meters");
+    render(<SiteBreadcrumb />);
+
+    const nav = trail();
+    const wrapper = nav.parentElement;
+    expect(wrapper).not.toBeNull();
+    expect(wrapper).toHaveClass("shell-container");
+    expect(nav).not.toHaveClass("shell-container");
+  });
+
+  // Regression guard for the dead-margin bug. `styles.wrapper` declares
+  // `margin-top: 1rem`, and on antd's own `<nav>` the SAME zero-specificity
+  // reset above ties it and wins on source order, so the declaration was
+  // dropped and the trail sat flush against the header. On the plain wrapper
+  // the declaration cannot tie. The module class reads as the plain name
+  // `wrapper` at test time (CSS modules are mapped to `identity-obj-proxy`),
+  // so the class token itself is asserted. Moving the class back onto the
+  // `<nav>` makes both assertions below fail.
+  it("keeps the top separation on the wrapper, never on antd's nav", () => {
+    mockUsePathname.mockReturnValue("/meters");
+    render(<SiteBreadcrumb />);
+
+    const nav = trail();
+    const wrapper = nav.parentElement;
+    expect(wrapper).not.toBeNull();
+    expect(wrapper).toHaveClass("wrapper");
+    expect(nav).not.toHaveClass("wrapper");
+  });
+
   it("renders no breadcrumb for an unknown path", () => {
     mockUsePathname.mockReturnValue("/not-a-route");
-    render(<SiteBreadcrumb />);
+    const { container } = render(<SiteBreadcrumb />);
 
     expect(
       screen.queryByRole("navigation", { name: "Ruta de navegación" }),
     ).toBeNull();
+    // The wrappers must not survive as an empty, padded element either.
+    expect(container).toBeEmptyDOMElement();
   });
 
   it("renders no breadcrumb for a malformed meter route", () => {

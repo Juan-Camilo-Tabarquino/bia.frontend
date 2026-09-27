@@ -302,4 +302,23 @@ describe('MeterReadingsPage', () => {
     expect(lines).toHaveLength(1);
     expect(lines[0]).toHaveAttribute('data-y', '12.1');
   });
+
+  // SHAPE PROXY, not an alignment check. jsdom loads no stylesheets, so the real
+  // 144 px content edge (E2) is unobservable here; what this pins is the shape
+  // the fix introduced: the antd Row owns the VERTICAL padding only and adds no
+  // horizontal padding of its own. The Row's `gutter` still contributes
+  // `margin-inline:-8px` and each Col `padding-inline:8px`, so the title edge is
+  //   144 - 8 + 0 + 8 = 144.
+  // Restoring `padding: "1rem"` on the Row makes this fail.
+  it('leaves the horizontal gutter to the shell and keeps only vertical padding', () => {
+    render(<MeterReadingsPage />);
+
+    const row = screen.getByRole('heading', { level: 1 }).closest('.ant-row');
+    expect(row).not.toBeNull();
+    expect((row as HTMLElement).style.paddingBlock).toBe('1rem');
+    expect((row as HTMLElement).style.padding).toBe('');
+    expect((row as HTMLElement).style.paddingLeft).toBe('');
+    expect((row as HTMLElement).style.paddingRight).toBe('');
+    expect((row as HTMLElement).style.paddingInline).toBe('');
+  });
 });

@@ -306,4 +306,22 @@ describe('DashboardPage component', () => {
       screen.getByText('No se detectaron anomalías en la última ejecución.'),
     ).toBeInTheDocument();
   });
+
+  // SHAPE PROXY, not an alignment check. jsdom loads no stylesheets, so the real
+  // 144 px content edge (E2) is unobservable here; what this pins is the shape
+  // the fix introduced: the page wrapper owns the VERTICAL padding only and adds
+  // no horizontal padding that would double the shell gutter. Restoring
+  // `padding: "1rem"` on the wrapper makes this fail.
+  it('leaves the horizontal gutter to the shell and keeps only vertical padding', () => {
+    mockLoaded();
+
+    render(<DashboardPage />);
+
+    const wrapper = screen.getByRole('heading', { level: 1 }).parentElement;
+    expect(wrapper?.style.paddingBlock).toBe('1rem');
+    expect(wrapper?.style.padding).toBe('');
+    expect(wrapper?.style.paddingLeft).toBe('');
+    expect(wrapper?.style.paddingRight).toBe('');
+    expect(wrapper?.style.paddingInline).toBe('');
+  });
 });

@@ -71,7 +71,12 @@ export default function MeterReadingsPage() {
   const showUpdating = isFetching && !isLoading;
 
   return (
-    <Row gutter={[16, 16]} style={{ padding: "1rem" }}>
+    // The shell container owns the horizontal gutter on every route. The Row's
+    // `gutter` already applies `margin-inline:-8px` and each Col
+    // `padding-inline:8px`, so dropping the row's duplicated horizontal padding
+    // (keeping the vertical) puts the title back at x=144:
+    //   main 144 - 8 (row margin) + 0 (row padding) + 8 (col padding) = 144.
+    <Row gutter={[16, 16]} style={{ paddingBlock: "1rem" }}>
       <Col xs={24}>
         <Typography.Title level={1}>
           Lecturas del medidor {meterId}

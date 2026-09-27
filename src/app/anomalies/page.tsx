@@ -105,8 +105,10 @@ function AnomaliesContent() {
   }
 
   if (anomaliesError) {
+    // The shell container owns the horizontal gutter; keep only the vertical
+    // padding so this wrapper aligns with the other routes.
     return (
-      <div style={{ padding: "1rem" }}>
+      <div style={{ paddingBlock: "1rem" }}>
         <RequestError
           title="No se pudieron cargar las anomalías"
           description={requestErrorMessage(
@@ -123,7 +125,7 @@ function AnomaliesContent() {
   }
 
   return (
-    <div style={{ padding: "1rem" }}>
+    <div style={{ paddingBlock: "1rem" }}>
       <Title level={1}>Anomalías</Title>
       <p className="sr-only">
         Las anomalías llegan ordenadas por prioridad (la más urgente primero).
