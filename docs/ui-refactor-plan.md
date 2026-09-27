@@ -226,6 +226,25 @@ Lo que importa si se retoma:
   la lente lo graduó por encima de lo que la conversación había asumido. Queda como deuda conocida, no como
   sorpresa.
 
+## Trabajo posterior al refactor: el breadcrumb y el borde de contenido
+
+**Hecho, verificado en navegador y confirmado por el dueño.** Detalle completo en `odd/tasks/breadcrumb-gutter.md`.
+
+- **El breadcrumb estaba a x=0** mientras todo el contenido arrancaba en 144. Causa: la clase del gutter estaba puesta
+  **sobre el `<nav>` de antd**, y el reset `:where(...).ant-breadcrumb { margin:0; padding:0 }` **empata en
+  especificidad** (`:where()` aporta cero) y gana por orden de hoja. La misma pata anulaba de paso el `margin-top`, así
+  que esa declaración **nunca se aplicó**.
+- **El arreglo mueve gutter y separación a un wrapper propio**, que no puede empatar con el reset de un componente de
+  antd. No se escaló especificidad ni se usó `!important`: ganar el empate habría dejado el patrón frágil intacto.
+  **Regla general: no pongas una clase de utilidad compartida sobre un componente de terceros.**
+- **Y las páginas tampoco coincidían entre sí**: dos ponían el `h1` en 144 y tres en 160 por un `padding:"1rem"`
+  propio. Ahora hay **un solo borde en 144** en las seis rutas, y en 768 uno solo en 24.
+- **¡Ojo al probar! La app solo hidrata en `http://localhost:3000`.** En `http://127.0.0.1:3000` el WebSocket de HMR
+  de Next 16 falla (`ERR_INVALID_HTTP_RESPONSE`) y la página **nunca hidrata**: sin `__reactFiber$`, el botón de tema
+  muerto, y **cero llamadas a `/api`** — así que `/anomalies` se queda en su `Skeleton` del SSR y no hay `h1`. Parece
+  un bug de la app y no lo es. Se reprodujo en el servidor del dueño y en una copia aislada, o sea que es del host,
+  no del server. Medí siempre contra `localhost`.
+
 ## Dos defectos encontrados al verificar esto, ninguno causado por el cambio
 
 No se arreglaron: quedan fuera del cambio autorizado y en esta rama cada cambio necesita su propia rebanada de review.
