@@ -1,6 +1,6 @@
 # Feature: refactor/improve-ui — phase 4 (Interactividad)
 
-**Status: IN PROGRESS — 3/8 (T1, T2, T2b done).** Branch `refactor/improve-ui`, base `cdb610b` (phase 3 complete).
+**Status: IN PROGRESS — 4/8 (T1, T2, T2b, T3 done).** Branch `refactor/improve-ui`, base `cdb610b` (phase 3 complete).
 
 **Reference:** `odd/tasks/refactor-improve-ui.md` (the whole feature and its phases),
 `docs/ui-refactor-plan.md` (the resume entry point), and the 12 open advisories recorded there.
@@ -133,7 +133,7 @@ Measured against the branch at `cdb610b`. Corrections to the plan's assumptions 
 | T1 | `62dceaa` | eslint 0 · tsc 0 · **25 suites / 170 tests** · next build 0 (7 routes, `/anomalies` still static) | 2 by the writer, 3 probes by the verifier | `gentle-ai-verify`: PASS WITH FINDINGS, no BLOCKER. 3 of 7 findings fixed here; 4 recorded below |
 | T2 | `8bbd7e0` | eslint 0 · tsc 0 · **26 suites / 171 tests** · next build 0 (7 routes) | 1 probe proving the stale-closure fix | `gentle-ai-verify`: **FAIL**, 1 BLOCKER. Scope reduced by owner decision — see below |
 | T2b | `a533122` | eslint 0 · tsc 0 · **26 suites / 177 tests** · next build 0 (7 routes) | 2 gate mutations by the verifier; real-Chrome probes by the parent | `gentle-ai-verify`: PASS WITH FINDINGS, no BLOCKER. 3 findings fixed; 4 recorded |
-| T3 | — | — | — | — |
+| T3 | _(this commit)_ | eslint 0 · tsc 0 · **26 suites / 196 tests** · next build 0 (7 routes) | 2 gate mutations by the parent | `gentle-ai-verify`: PASS WITH FINDINGS, no BLOCKER. 1 finding fixed; 4 recorded |
 | T4 | — | — | — | — |
 | T5 | — | — | — | — |
 | T6 | — | — | — | — |
@@ -236,6 +236,65 @@ filter-bar clear actions share the accessible name "Clear filters", so a `getByR
 throw in that state — worth differentiating when T3/T4 touch that region; and the new pure logic
 (`matchesSearch`, `normalizedTerm`, the `q` parse/serialize) has no direct unit coverage in
 `anomalyFiltering.test.ts`, only indirect coverage through the page suite.
+
+## Exploration notes for the later tasks (recorded so they are not re-discovered)
+
+**T5 — cross-links.** The meter → anomaly direction **already works**: `MeterDetail.tsx:72,101` builds
+`/anomalies?meter_id=${encodeURIComponent(data.meter_id)}` and renders it as "View anomalies", and T1 made that
+parameter deep-linkable. The missing direction is anomaly → meter: `AnomalyDetail.tsx:57` renders `meter_id` as
+plain text (`{ key: "meter", label: "Meter", children: anomaly.meter_id }`) and the component imports no
+`next/link`. The detail page's own back-link (`app/anomalies/[id]/page.tsx:27-28`) points at `/anomalies`, not at
+the meter. `AnomalyTable.tsx` also renders `meter_id` as a plain column, which is a second candidate site — note
+that making it a link there interacts with the row-level link to the anomaly.
+
+**T6 — readable dates.** Six field sites plus three chart surfaces, all rendering raw RFC3339:
+`AnomalyTable.tsx:51-55` (`detected_at` column, no `render`), `AnomalyDetail.tsx:59-61`,
+`AnomalyDetail.tsx:187` (`{event.start} – {event.end}` for correlated events), `MeterDetail.tsx:87`
+(`created_at`), `MeterDetail.tsx:89-91` (`last_reading_at`), `ReadingsTable.tsx:35` (`Timestamp` column). Chart:
+`ReadingsChart.tsx:217` (`<XAxis dataKey="Timestamp">`), the default `<Tooltip />` label at `:218`, the marker
+list at `:265`, and the `sr-only` figcaption interpolation at `:178`.
+
+Two traps recorded so T6 does not fall into them: `dashboard/page.tsx:163` renders `summary.lastRun`, which is
+the literal string `"latest"` (`types/backend.ts:141`) and is **not** a date — formatting it would be a bug. And
+the chart snaps anomaly markers to category timestamps with `Date.parse` (`ReadingsChart.tsx:82-113`), so a
+`tickFormatter` must change only the label, never the axis category key, or the marker snapping breaks.
+
+### T3 result — header sorting, and the redundancy the verification exposed
+
+**Shipped.** Anomaly sorting moved off the external `Select` onto antd column-header `sorter` props. One registry
+(`anomalySortDefinitions`) is read by both the page's `applyAnomalySort` and the table's antd column props, so
+no ordering can be declared twice. The header drives the URL `sort`, so a click is deep-linkable and survives a
+refresh; `backend` (untouched API order) is the no-arrow state, and clicking the active header returns to it. The
+`Select` was removed rather than kept in parallel, because two controls that can disagree are worse than one.
+Columns sorted: `priority`, `detected_at`, `severity` and a new `confidence`. `id`/`meter_id` and
+`type`/`status` were deliberately left unsortable. The duplicate accessible name was fixed ("Limpiar filtros"
+vs "Clear filters"). The dashboard preview is untouched and gains no URL coupling.
+
+**The finding that changed the task: `applyAnomalySort` is functionally redundant for what the user sees.**
+`AnomalyTable` hands `dataSource` to antd, whose controlled sorter re-sorts it in `getSortData`
+(`antd/es/table/hooks/useSorter.js`). So the rendered order is antd's, and the verification proved the
+consequence by mutation: removing the direction negation from `applyAnomalySort` left **all 25 page tests green**,
+because the table still rendered the right rows. The worker's claim that the two "cannot disagree" was wrong —
+they can, and antd's pass simply overwrites the other.
+
+That matters because it means **no rendered assertion can guard this ordering**. The verification brute-forced
+200,000 valid-domain and 2,000,000 malformed arrays through both sort paths and found **zero divergences**, so the
+agreement is real — but it rests on the comparators being total orders combined with V8's stable sort, not on the
+code structure.
+
+**What was done about it:** the module docstring now states the situation and where the real guard lives, and a
+new direct unit test asserts that `applyAnomalySort` reproduces the registry's own comparison for **every**
+declared ordering. Re-running the same mutation now fails 4 tests instead of 3, and the fourth is that new test.
+A row-order assertion was first added to the page suite and then **deliberately removed** once the mutation proved
+it could not fail: keeping an assertion that cannot detect the bug it names is false confidence, and the comment
+left in its place says so. A test tying the sortable columns 1:1 to the registry, plus a two-header switch test,
+were also added.
+
+**Recorded, not fixed:** the page-side sort is redundant work rather than removed (the dashboard preview has no
+antd sorter, so `applyAnomalySort` is still the only ordering there, and the unit tests depend on it);
+`?sort=backend` is *accepted as the explicit default* rather than ignored, which is what the wording claimed —
+the outcome is still correct (no arrow, no rewrite); and the deep-link coverage for `sort=confidence` is indirect,
+sharing the `detected_at` path.
 
 ## Verification plan (phase 4)
 

@@ -143,8 +143,6 @@ const anomalies: Anomaly[] = [
   },
 ];
 
-const sortLabel = "Sort anomalies, applied in the browser over the fetched list";
-
 function mockLoaded(list: Anomaly[] = anomalies): void {
   mockedUseGetAnomaliesQuery.mockReturnValue({
     data: list,
@@ -167,6 +165,11 @@ function linkNames(): string[] {
 async function chooseOption(label: string, optionTitle: string): Promise<void> {
   fireEvent.mouseDown(screen.getByLabelText(label));
   fireEvent.click(await screen.findByTitle(optionTitle));
+}
+
+/** Clicks a sortable column header, the page's only sorting affordance. */
+function clickHeader(name: string): void {
+  fireEvent.click(screen.getByRole("columnheader", { name }));
 }
 
 describe("AnomaliesPage", () => {
@@ -254,7 +257,7 @@ describe("AnomaliesPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("re-sorts the fetched list by the API priority field on demand", async () => {
+  it("re-sorts the fetched list by the API priority field on demand from the header", async () => {
     // Feed the array upside down to prove the priority sort reads the field and
     // does not merely keep the incoming order.
     mockLoaded([anomalies[1], anomalies[0]]);
@@ -266,13 +269,18 @@ describe("AnomaliesPage", () => {
       "M-109-2026-09-12T14:00:00Z",
     ]);
 
-    await chooseOption(sortLabel, "UI sort: priority (most urgent first)");
+    clickHeader("Priority");
 
     await waitFor(() => {
       expect(linkNames()).toEqual([
         "M-109-2026-09-12T14:00:00Z",
         "M-112-2026-09-10T09:00:00Z",
       ]);
+    });
+    // The header writes the same `sort` key the URL already carries, so the
+    // chosen order is deep-linkable.
+    expect(replaceUrl).toHaveBeenCalledWith("/anomalies?sort=priority", {
+      scroll: false,
     });
   });
 
@@ -303,10 +311,17 @@ describe("AnomaliesPage", () => {
     });
   });
 
-  it("reorders the fetched list with the UI severity sort", async () => {
+  it("reorders the fetched list with the UI severity sort from the header", async () => {
+    mockLoaded([anomalies[1], anomalies[0]]);
+
     render(<AnomaliesPage />);
 
-    await chooseOption(sortLabel, "UI sort: severity (high to low)");
+    expect(linkNames()).toEqual([
+      "M-112-2026-09-10T09:00:00Z",
+      "M-109-2026-09-12T14:00:00Z",
+    ]);
+
+    clickHeader("Severity");
 
     await waitFor(() => {
       expect(linkNames()).toEqual([
@@ -314,6 +329,64 @@ describe("AnomaliesPage", () => {
         "M-112-2026-09-10T09:00:00Z",
       ]);
     });
+  });
+
+  it("sorts by detected_at newest first from the header", async () => {
+    mockLoaded([anomalies[1], anomalies[0]]);
+
+    render(<AnomaliesPage />);
+
+    clickHeader("Detected at");
+
+    await waitFor(() => {
+      expect(linkNames()).toEqual([
+        "M-109-2026-09-12T14:00:00Z",
+        "M-112-2026-09-10T09:00:00Z",
+      ]);
+    });
+    expect(replaceUrl).toHaveBeenCalledWith("/anomalies?sort=detected_at", {
+      scroll: false,
+    });
+  });
+
+  it("sorts by confidence highest first from the header", async () => {
+    mockLoaded([anomalies[1], anomalies[0]]);
+
+    render(<AnomaliesPage />);
+
+    clickHeader("Confidence");
+
+    await waitFor(() => {
+      expect(linkNames()).toEqual([
+        "M-109-2026-09-12T14:00:00Z",
+        "M-112-2026-09-10T09:00:00Z",
+      ]);
+    });
+    expect(replaceUrl).toHaveBeenCalledWith("/anomalies?sort=confidence", {
+      scroll: false,
+    });
+  });
+
+  it("survives a refresh by restoring the sort order and its arrow from the URL", () => {
+    // A refresh re-reads the query string on mount: the array still arrives in
+    // the API order, so the deep link has to reproduce the sorted view itself.
+    mockedUseSearchParams.mockReturnValue(
+      new URLSearchParams("sort=detected_at"),
+    );
+    mockLoaded([anomalies[1], anomalies[0]]);
+
+    render(<AnomaliesPage />);
+
+    expect(linkNames()).toEqual([
+      "M-109-2026-09-12T14:00:00Z",
+      "M-112-2026-09-10T09:00:00Z",
+    ]);
+    expect(screen.getByRole("columnheader", { name: "Detected at" })).toHaveAttribute(
+      "aria-sort",
+      "descending",
+    );
+    // Restoring a view is read-only: the deep link is not rewritten.
+    expect(replaceUrl).not.toHaveBeenCalled();
   });
 
   it("warns when the meter list fails but still shows the anomalies", () => {
@@ -353,9 +426,11 @@ describe("AnomaliesPage", () => {
 
     expect(screen.getByText("Showing 1 of 2 anomalies")).toBeInTheDocument();
     expect(linkNames()).toEqual(["M-109-2026-09-12T14:00:00Z"]);
+    // The URL sort is reflected in the header, so a shared link shows the arrow
+    // for the order it carries instead of silently defaulting.
     expect(
-      screen.getByText("UI sort: severity (high to low)"),
-    ).toBeInTheDocument();
+      screen.getByRole("columnheader", { name: "Severity" }),
+    ).toHaveAttribute("aria-sort", "descending");
     // Restoring the view is a read-only action: the deep link is not rewritten.
     expect(replaceUrl).not.toHaveBeenCalled();
   });
@@ -374,25 +449,48 @@ describe("AnomaliesPage", () => {
     expect(screen.getByText("Showing 1 of 2 anomalies")).toBeInTheDocument();
   });
 
-  it("writes a non-default sort to the URL and keeps the default out of it", async () => {
+  it("writes a deep-linkable sort from a header click and clears it on a second click", async () => {
+    // Fed upside down, so "back to the API order" means a different sequence
+    // than "whatever the first render happened to show".
+    mockLoaded([anomalies[1], anomalies[0]]);
     render(<AnomaliesPage />);
 
-    await chooseOption(sortLabel, "UI sort: severity (high to low)");
+    expect(linkNames()).toEqual([
+      "M-112-2026-09-10T09:00:00Z",
+      "M-109-2026-09-12T14:00:00Z",
+    ]);
+
+    clickHeader("Severity");
 
     await waitFor(() => {
       expect(replaceUrl).toHaveBeenCalledWith("/anomalies?sort=severity", {
         scroll: false,
       });
     });
+    // Severity high-to-low: M-109 is HIGH, M-112 is LOW.
+    await waitFor(() => {
+      expect(linkNames()).toEqual([
+        "M-109-2026-09-12T14:00:00Z",
+        "M-112-2026-09-10T09:00:00Z",
+      ]);
+    });
 
-    // Going back to the default sort must leave no `sort=backend` behind.
-    await chooseOption(sortLabel, "Priority (API order)");
+    // The header is now active; clicking it again turns the ordering off back to
+    // the untouched API order and must leave no `sort=backend` behind.
+    clickHeader("Severity");
 
     await waitFor(() => {
       expect(replaceUrl).toHaveBeenLastCalledWith("/anomalies", {
         scroll: false,
       });
     });
+    // NOTE: the ROW order is deliberately NOT asserted here. `AnomalyTable`
+    // hands the array to antd, whose controlled sorter re-sorts it, so the
+    // rendered order comes from antd and a wrong direction in
+    // `applyAnomalySort` still renders correctly. Row assertions in this suite
+    // therefore cannot fail for that reason -- they would be false confidence.
+    // The ordering itself is pinned by the direct unit tests in
+    // `anomalyFiltering.test.ts`, which is the only place it can be observed.
   });
 
   it("removes a cleared filter parameter while keeping the non-default sort", async () => {
@@ -423,8 +521,13 @@ describe("AnomaliesPage", () => {
 
     // Every invalid value falls back to its default, so the list is unfiltered...
     expect(screen.getByText("Showing 2 of 2 anomalies")).toBeInTheDocument();
-    // ...the default (absent) sort is still selected...
-    expect(screen.getByText("Priority (API order)")).toBeInTheDocument();
+    // ...and no header shows an arrow, which is how the untouched API order is
+    // represented...
+    for (const name of ["Priority", "Detected at", "Severity", "Confidence"]) {
+      expect(screen.getByRole("columnheader", { name })).not.toHaveAttribute(
+        "aria-sort",
+      );
+    }
     // ...and an ignored value is not an active filter.
     expect(
       screen.queryByText(/Filters are applied in the browser/),
@@ -472,6 +575,37 @@ describe("AnomaliesPage", () => {
     expect(
       screen.queryByText("El backend no reportó anomalías."),
     ).not.toBeInTheDocument();
+  });
+
+  // Regression for the recorded open finding: the filter bar and the empty state
+  // both used to render a button named exactly "Clear filters", so
+  // `getByRole("button", { name: "Clear filters" })` THREW once the empty state
+  // was visible. The two actions now have distinct accessible names, and this
+  // test proves both can coexist and be addressed unambiguously.
+  it("addresses the filter-bar and empty-state clear actions by distinct names", async () => {
+    render(<AnomaliesPage />);
+
+    fireEvent.change(searchBox(), { target: { value: "zzzzz" } });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Ninguna anomalía coincide con los filtros actuales."),
+      ).toBeInTheDocument();
+    });
+
+    // Both controls are on screen at once, and each name resolves to exactly
+    // one button instead of throwing on an ambiguous match.
+    expect(clearButton()).toBeEnabled();
+    const emptyStateClear = screen.getByRole("button", {
+      name: "Limpiar filtros",
+    });
+
+    // The empty-state action restores the unfiltered list.
+    fireEvent.click(emptyStateClear);
+
+    await waitFor(() => {
+      expect(screen.getByText("Showing 2 of 2 anomalies")).toBeInTheDocument();
+    });
   });
 
   // Regression, and the reason this feature was reverted once. The button used

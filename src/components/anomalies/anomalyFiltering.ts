@@ -17,7 +17,7 @@ import {
  *
  * The backend returns a **bare array already ordered by ascending `priority`**
  * (then `detected_at`, then `meter_id`) and the endpoint accepts **no query
- * parameters**, so every filter and the sort selector below run in the browser
+ * parameters**, so every filter and the header sort below run in the browser
  * over the already-fetched list. There is deliberately no attempt to proxy this
  * as server-side filtering: the page refetches nothing when the user changes a
  * control, and the default view keeps the API order untouched.
@@ -72,23 +72,80 @@ export function hasActiveFilters(filters: AnomalyFilterValues): boolean {
   );
 }
 
-export type AnomalySortKey = "backend" | "priority" | "severity" | "detected_at";
+export type AnomalySortKey =
+  | "backend"
+  | "priority"
+  | "severity"
+  | "detected_at"
+  | "confidence";
 
-export interface AnomalySortOption {
-  value: AnomalySortKey;
-  label: string;
+/** Every key that names a real ordering; `"backend"` means "do not sort". */
+export type AnomalySortField = Exclude<AnomalySortKey, "backend">;
+
+/** antd's sort direction vocabulary, narrowed to the two non-cancelled states. */
+export type AnomalySortDirection = "ascend" | "descend";
+
+/**
+ * One ordering the UI can apply, in exactly one fixed direction.
+ *
+ * This is the **single** definition of each sort's meaning. It is read by
+ * `applyAnomalySort` (which produces the array order the page renders) and by
+ * the antd column `sorter`/`sortDirections`/`sortOrder` props in `AnomalyTable`
+ * (which produce the header affordance). Because both consumers read the same
+ * `compare` function, the header can never grow a comparison the page does not
+ * use, and the page can never sort by something the header does not offer.
+ *
+ * The fixed direction is deliberate: these orderings are triage orderings
+ * (most urgent / most severe / most recent / most confident first), not a
+ * generic asc/desc toggle. The header therefore toggles one ordering on and
+ * off, not through four direction combinations nobody asked for.
+ */
+export interface AnomalySortDefinition {
+  key: AnomalySortField;
+  /** The direction that visually matches this ordering's fixed direction. */
+  direction: AnomalySortDirection;
+  compare: (left: Anomaly, right: Anomaly) => number;
 }
 
 /**
- * Explicitly labelled as a browser-side sort of the fetched array: the default
- * "Priority (API order)" leaves the response array untouched, because the
- * backend now returns it in ascending `priority` order.
+ * Each `compare` is an **ascending** comparator (the convention antd expects):
+ * the header supplies the direction and antd flips the sign for `descend`.
+ * `applyAnomalySort` applies the exact same rule, so both paths produce the same
+ * order and the tie behaviour stays stable (negating a `0` is still `0`).
+ *
+ * The directions reproduce the previous semantics exactly: `priority` ascending
+ * with the backend's own tie-breakers, `severity` high-to-low, `detected_at`
+ * newest-first, and `confidence` most-confident-first.
  */
-export const anomalySortOptions: AnomalySortOption[] = [
-  { value: "backend", label: "Priority (API order)" },
-  { value: "priority", label: "UI sort: priority (most urgent first)" },
-  { value: "severity", label: "UI sort: severity (high to low)" },
-  { value: "detected_at", label: "UI sort: detected at (newest first)" },
+export const anomalySortDefinitions: AnomalySortDefinition[] = [
+  {
+    key: "priority",
+    direction: "ascend",
+    compare: (left, right) =>
+      left.priority - right.priority ||
+      Date.parse(left.detected_at) - Date.parse(right.detected_at) ||
+      left.meter_id.localeCompare(right.meter_id),
+  },
+  {
+    key: "severity",
+    direction: "descend",
+    // Low-to-high here; `descend` turns it into high-to-low.
+    compare: (left, right) =>
+      severityRank[right.severity] - severityRank[left.severity],
+  },
+  {
+    key: "detected_at",
+    direction: "descend",
+    // Oldest-to-newest here; `descend` turns it into newest-first.
+    compare: (left, right) =>
+      Date.parse(left.detected_at) - Date.parse(right.detected_at),
+  },
+  {
+    key: "confidence",
+    direction: "descend",
+    // Least-to-most confident here; `descend` turns it into most-first.
+    compare: (left, right) => left.confidence - right.confidence,
+  },
 ];
 
 /** Trims and case-folds a term so callers compare apples to apples. */
@@ -167,9 +224,26 @@ export function applyAnomalyFilters(
 /**
  * Applies the user-selected UI sort. `"backend"` returns the original array so
  * the default view keeps the exact order the API returned, which is already
- * ascending `priority`. `"priority"` re-sorts on the API-provided `priority`
- * field only (never a client re-derivation), with the same deterministic
- * tie-breakers the backend uses.
+ * ascending `priority` (the UI never recomputes it). Every other key looks up
+ * its ordering in `anomalySortDefinitions` — the same registry the table header
+ * reads — and applies it in the definition's own direction, mirroring the
+ * `compare` + direction pairing antd uses.
+ *
+ * **This function and antd's own sorter are two passes over the same array, and
+ * antd's is the one that decides what the user sees.** `AnomalyTable` hands
+ * `dataSource` to antd with a controlled `sorter`, and antd re-sorts it in
+ * `getSortData` (`antd/es/table/hooks/useSorter.js`), so the rendered row order
+ * is antd's. That means a mistake in the direction applied here is **invisible
+ * in the browser**: the table still looks right. The two agree today because
+ * both negate the same ascending comparator for `descend` and both rely on a
+ * stable sort, but the agreement is a property of that shared convention rather
+ * than something the structure enforces, and no rendered assertion can catch a
+ * divergence.
+ *
+ * That is why the ordering here is pinned by direct unit tests on this function
+ * (see `anomalyFiltering.test.ts`) instead of only through the table: those are
+ * the only guard on this path. The dashboard preview, which renders the table
+ * without sort props, depends on this function alone.
  */
 export function applyAnomalySort(
   anomalies: Anomaly[],
@@ -179,24 +253,19 @@ export function applyAnomalySort(
     return anomalies;
   }
 
-  const sorted = [...anomalies];
-  if (sortKey === "priority") {
-    sorted.sort((left, right) =>
-      left.priority - right.priority ||
-      Date.parse(left.detected_at) - Date.parse(right.detected_at) ||
-      left.meter_id.localeCompare(right.meter_id),
-    );
-  } else if (sortKey === "severity") {
-    sorted.sort(
-      (left, right) => severityRank[left.severity] - severityRank[right.severity],
-    );
-  } else {
-    sorted.sort(
-      (left, right) =>
-        Date.parse(right.detected_at) - Date.parse(left.detected_at),
-    );
+  const definition = anomalySortDefinitions.find(
+    (candidate) => candidate.key === sortKey,
+  );
+  if (!definition) {
+    return anomalies;
   }
-  return sorted;
+
+  const { compare, direction } = definition;
+  // Negating the ascending comparator for `descend` mirrors antd exactly, and
+  // because `0` negates to `0`, equal rows keep their incoming order.
+  return [...anomalies].sort((left, right) =>
+    direction === "ascend" ? compare(left, right) : -compare(left, right),
+  );
 }
 
 /* ------------------------------------------------------------------ *
@@ -215,13 +284,16 @@ export type AnomalyUrlState = AnomalyFilterValues & { sort: AnomalySortKey };
 /**
  * Every sort key the UI knows, used to reject unknown `sort` values.
  *
- * Derived from `anomalySortOptions` rather than re-listed, so the selector the
- * user sees and the parser that accepts a deep link can never disagree: adding
- * an option without teaching the URL about it would offer a choice the link
- * silently discards.
+ * Derived from `anomalySortDefinitions` rather than re-listed, so the header
+ * that offers a sort and the parser that accepts a deep link can never
+ * disagree: adding an ordering without teaching the URL about it would offer a
+ * header click the link silently discards, and a stale key would let a link
+ * select a column the table no longer has.
  */
-export const anomalySortKeys: readonly AnomalySortKey[] =
-  anomalySortOptions.map((option) => option.value);
+export const anomalySortKeys: readonly AnomalySortKey[] = [
+  "backend",
+  ...anomalySortDefinitions.map((definition) => definition.key),
+];
 
 /**
  * Parses a raw parameter against the enum values the UI can actually render.

@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useMemo } from "react";
-import { Alert, Button, Empty, Select, Skeleton, Space, Typography } from "antd";
+import { Alert, Button, Empty, Skeleton, Typography } from "antd";
 import {
   useGetAnomaliesQuery,
   useGetMetersQuery,
@@ -10,14 +10,12 @@ import { AiReanalysis } from "@/components/anomalies/AiReanalysis";
 import { AnomalyFilters } from "@/components/anomalies/AnomalyFilters";
 import { AnomalyTable } from "@/components/anomalies/AnomalyTable";
 import {
-  anomalySortOptions,
   anomalyUrlSchema,
   applyAnomalyFilters,
   applyAnomalySort,
   emptyAnomalyFilters,
   hasActiveFilters,
   type AnomalyFilterValues,
-  type AnomalySortKey,
   type AnomalyUrlState,
 } from "@/components/anomalies/anomalyFiltering";
 import { useUrlState } from "@/hooks/useUrlState";
@@ -46,10 +44,18 @@ export default function AnomaliesPage() {
  *
  * `GET /api/anomalies` returns a **bare array already sorted by ascending
  * `priority`** (then `detected_at`, then `meter_id`) and accepts **no query
- * parameters**, so every filter and the sort selector below run in the browser
+ * parameters**, so every filter and the header sort below run in the browser
  * over the fetched list. Changing a control never triggers a request. Ordering
- * by priority is what the API already does; the UI only relabels it and offers
- * optional re-sorts.
+ * by priority is what the API already does; the UI only makes that order
+ * selectable and offers optional re-sorts.
+ *
+ * Sorting is the antd column headers (see `AnomalyTable`), not an external
+ * control: a header click writes the same `sort` key this page already keeps in
+ * the URL, so the chosen order is deep-linkable and a refresh restores it. The
+ * header's arrow and the URL are the same value, so they cannot disagree.
+ * `backend` (the API order) is the state with no arrow, and clicking the active
+ * header again returns to it. The old external `Select` was removed rather than
+ * kept as a second control that could drift out of sync with the header.
  *
  * The whole view is deep-linkable: `anomalyUrlSchema` reads the filters and the
  * sort key from the query string on mount (the pre-existing `?meter_id=M-109`
@@ -135,39 +141,35 @@ function AnomaliesContent() {
       </section>
 
       <section aria-label="Anomaly results" style={{ marginTop: "1.5rem" }}>
-        <Space wrap size="large" style={{ marginBottom: "1rem" }}>
-          <Text role="status">
-            Showing {visibleAnomalies.length} of {anomalies.length} anomalies
-          </Text>
-          <div>
-            <label htmlFor="anomaly-sort" style={{ marginRight: "0.5rem" }}>
-              Sort
-            </label>
-            <Select<AnomalySortKey>
-              id="anomaly-sort"
-              aria-label="Sort anomalies, applied in the browser over the fetched list"
-              value={sortKey}
-              options={anomalySortOptions}
-              onChange={(value) => setUrlState((previous) => ({ ...previous, sort: value }))}
-              style={{ minWidth: "16rem" }}
-            />
-          </div>
-        </Space>
+        <Text role="status" style={{ display: "block", marginBottom: "1rem" }}>
+          Showing {visibleAnomalies.length} of {anomalies.length} anomalies
+        </Text>
 
         {anomalies.length === 0 ? (
           <Empty description="El backend no reportó anomalías." />
         ) : visibleAnomalies.length === 0 ? (
           <Empty description="Ninguna anomalía coincide con los filtros actuales.">
+            {/* Named for what it clears. This button sits next to the filter
+                bar's own "Clear filters", and two controls with the same
+                accessible name make `getByRole("button", { name: "Clear
+                filters" })` throw for every assistive-technology user and
+                test once the empty state is on screen. */}
             <Button
               onClick={() =>
                 setUrlState((previous) => ({ ...previous, ...emptyAnomalyFilters }))
               }
             >
-              Clear filters
+              Limpiar filtros
             </Button>
           </Empty>
         ) : (
-          <AnomalyTable anomalies={visibleAnomalies} />
+          <AnomalyTable
+            anomalies={visibleAnomalies}
+            sortKey={sortKey}
+            onSortChange={(nextSortKey) =>
+              setUrlState((previous) => ({ ...previous, sort: nextSortKey }))
+            }
+          />
         )}
       </section>
 

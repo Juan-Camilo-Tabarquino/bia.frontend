@@ -1,6 +1,8 @@
 import type { Anomaly } from "@/types/backend";
 import {
+  anomalySortDefinitions,
   applyAnomalyFilters,
+  applyAnomalySort,
   emptyAnomalyFilters,
   type AnomalyFilterValues,
 } from "../anomalyFiltering";
@@ -141,5 +143,90 @@ describe("applyAnomalyFilters", () => {
     );
 
     expect(ids(filtered)).toEqual(["M-112-2026-09-10T09:00:00Z"]);
+  });
+});
+
+describe("applyAnomalySort", () => {
+  const reversed: Anomaly[] = [...anomalies].reverse();
+
+  it("leaves the API order untouched for `backend`", () => {
+    // Same array instance, so the default view cannot have been reordered.
+    expect(applyAnomalySort(reversed, "backend")).toBe(reversed);
+  });
+
+  it("sorts by ascending priority with the backend tie-breakers", () => {
+    expect(ids(applyAnomalySort(reversed, "priority"))).toEqual([
+      "M-109-2026-09-12T14:00:00Z",
+      "M-112-2026-09-10T09:00:00Z",
+      "M-104-2026-08-20T00:00:00Z",
+      "M-106-2026-09-01T00:00:00Z",
+    ]);
+  });
+
+  it("sorts by severity from high to low", () => {
+    // M-109 and M-112 are both HIGH in this fixture, so this also pins the tie
+    // behaviour: equal severities keep the order they arrived in.
+    expect(ids(applyAnomalySort(reversed, "severity"))).toEqual([
+      "M-112-2026-09-10T09:00:00Z",
+      "M-109-2026-09-12T14:00:00Z",
+      "M-104-2026-08-20T00:00:00Z",
+      "M-106-2026-09-01T00:00:00Z",
+    ]);
+  });
+
+  it("sorts by detected_at newest first", () => {
+    expect(ids(applyAnomalySort(reversed, "detected_at"))).toEqual([
+      "M-109-2026-09-12T14:00:00Z",
+      "M-112-2026-09-10T09:00:00Z",
+      "M-106-2026-09-01T00:00:00Z",
+      "M-104-2026-08-20T00:00:00Z",
+    ]);
+  });
+
+  it("sorts by confidence highest first", () => {
+    const byConfidence = [
+      makeAnomaly({ id: "low", confidence: 0.2 }),
+      makeAnomaly({ id: "high", confidence: 0.99 }),
+      makeAnomaly({ id: "mid", confidence: 0.6 }),
+    ];
+
+    expect(ids(applyAnomalySort(byConfidence, "confidence"))).toEqual([
+      "high",
+      "mid",
+      "low",
+    ]);
+  });
+
+  it("does not mutate the array it is given", () => {
+    const input = [...reversed];
+
+    applyAnomalySort(input, "severity");
+
+    expect(input).toEqual(reversed);
+  });
+
+  // The ordering produced here is invisible in the browser: `AnomalyTable`
+  // hands the array to antd, whose controlled sorter re-sorts it, so a wrong
+  // direction still renders the expected rows. These tests are the only guard
+  // on this path, which is why they are direct rather than asserted through the
+  // table.
+  it("reproduces the registry's own comparison for every declared ordering", () => {
+    const sample = [
+      makeAnomaly({ id: "b", priority: 2, confidence: 0.5, severity: "LOW" }),
+      makeAnomaly({ id: "a", priority: 1, confidence: 0.9, severity: "HIGH" }),
+      makeAnomaly({ id: "c", priority: 3, confidence: 0.1, severity: "MEDIUM" }),
+    ];
+
+    for (const definition of anomalySortDefinitions) {
+      const expected = [...sample].sort((left, right) => {
+        const compared = definition.compare(left, right);
+        return definition.direction === "ascend" ? compared : -compared;
+      });
+
+      expect({
+        key: definition.key,
+        order: ids(applyAnomalySort(sample, definition.key)),
+      }).toEqual({ key: definition.key, order: ids(expected) });
+    }
   });
 });

@@ -1,6 +1,7 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import type { Anomaly } from "@/types/backend";
+import { anomalySortDefinitions } from "../anomalyFiltering";
 import { AnomalyTable } from "../AnomalyTable";
 
 const realAnomaly: Anomaly = {
@@ -115,5 +116,177 @@ describe("AnomalyTable", () => {
     );
 
     expect(dataQualityRow?.className).toContain("dataQualityRow");
+  });
+});
+
+describe("AnomalyTable header sorting", () => {
+  it("stays a plain preview with no sort affordance when no caller owns the sort", () => {
+    // This is the dashboard contract: the 5-row preview has no `useUrlState`, so
+    // it must not gain an arrow that would lead nowhere and diverge from its
+    // "priority order" caption.
+    const { container } = render(
+      <AnomalyTable anomalies={[realAnomaly, dataQualityAnomaly]} />,
+    );
+
+    expect(
+      container.querySelectorAll(".ant-table-column-has-sorters"),
+    ).toHaveLength(0);
+    expect(
+      screen.getByRole("link", { name: realAnomaly.id }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: dataQualityAnomaly.id }),
+    ).toBeInTheDocument();
+  });
+
+  it("offers a sorter on the triage columns only", () => {
+    const { container } = render(
+      <AnomalyTable
+        anomalies={[realAnomaly]}
+        sortKey="backend"
+        onSortChange={jest.fn()}
+      />,
+    );
+
+    const sortableTitles = Array.from(
+      container.querySelectorAll("thead th.ant-table-column-has-sorters"),
+    ).map((header) => header.getAttribute("aria-label"));
+
+    // identifiers (`id`, `meter_id`) and unordered categories (`type`,
+    // `status`) deliberately get no sorter.
+    expect(sortableTitles).toEqual([
+      "Priority",
+      "Detected at",
+      "Severity",
+      "Confidence",
+    ]);
+  });
+
+  it("asks the caller for the ordering named by the clicked header", () => {
+    const onSortChange = jest.fn();
+    render(
+      <AnomalyTable
+        anomalies={[realAnomaly, dataQualityAnomaly]}
+        sortKey="backend"
+        onSortChange={onSortChange}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("columnheader", { name: "Severity" }));
+
+    expect(onSortChange).toHaveBeenCalledWith("severity");
+  });
+
+  it("returns to the API order when the active header is clicked again", () => {
+    const onSortChange = jest.fn();
+    render(
+      <AnomalyTable
+        anomalies={[realAnomaly, dataQualityAnomaly]}
+        sortKey="severity"
+        onSortChange={onSortChange}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("columnheader", { name: "Severity" }));
+
+    expect(onSortChange).toHaveBeenCalledWith("backend");
+  });
+
+  it("clears the previous arrow when a second sortable header is clicked", () => {
+    const onSortChange = jest.fn();
+    const { rerender } = render(
+      <AnomalyTable
+        anomalies={[realAnomaly, dataQualityAnomaly]}
+        sortKey="severity"
+        onSortChange={onSortChange}
+      />,
+    );
+
+    expect(
+      screen.getByRole("columnheader", { name: "Severity" }),
+    ).toHaveAttribute("aria-sort", "descending");
+
+    fireEvent.click(screen.getByRole("columnheader", { name: "Confidence" }));
+    expect(onSortChange).toHaveBeenCalledWith("confidence");
+
+    // The caller owns the value, so the switch shows once it feeds it back.
+    rerender(
+      <AnomalyTable
+        anomalies={[realAnomaly, dataQualityAnomaly]}
+        sortKey="confidence"
+        onSortChange={onSortChange}
+      />,
+    );
+
+    expect(
+      screen.getByRole("columnheader", { name: "Confidence" }),
+    ).toHaveAttribute("aria-sort", "descending");
+    expect(
+      screen.getByRole("columnheader", { name: "Severity" }),
+    ).not.toHaveAttribute("aria-sort");
+  });
+
+  // A definition without a matching column would still be accepted from a
+  // `?sort=` link and still order the rows, but no header would exist to show
+  // or change it: a silent divergence. This pins the two lists together.
+  it("offers exactly the sortable keys the registry declares", () => {
+    render(
+      <AnomalyTable
+        anomalies={[realAnomaly]}
+        sortKey="backend"
+        onSortChange={jest.fn()}
+      />,
+    );
+
+    const sortableTitles = screen
+      .getAllByRole("columnheader")
+      .filter((header) => header.querySelector(".ant-table-column-sorter"))
+      .map((header) => header.textContent);
+
+    expect(sortableTitles).toHaveLength(anomalySortDefinitions.length);
+  });
+
+  it("shows the caller's ordering as the only active arrow", () => {
+    render(
+      <AnomalyTable
+        anomalies={[realAnomaly, dataQualityAnomaly]}
+        sortKey="detected_at"
+        onSortChange={jest.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByRole("columnheader", { name: "Detected at" }),
+    ).toHaveAttribute("aria-sort", "descending");
+    // No stale arrow survives on the other sortable headers.
+    for (const name of ["Priority", "Severity", "Confidence"]) {
+      expect(screen.getByRole("columnheader", { name })).not.toHaveAttribute(
+        "aria-sort",
+      );
+    }
+  });
+
+  it("marks priority ascending and leaves backend represented by no arrow", () => {
+    const { rerender } = render(
+      <AnomalyTable
+        anomalies={[realAnomaly]}
+        sortKey="priority"
+        onSortChange={jest.fn()}
+      />,
+    );
+    expect(
+      screen.getByRole("columnheader", { name: "Priority" }),
+    ).toHaveAttribute("aria-sort", "ascending");
+
+    rerender(
+      <AnomalyTable
+        anomalies={[realAnomaly]}
+        sortKey="backend"
+        onSortChange={jest.fn()}
+      />,
+    );
+    expect(
+      screen.getByRole("columnheader", { name: "Priority" }),
+    ).not.toHaveAttribute("aria-sort");
   });
 });
