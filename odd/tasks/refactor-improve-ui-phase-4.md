@@ -130,7 +130,7 @@ Measured against the branch at `cdb610b`. Corrections to the plan's assumptions 
 
 | Task | Commit | Gates | Mutation experiment | Review |
 | --- | --- | --- | --- | --- |
-| T1 | _(this commit)_ | eslint 0 · tsc 0 · **25 suites / 170 tests** · next build 0 (7 routes, `/anomalies` still static) | 2 by the writer, 3 probes by the verifier | `gentle-ai-verify`: PASS WITH FINDINGS, no BLOCKER. 3 of 7 findings fixed here; 4 recorded below |
+| T1 | `62dceaa` | eslint 0 · tsc 0 · **25 suites / 170 tests** · next build 0 (7 routes, `/anomalies` still static) | 2 by the writer, 3 probes by the verifier | `gentle-ai-verify`: PASS WITH FINDINGS, no BLOCKER. 3 of 7 findings fixed here; 4 recorded below |
 | T2 | — | — | — | — |
 | T3 | — | — | — | — |
 | T4 | — | — | — | — |
