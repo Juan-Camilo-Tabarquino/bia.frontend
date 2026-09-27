@@ -40,7 +40,7 @@ describe("AnomalyNarrative", () => {
     render(<AnomalyNarrative analysis={sample} />);
 
     expect(
-      screen.getByRole("region", { name: "LLM narrative" }),
+      screen.getByRole("region", { name: "Narrativa del LLM" }),
     ).toBeInTheDocument();
   });
 
@@ -59,7 +59,9 @@ describe("AnomalyNarrative", () => {
     render(<AnomalyNarrative />);
 
     expect(
-      screen.getByText("No LLM narrative is available for this anomaly."),
+      screen.getByText(
+        "No hay narrativa del LLM disponible para esta anomalía.",
+      ),
     ).toBeInTheDocument();
     expect(screen.queryByText(/not available yet/i)).not.toBeInTheDocument();
   });
@@ -68,7 +70,9 @@ describe("AnomalyNarrative", () => {
     render(<AnomalyNarrative analysis="" />);
 
     expect(
-      screen.getByText("No LLM narrative is available for this anomaly."),
+      screen.getByText(
+        "No hay narrativa del LLM disponible para esta anomalía.",
+      ),
     ).toBeInTheDocument();
   });
 
@@ -76,7 +80,9 @@ describe("AnomalyNarrative", () => {
     render(<AnomalyNarrative analysis={"   \n  "} />);
 
     expect(
-      screen.getByText("No LLM narrative is available for this anomaly."),
+      screen.getByText(
+        "No hay narrativa del LLM disponible para esta anomalía.",
+      ),
     ).toBeInTheDocument();
   });
 });

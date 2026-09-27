@@ -1,0 +1,95 @@
+/*
+ * Element + class selectors (header.header) intentionally outrank antd's own
+ * `.ant-layout-header` rule, whose hardcoded navy `#001529` is off-brand. This
+ * avoids `!important` while still overriding height, line-height and padding so
+ * the bar can wrap on narrow screens.
+ */
+.header.header {
+  height: auto;
+  min-height: 64px;
+  padding: 0;
+  line-height: normal;
+  background-color: var(--bia-color-bg-container);
+  border-bottom: 1px solid var(--bia-color-border-secondary);
+}
+
+.inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 1rem;
+  min-height: 64px;
+  padding-block: 0.5rem;
+}
+
+.brand {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.4rem;
+  text-decoration: none;
+}
+
+.bolt {
+  width: 1.5rem;
+  height: 1.5rem;
+  color: var(--bia-color-primary);
+}
+
+.wordmark {
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.01em;
+}
+
+.nav {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.navList {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.navLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: var(--bia-border-radius);
+  color: var(--bia-color-text-secondary);
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.navLink:hover {
+  color: var(--bia-color-text);
+  background-color: var(--bia-color-fill-alter);
+}
+
+.navLinkActive,
+.navLinkActive:hover {
+  color: var(--bia-color-primary);
+  background-color: var(--bia-color-fill-content);
+}
+
+.navIcon {
+  display: inline-flex;
+  align-items: center;
+}
+
+.toggle {
+  flex: 0 0 auto;
+  margin-left: auto;
+}

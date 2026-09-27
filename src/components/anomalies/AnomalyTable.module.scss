@@ -1,9 +1,12 @@
 /* Tint for DATA_QUALITY rows so they read as measurement problems, not real
-   consumption anomalies, even at a glance. */
+   consumption anomalies, even at a glance. antd 6 applies its row-hover
+   background through `.ant-table-tbody .ant-table-row > .ant-table-cell-row-hover`,
+   which carries more class selectors than a single class module selector, so
+   `!important` is still required to keep the tint visible on hover. */
 .dataQualityRow > td {
-  background-color: #f9f0ff !important;
+  background-color: var(--bia-color-fill-alter) !important;
 }
 
 .dataQualityRow:hover > td {
-  background-color: #f0e0ff !important;
+  background-color: var(--bia-color-fill-content) !important;
 }

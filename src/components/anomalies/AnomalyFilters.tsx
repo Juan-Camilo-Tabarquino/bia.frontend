@@ -1,6 +1,7 @@
 "use client";
 
-import { Button, DatePicker, Select, Typography } from "antd";
+import { useEffect, useRef, useState } from "react";
+import { Button, DatePicker, Input, Select, Typography } from "antd";
 import dayjs from "dayjs";
 import type { Dayjs } from "dayjs";
 import type {
@@ -15,10 +16,13 @@ import {
 } from "./anomalyFiltering";
 import {
   anomalySeverities,
+  anomalySeverityLabels,
+  anomalyStatusLabels,
   anomalyStatuses,
   anomalyTypeLabels,
   anomalyTypes,
 } from "./anomalyLabels";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import styles from "./AnomalyFilters.module.scss";
 
 const { Text } = Typography;
@@ -31,18 +35,71 @@ const typeOptions = anomalyTypes.map((value: AnomalyType) => ({
 
 const severityOptions = anomalySeverities.map((value: AnomalySeverity) => ({
   value,
-  label: value,
+  label: anomalySeverityLabels[value],
 }));
 
 const statusOptions = anomalyStatuses.map((value: AnomalyStatus) => ({
   value,
-  label: value,
+  label: anomalyStatusLabels[value],
 }));
+
+interface AnomalySearchInputProps {
+  /** The committed term plus the reset counter, both owned by the caller. */
+  search: { text: string; resetToken: number };
+  onTextChange: (next: string) => void;
+}
+
+/**
+ * Debounced search box.
+ *
+ * The typed text lives in the caller and only the *commit* is debounced. The
+ * reset is an explicit `resetToken` in the same state object, never inferred:
+ * clearing the filters while a draft is pending sets `text` to `""` when it was
+ * already `""`, so an inferred reset would have no change to observe. A counter
+ * always differs, so the box can never miss the event.
+ */
+function AnomalySearchInput({ search, onTextChange }: AnomalySearchInputProps) {
+  // An external reset clears the box during the render, so it happens before any
+  // pending debounce can publish. The token lives in state, not a ref, because a
+  // ref cannot be written during a render.
+  const [seenToken, setSeenToken] = useState(search.resetToken);
+
+  if (seenToken !== search.resetToken) {
+    setSeenToken(search.resetToken);
+    if (search.text !== "") {
+      onTextChange("");
+    }
+  }
+
+  return (
+    <div className={styles.field}>
+      <label className={styles.label} htmlFor="anomaly-filter-search">
+        Buscar
+      </label>
+      <Input
+        id="anomaly-filter-search"
+        aria-label="Buscar anomalías"
+        allowClear
+        placeholder="Buscar por id, medidor, motivo o acción"
+        className={styles.control}
+        value={search.text}
+        onChange={(event) => onTextChange(event.target.value)}
+      />
+    </div>
+  );
+}
 
 interface AnomalyFiltersProps {
   meters: string[];
   values: AnomalyFilterValues;
-  onChange: (values: AnomalyFilterValues) => void;
+  /**
+   * Applies a PATCH over the current filters. Taking a partial rather than a
+   * whole snapshot is what lets concurrent changes compose: the debounced
+   * search publishes from a timer, so a full-snapshot callback would overwrite
+   * whatever the user changed in between with the values captured when the
+   * timer was scheduled.
+   */
+  onChange: (patch: Partial<AnomalyFilterValues>) => void;
 }
 
 /**
@@ -59,6 +116,49 @@ export function AnomalyFilters({
   values,
   onChange,
 }: AnomalyFiltersProps) {
+  // The typed text lives here so a reset cannot race a private draft. The commit
+  // is debounced; the reset is immediate and carries its own counter.
+  const [typed, setTyped] = useState(values.search.text);
+  const debouncedTyped = useDebouncedValue(typed);
+  const lastPublished = useRef(values.search.text);
+  // The token is preserved, never incremented, from this effect: typing is not a
+  // reset. It is read through a ref so the timer-driven effect does not have to
+  // re-subscribe whenever the token changes.
+  const tokenRef = useRef(values.search.resetToken);
+  useEffect(() => {
+    tokenRef.current = values.search.resetToken;
+  }, [values.search.resetToken]);
+  const currentToken = () => tokenRef.current;
+
+  useEffect(() => {
+    const normalized = debouncedTyped.trim();
+    if (normalized === lastPublished.current) {
+      return;
+    }
+    lastPublished.current = normalized;
+    // Publish ONLY the search field, so a filter the user changed while this
+    // timer was pending is not overwritten by a stale snapshot.
+    onChange({ search: { text: normalized, resetToken: currentToken() } });
+    // Deliberately keyed on the settled text only: re-running on every parent
+    // render would republish a stale term.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedTyped]);
+
+  // Adopt a term that changed from outside (a deep link) during the render.
+  const [seenExternal, setSeenExternal] = useState(values.search.text);
+  if (seenExternal !== values.search.text) {
+    setSeenExternal(values.search.text);
+    setTyped(values.search.text);
+  }
+
+  const clearFilters = () => {
+    setTyped("");
+    onChange({
+      ...emptyAnomalyFilters,
+      search: { text: "", resetToken: currentToken() + 1 },
+    });
+  };
+
   const meterOptions = meters.map((meterId) => ({
     value: meterId,
     label: meterId,
@@ -70,90 +170,96 @@ export function AnomalyFilters({
       : null;
 
   return (
-    <div className={styles.filters} role="group" aria-label="Anomaly filters">
+    <div className={styles.filters} role="group" aria-label="Filtros de anomalías">
+      {/* Search composes with the selects through `applyAnomalyFilters` instead
+          of post-filtering the array a second time. */}
+      <AnomalySearchInput
+        search={{ ...values.search, text: typed }}
+        onTextChange={(next) => setTyped(next)}
+      />
+
       <div className={styles.field}>
         <label className={styles.label} htmlFor="anomaly-filter-meter">
-          Meter
+          Medidor
         </label>
         <Select
           id="anomaly-filter-meter"
-          aria-label="Filter by meter"
+          aria-label="Filtrar por medidor"
           allowClear
           showSearch
-          placeholder="All meters"
+          placeholder="Todos los medidores"
           className={styles.control}
           value={values.meterId ?? undefined}
           options={meterOptions}
           onChange={(meterId) =>
-            onChange({ ...values, meterId: meterId ?? null })
+            onChange({ meterId: meterId ?? null })
           }
         />
       </div>
 
       <div className={styles.field}>
         <label className={styles.label} htmlFor="anomaly-filter-type">
-          Type
+          Tipo
         </label>
         <Select
           id="anomaly-filter-type"
-          aria-label="Filter by type"
+          aria-label="Filtrar por tipo"
           allowClear
-          placeholder="All types"
+          placeholder="Todos los tipos"
           className={styles.control}
           value={values.type ?? undefined}
           options={typeOptions}
-          onChange={(type) => onChange({ ...values, type: type ?? null })}
+          onChange={(type) => onChange({ type: type ?? null })}
         />
       </div>
 
       <div className={styles.field}>
         <label className={styles.label} htmlFor="anomaly-filter-severity">
-          Severity
+          Severidad
         </label>
         <Select
           id="anomaly-filter-severity"
-          aria-label="Filter by severity"
+          aria-label="Filtrar por severidad"
           allowClear
-          placeholder="All severities"
+          placeholder="Todas las severidades"
           className={styles.control}
           value={values.severity ?? undefined}
           options={severityOptions}
           onChange={(severity) =>
-            onChange({ ...values, severity: severity ?? null })
+            onChange({ severity: severity ?? null })
           }
         />
       </div>
 
       <div className={styles.field}>
         <label className={styles.label} htmlFor="anomaly-filter-status">
-          Status
+          Estado
         </label>
         <Select
           id="anomaly-filter-status"
-          aria-label="Filter by status"
+          aria-label="Filtrar por estado"
           allowClear
-          placeholder="All statuses"
+          placeholder="Todos los estados"
           className={styles.control}
           value={values.status ?? undefined}
           options={statusOptions}
-          onChange={(status) => onChange({ ...values, status: status ?? null })}
+          onChange={(status) => onChange({ status: status ?? null })}
         />
       </div>
 
       <div className={styles.field}>
         <label className={styles.label} htmlFor="anomaly-filter-detected">
-          Detected at
+          Fecha de detección
         </label>
         <RangePicker
           id="anomaly-filter-detected"
-          aria-label="Filter by detected at date range"
+          aria-label="Filtrar por rango de fechas de detección"
           className={styles.control}
           value={rangeValue}
           onChange={(dates) => {
             const from = dates?.[0];
             const to = dates?.[1];
             onChange({
-              ...values,
               detectedFrom: from ? from.startOf("day").toISOString() : null,
               detectedTo: to ? to.endOf("day").toISOString() : null,
             });
@@ -162,18 +268,26 @@ export function AnomalyFilters({
       </div>
 
       <div className={styles.field}>
+        {/* The box can hold a term the user has typed but that the debounce has
+            not committed yet. In that window every committed filter is empty, so
+            gating on them alone leaves "Limpiar filtros" DISABLED while a visible
+            term sits in the input: the user cannot clear what they just typed,
+            and the term lands in the URL moments later. The gate therefore also
+            looks at the RAW box value, not its trimmed form -- a box showing
+            only spaces still has something on screen worth clearing, and its
+            debounce will never commit anything. */}
         <Button
-          onClick={() => onChange(emptyAnomalyFilters)}
-          disabled={!hasActiveFilters(values)}
+          onClick={clearFilters}
+          disabled={!hasActiveFilters(values) && typed.length === 0}
         >
-          Clear filters
+          Limpiar filtros
         </Button>
       </div>
 
       <Text type="secondary" className={styles.note}>
-        Filtering and sorting run in the browser over the fetched list. The
-        anomalies endpoint returns the full array, already in priority order,
-        and accepts no query parameters.
+        El filtrado y el ordenamiento se ejecutan en el navegador sobre la lista
+        obtenida. El endpoint de anomalías devuelve la lista completa, ya en
+        orden de prioridad, y no acepta parámetros de consulta.
       </Text>
     </div>
   );

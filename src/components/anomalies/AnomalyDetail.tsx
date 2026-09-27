@@ -1,27 +1,32 @@
 "use client";
 
+import Link from "next/link";
 import { Card, Descriptions, Space, Tag, Typography } from "antd";
 import type { Anomaly, AnomalyStatus, CorrelatedEvent } from "@/types/backend";
 import { AnomalyTypeTag } from "./AnomalyTypeTag";
 import { AnomalyNarrative } from "./AnomalyNarrative";
 import { DataQualityNotice } from "./DataQualityNotice";
 import {
+  anomalySeverityLabels,
   anomalyStatusLabels,
-  formatConfidence,
-  formatMetric,
-  formatSignedPercent,
   isDataQuality,
   severityColors,
 } from "./anomalyLabels";
+import {
+  formatConfidence,
+  formatDateTime,
+  formatMetric,
+  formatSignedPercent,
+} from "@/components/formatters";
 
 const { Paragraph, Text } = Typography;
 
 /** Plain-language reading of the deterministic `status` field. */
 const causalReading: Record<AnomalyStatus, string> = {
   explained:
-    "The pipeline correlated this anomaly with an explanation, so it is classified as explained.",
+    "El pipeline correlacionó esta anomalía con una explicación, por lo que se clasifica como explicada.",
   unexplained:
-    "The pipeline found no correlated explanation, so this anomaly is classified as unexplained and needs investigation.",
+    "El pipeline no encontró una explicación correlacionada, por lo que esta anomalía se clasifica como sin explicación y requiere investigación.",
 };
 
 interface AnomalyDetailProps {
@@ -46,113 +51,168 @@ export function AnomalyDetail({ anomaly }: AnomalyDetailProps) {
     <Space orientation="vertical" size="large" style={{ width: "100%" }}>
       {isDataQuality(anomaly.type) && <DataQualityNotice />}
 
-      <Card title="Anomaly record">
+      <Card title="Registro de la anomalía">
         <Descriptions
           bordered
           column={1}
           size="middle"
-          aria-label="Anomaly fields"
-        >
-          <Descriptions.Item label="ID">{anomaly.id}</Descriptions.Item>
-          <Descriptions.Item label="Meter">{anomaly.meter_id}</Descriptions.Item>
-          <Descriptions.Item label="Detected at">
-            {anomaly.detected_at}
-          </Descriptions.Item>
-          <Descriptions.Item label="Priority">
-            {anomaly.priority}
-          </Descriptions.Item>
-          <Descriptions.Item label="Type">
-            <AnomalyTypeTag type={anomaly.type} />
-          </Descriptions.Item>
-          <Descriptions.Item label="Severity">
-            <Tag color={severityColors[anomaly.severity]}>
-              {anomaly.severity}
-            </Tag>
-          </Descriptions.Item>
-          <Descriptions.Item label="Confidence">
-            {formatConfidence(anomaly.confidence)}
-          </Descriptions.Item>
-          <Descriptions.Item label="Status">
-            {anomalyStatusLabels[anomaly.status]}
-          </Descriptions.Item>
-        </Descriptions>
+          aria-label="Campos de la anomalía"
+          items={[
+            { key: "id", label: "ID", children: anomaly.id },
+            {
+              key: "meter",
+              label: "Medidor",
+              // The meter id is the link text verbatim (never relabelled), so
+              // the target stays obvious; `encodeURIComponent` mirrors the
+              // meter -> anomaly precedent in `MeterDetail` so an id with a
+              // reserved character addresses the same route segment on both
+              // sides of the round trip.
+              children: (
+                <Link
+                  href={`/meter/${encodeURIComponent(anomaly.meter_id)}`}
+                >
+                  {anomaly.meter_id}
+                </Link>
+              ),
+            },
+            {
+              key: "detected_at",
+              label: "Detectada",
+              children: formatDateTime(anomaly.detected_at),
+            },
+            { key: "priority", label: "Prioridad", children: anomaly.priority },
+            {
+              key: "type",
+              label: "Tipo",
+              children: <AnomalyTypeTag type={anomaly.type} />,
+            },
+            {
+              key: "severity",
+              label: "Severidad",
+              // The raw `HIGH`/`MEDIUM`/`LOW` value stays on screen next to the
+              // label, because it is the exact string the API payload carries.
+              children: (
+                <Space size="small">
+                  <Tag color={severityColors[anomaly.severity]}>
+                    {anomaly.severity}
+                  </Tag>
+                  <Text type="secondary">
+                    {anomalySeverityLabels[anomaly.severity]}
+                  </Text>
+                </Space>
+              ),
+            },
+            {
+              key: "confidence",
+              label: "Confianza",
+              children: formatConfidence(anomaly.confidence),
+            },
+            {
+              key: "status",
+              label: "Estado",
+              children: anomalyStatusLabels[anomaly.status],
+            },
+          ]}
+        />
       </Card>
 
-      <Card title="Reason">
+      <Card title="Motivo">
         <Paragraph>{anomaly.reason}</Paragraph>
       </Card>
 
-      <Card title="Action / conclusion">
+      <Card title="Acción / conclusión">
         <Paragraph>{anomaly.recommended_action}</Paragraph>
       </Card>
 
-      <Card title="Baseline">
+      <Card title="Línea base">
         <Paragraph type="secondary">
-          Statistics of the baseline window the deterministic scorer compared
-          this anomaly against.
+          Estadísticas de la ventana de línea base contra la que el evaluador
+          determinístico comparó esta anomalía.
         </Paragraph>
         <Descriptions
           bordered
           column={1}
           size="middle"
-          aria-label="Anomaly baseline"
-        >
-          <Descriptions.Item label="Consumption mean (kWh)">
-            {formatMetric(baseline.mean)}
-          </Descriptions.Item>
-          <Descriptions.Item label="Consumption stddev (kWh)">
-            {formatMetric(baseline.stddev)}
-          </Descriptions.Item>
-          <Descriptions.Item label="Baseline readings">
-            {baseline.count}
-          </Descriptions.Item>
-          <Descriptions.Item label="Voltage mean (V)">
-            {formatMetric(baseline.voltage_mean)}
-          </Descriptions.Item>
-          <Descriptions.Item label="Current mean (A)">
-            {formatMetric(baseline.current_mean)}
-          </Descriptions.Item>
-          <Descriptions.Item label="Power factor mean">
-            {formatMetric(baseline.power_factor_mean, 3)}
-          </Descriptions.Item>
-        </Descriptions>
+          aria-label="Línea base de la anomalía"
+          items={[
+            {
+              key: "mean",
+              label: "Media de consumo (kWh)",
+              children: formatMetric(baseline.mean),
+            },
+            {
+              key: "stddev",
+              label: "Desviación estándar de consumo (kWh)",
+              children: formatMetric(baseline.stddev),
+            },
+            {
+              key: "count",
+              label: "Lecturas de la línea base",
+              children: baseline.count,
+            },
+            {
+              key: "voltage_mean",
+              label: "Media de voltaje (V)",
+              children: formatMetric(baseline.voltage_mean),
+            },
+            {
+              key: "current_mean",
+              label: "Media de corriente (A)",
+              children: formatMetric(baseline.current_mean),
+            },
+            {
+              key: "power_factor_mean",
+              label: "Media del factor de potencia",
+              children: formatMetric(baseline.power_factor_mean, 3),
+            },
+          ]}
+        />
       </Card>
 
-      <Card title="Change vs baseline">
+      <Card title="Cambio vs. la línea base">
         <Descriptions
           bordered
           column={1}
           size="middle"
-          aria-label="Anomaly change percentages"
-        >
-          <Descriptions.Item label="Consumption">
-            {formatSignedPercent(anomaly.consumption_change_pct)}
-          </Descriptions.Item>
-          <Descriptions.Item label="Voltage">
-            {formatSignedPercent(anomaly.voltage_change_pct)}
-          </Descriptions.Item>
-          <Descriptions.Item label="Current">
-            {formatSignedPercent(anomaly.current_change_pct)}
-          </Descriptions.Item>
-          <Descriptions.Item label="Power factor">
-            {formatSignedPercent(anomaly.power_factor_change_pct)}
-          </Descriptions.Item>
-        </Descriptions>
+          aria-label="Porcentajes de cambio de la anomalía"
+          items={[
+            {
+              key: "consumption_change_pct",
+              label: "Consumo",
+              children: formatSignedPercent(anomaly.consumption_change_pct),
+            },
+            {
+              key: "voltage_change_pct",
+              label: "Voltaje",
+              children: formatSignedPercent(anomaly.voltage_change_pct),
+            },
+            {
+              key: "current_change_pct",
+              label: "Corriente",
+              children: formatSignedPercent(anomaly.current_change_pct),
+            },
+            {
+              key: "power_factor_change_pct",
+              label: "Factor de potencia",
+              children: formatSignedPercent(anomaly.power_factor_change_pct),
+            },
+          ]}
+        />
       </Card>
 
-      <Card title="Correlated events">
+      <Card title="Eventos correlacionados">
         {correlatedEvents.length === 0 ? (
           <Paragraph>
-            No correlated event explains this deviation.
+            Ningún evento correlacionado explica esta desviación.
           </Paragraph>
         ) : (
-          <ul aria-label="Correlated events">
+          <ul aria-label="Eventos correlacionados">
             {correlatedEvents.map((event: CorrelatedEvent) => (
               <li key={`${event.id}-${event.type}-${event.start}`}>
                 <Text strong>{event.type}</Text>
                 <br />
                 <Text type="secondary">
-                  {event.start} – {event.end}
+                  {formatDateTime(event.start)} – {formatDateTime(event.end)}
                 </Text>
                 <br />
                 <Text>{event.description}</Text>
@@ -162,28 +222,34 @@ export function AnomalyDetail({ anomaly }: AnomalyDetailProps) {
         )}
       </Card>
 
-      <Card title="Data quality">
+      <Card title="Calidad de datos">
         <Descriptions
           bordered
           column={1}
           size="middle"
-          aria-label="Anomaly data quality"
-        >
-          <Descriptions.Item label="Flagged">
-            {data_quality.flagged ? "Yes" : "No"}
-          </Descriptions.Item>
-          <Descriptions.Item label="Reason">
-            {data_quality.reason.length > 0
-              ? data_quality.reason
-              : "No data-quality issue was flagged for this anomaly."}
-          </Descriptions.Item>
-        </Descriptions>
+          aria-label="Calidad de datos de la anomalía"
+          items={[
+            {
+              key: "flagged",
+              label: "Marcado",
+              children: data_quality.flagged ? "Sí" : "No",
+            },
+            {
+              key: "reason",
+              label: "Motivo",
+              children:
+                data_quality.reason.length > 0
+                  ? data_quality.reason
+                  : "No se marcó ningún problema de calidad de datos para esta anomalía.",
+            },
+          ]}
+        />
       </Card>
 
-      <Card title="Causal reading">
+      <Card title="Lectura causal">
         <Paragraph>{causalReading[anomaly.status]}</Paragraph>
         <Text type="secondary">
-          Status: {anomalyStatusLabels[anomaly.status]} ({anomaly.status})
+          Estado: {anomalyStatusLabels[anomaly.status]} ({anomaly.status})
         </Text>
       </Card>
 

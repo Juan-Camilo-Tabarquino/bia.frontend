@@ -1,5 +1,6 @@
 import type { Anomaly } from "@/types/backend";
 import {
+  anomalySortDefinitions,
   applyAnomalyFilters,
   applyAnomalySort,
   emptyAnomalyFilters,
@@ -146,65 +147,36 @@ describe("applyAnomalyFilters", () => {
   });
 });
 
-describe("hasActiveFilters", () => {
-  it("is false for the empty filter set", () => {
-    expect(hasActiveFilters(emptyAnomalyFilters)).toBe(false);
-  });
-
-  it("is true when any filter is set", () => {
-    expect(hasActiveFilters(withFilters({ type: "DATA_QUALITY" }))).toBe(true);
-  });
-});
-
 describe("applyAnomalySort", () => {
-  it("returns the original array, untouched, for the API (priority) order", () => {
-    expect(applyAnomalySort(anomalies, "backend")).toBe(anomalies);
+  const reversed: Anomaly[] = [...anomalies].reverse();
+
+  it("leaves the API order untouched for `backend`", () => {
+    // Same array instance, so the default view cannot have been reordered.
+    expect(applyAnomalySort(reversed, "backend")).toBe(reversed);
   });
 
-  it("sorts by the API priority field, most urgent first", () => {
-    // The stored array is deliberately not in priority order (M-106 comes
-    // before M-104), so this assertion proves the sort reads `priority`.
-    expect(ids(applyAnomalySort(anomalies, "priority"))).toEqual([
+  it("sorts by ascending priority with the backend tie-breakers", () => {
+    expect(ids(applyAnomalySort(reversed, "priority"))).toEqual([
       "M-109-2026-09-12T14:00:00Z",
       "M-112-2026-09-10T09:00:00Z",
       "M-104-2026-08-20T00:00:00Z",
       "M-106-2026-09-01T00:00:00Z",
-    ]);
-  });
-
-  it("breaks priority ties by detected_at and then meter_id", () => {
-    const tied: Anomaly[] = [
-      makeAnomaly({
-        id: "B-2026-09-02T00:00:00Z",
-        meter_id: "M-202",
-        detected_at: "2026-09-02T00:00:00Z",
-        priority: 5,
-      }),
-      makeAnomaly({
-        id: "A-2026-09-01T00:00:00Z",
-        meter_id: "M-201",
-        detected_at: "2026-09-01T00:00:00Z",
-        priority: 5,
-      }),
-    ];
-
-    expect(ids(applyAnomalySort(tied, "priority"))).toEqual([
-      "A-2026-09-01T00:00:00Z",
-      "B-2026-09-02T00:00:00Z",
     ]);
   });
 
   it("sorts by severity from high to low", () => {
-    expect(ids(applyAnomalySort(anomalies, "severity"))).toEqual([
-      "M-109-2026-09-12T14:00:00Z",
+    // M-109 and M-112 are both HIGH in this fixture, so this also pins the tie
+    // behaviour: equal severities keep the order they arrived in.
+    expect(ids(applyAnomalySort(reversed, "severity"))).toEqual([
       "M-112-2026-09-10T09:00:00Z",
+      "M-109-2026-09-12T14:00:00Z",
       "M-104-2026-08-20T00:00:00Z",
       "M-106-2026-09-01T00:00:00Z",
     ]);
   });
 
-  it("sorts by detected_at with the newest first", () => {
-    expect(ids(applyAnomalySort(anomalies, "detected_at"))).toEqual([
+  it("sorts by detected_at newest first", () => {
+    expect(ids(applyAnomalySort(reversed, "detected_at"))).toEqual([
       "M-109-2026-09-12T14:00:00Z",
       "M-112-2026-09-10T09:00:00Z",
       "M-106-2026-09-01T00:00:00Z",
@@ -212,9 +184,79 @@ describe("applyAnomalySort", () => {
     ]);
   });
 
-  it("does not mutate the source array", () => {
-    const original = ids(anomalies);
-    applyAnomalySort(anomalies, "severity");
-    expect(ids(anomalies)).toEqual(original);
+  it("sorts by confidence highest first", () => {
+    const byConfidence = [
+      makeAnomaly({ id: "low", confidence: 0.2 }),
+      makeAnomaly({ id: "high", confidence: 0.99 }),
+      makeAnomaly({ id: "mid", confidence: 0.6 }),
+    ];
+
+    expect(ids(applyAnomalySort(byConfidence, "confidence"))).toEqual([
+      "high",
+      "mid",
+      "low",
+    ]);
+  });
+
+  it("does not mutate the array it is given", () => {
+    const input = [...reversed];
+
+    applyAnomalySort(input, "severity");
+
+    expect(input).toEqual(reversed);
+  });
+
+  // The ordering produced here is invisible in the browser: `AnomalyTable`
+  // hands the array to antd, whose controlled sorter re-sorts it, so a wrong
+  // direction still renders the expected rows. These tests are the only guard
+  // on this path, which is why they are direct rather than asserted through the
+  // table.
+  it("reproduces the registry's own comparison for every declared ordering", () => {
+    const sample = [
+      makeAnomaly({ id: "b", priority: 2, confidence: 0.5, severity: "LOW" }),
+      makeAnomaly({ id: "a", priority: 1, confidence: 0.9, severity: "HIGH" }),
+      makeAnomaly({ id: "c", priority: 3, confidence: 0.1, severity: "MEDIUM" }),
+    ];
+
+    for (const definition of anomalySortDefinitions) {
+      const expected = [...sample].sort((left, right) => {
+        const compared = definition.compare(left, right);
+        return definition.direction === "ascend" ? compared : -compared;
+      });
+
+      expect({
+        key: definition.key,
+        order: ids(applyAnomalySort(sample, definition.key)),
+      }).toEqual({ key: definition.key, order: ids(expected) });
+    }
+  });
+});
+
+/** Builds filters with a search term, so `hasActiveFilters` can be probed. */
+function withSearch(text: string): AnomalyFilterValues {
+  return { ...emptyAnomalyFilters, search: { text, resetToken: 0 } };
+}
+
+describe("hasActiveFilters and the search term", () => {
+  // The search branch is what shows the "Filters are applied..." note and keeps
+  // the clear action enabled for a search-only filter. Deleting that branch
+  // used to leave the entire suite green, so it is pinned directly here rather
+  // than only through the page.
+  it("counts a non-blank search term as an active filter", () => {
+    expect(hasActiveFilters(withSearch("spike"))).toBe(true);
+  });
+
+  it("counts a whitespace-only term as no filter, because it hides nothing", () => {
+    expect(hasActiveFilters(withSearch("   "))).toBe(false);
+  });
+
+  it("counts an empty term as no filter", () => {
+    expect(hasActiveFilters(withSearch(""))).toBe(false);
+  });
+
+  it("still reports the other filters when the term is blank", () => {
+    expect(
+      hasActiveFilters({ ...withSearch("  "), severity: "HIGH" }),
+    ).toBe(true);
   });
 });

@@ -2,8 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { useState } from "react";
-import { DatePicker, Row, Col, Typography } from "antd";
-import "antd/dist/reset.css"; // ensure antd styles
+import { Col, DatePicker, Row, Space, Spin, Typography } from "antd";
 import { useGetMeterReadingsQuery } from "@/features/data/dataAPI";
 import { useGetAnomaliesQuery } from "@/features/api/apiSlice";
 import { anomalyTypeLabels } from "@/components/anomalies/anomalyLabels";
@@ -11,8 +10,14 @@ import ReadingsChart, {
   type ReadingAnomalyMarker,
 } from "@/components/dashboard/ReadingsChart";
 import ReadingsTable from "@/components/dashboard/ReadingsTable";
+import {
+  RequestError,
+  requestErrorMessage,
+  REQUEST_ERROR_FALLBACK,
+} from "@/components/RequestError";
 
 const { RangePicker } = DatePicker;
+const { Text } = Typography;
 
 export default function MeterReadingsPage() {
   const { id } = useParams();
@@ -25,7 +30,9 @@ export default function MeterReadingsPage() {
   const {
     data,
     isLoading,
+    isFetching,
     error,
+    refetch,
   } = useGetMeterReadingsQuery(
     {
       meterId,
@@ -44,49 +51,75 @@ export default function MeterReadingsPage() {
   const rows = data ?? [];
 
   // `GET /api/anomalies` has no per-meter query, so the markers are a client-side
-  // derivation: the full list is filtered by `meter_id` and only the detection
-  // timestamp plus a human-readable label reach the chart. The API exposes no
-  // baseline (no mean, stddev or change percentage), so this page draws no
-  // baseline band and no delta line; the chart marks detected anomalies only.
+  // derivation: the full list is filtered by `meter_id`, and the detection
+  // timestamp, a human-readable label and the statistical `baseline.mean` (mean
+  // consumption in kWh) are forwarded to the chart. The backend carries no delta
+  // line, so none is drawn; the baseline feeds the chart's reference line.
   const anomalyMarkers: ReadingAnomalyMarker[] = (anomalies ?? [])
     .filter((anomaly) => anomaly.meter_id === meterId)
     .map((anomaly) => ({
       id: anomaly.id,
       detectedAt: anomaly.detected_at,
       label: `${anomaly.severity} · ${anomalyTypeLabels[anomaly.type]}`,
+      baselineMean: anomaly.baseline.mean,
     }));
 
+  // Changing the date range keeps the previous cache entry's `data` while the
+  // new request is in flight (RTK Query: `isLoading` is false because data
+  // exists, `isFetching` is true). The chart and table therefore keep the old
+  // rows visible, and this line is what makes the refresh perceivable.
+  const showUpdating = isFetching && !isLoading;
+
   return (
-    <Row gutter={[16, 16]} style={{ padding: "1rem" }}>
+    // The shell container owns the horizontal gutter on every route. The Row's
+    // `gutter` already applies `margin-inline:-8px` and each Col
+    // `padding-inline:8px`, so dropping the row's duplicated horizontal padding
+    // (keeping the vertical) puts the title back at x=144:
+    //   main 144 - 8 (row margin) + 0 (row padding) + 8 (col padding) = 144.
+    <Row gutter={[16, 16]} style={{ paddingBlock: "1rem" }}>
       <Col xs={24}>
         <Typography.Title level={1}>
-          Meter Readings for {meterId}
+          Lecturas del medidor {meterId}
         </Typography.Title>
       </Col>
       <Col xs={24}>
-        <RangePicker
-          aria-label="Readings date range"
-          onChange={(values) => {
-            const fromValue = values?.[0];
-            const toValue = values?.[1];
-            if (fromValue && toValue) {
-              setFrom(fromValue.toISOString());
-              setTo(toValue.toISOString());
-            } else {
-              setFrom(null);
-              setTo(null);
-            }
-          }}
-          style={{ marginBottom: "1rem" }}
-        />
+        <Space align="center" wrap>
+          <RangePicker
+            aria-label="Rango de fechas de lecturas"
+            onChange={(values) => {
+              const fromValue = values?.[0];
+              const toValue = values?.[1];
+              if (fromValue && toValue) {
+                setFrom(fromValue.toISOString());
+                setTo(toValue.toISOString());
+              } else {
+                setFrom(null);
+                setTo(null);
+              }
+            }}
+          />
+          {showUpdating && (
+            <Space size="small" role="status">
+              <Spin size="small" />
+              <Text type="secondary">Actualizando…</Text>
+            </Space>
+          )}
+        </Space>
       </Col>
       {error && (
         <Col xs={24}>
-          <p style={{ color: "red" }}>Error loading readings</p>
+          <RequestError
+            title="No se pudieron cargar las lecturas"
+            description={requestErrorMessage(error, REQUEST_ERROR_FALLBACK)}
+            onRetry={() => {
+              void refetch();
+            }}
+            retrying={isFetching}
+          />
         </Col>
       )}
       <Col xs={24}>
-        <section aria-label={`Readings chart for meter ${meterId}`}>
+        <section aria-label={`Gráfico de lecturas del medidor ${meterId}`}>
           <ReadingsChart
             data={rows}
             anomalyMarkers={anomalyMarkers}
@@ -95,7 +128,7 @@ export default function MeterReadingsPage() {
         </section>
       </Col>
       <Col xs={24}>
-        <section aria-label={`Readings table for meter ${meterId}`}>
+        <section aria-label={`Tabla de lecturas del medidor ${meterId}`}>
           <ReadingsTable data={rows} loading={isLoading} />
         </section>
       </Col>

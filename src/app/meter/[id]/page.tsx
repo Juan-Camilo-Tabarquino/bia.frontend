@@ -10,7 +10,7 @@ export default function MeterPage() {
 
   return (
     <div>
-      <Typography.Title level={1}>Meter {meterId}</Typography.Title>
+      <Typography.Title level={1}>Medidor {meterId}</Typography.Title>
       <MeterDetail meterId={meterId} />
     </div>
   );

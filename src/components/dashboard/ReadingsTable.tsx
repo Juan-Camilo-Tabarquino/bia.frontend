@@ -1,8 +1,11 @@
 "use client";
 
-import { Table, Spin } from "antd";
+import { Skeleton, Table } from "antd";
 import type { TableColumnsType } from "antd";
 import type { Reading } from "@/types/backend";
+import { formatDateTime } from "../formatters";
+
+import { paginationArrows } from "@/components/paginationLabels";
 
 interface ReadingsTableProps {
   data: Reading[];
@@ -11,11 +14,11 @@ interface ReadingsTableProps {
 
 /** Column titles exactly as rendered, used for the table's accessible name. */
 const signalColumnTitles = [
-  "Timestamp",
-  "Consumption (kWh)",
-  "Voltage (V)",
-  "Current (A)",
-  "Power factor",
+  "Fecha y hora",
+  "Consumo (kWh)",
+  "Voltaje (V)",
+  "Corriente (A)",
+  "Factor de potencia",
 ];
 
 /**
@@ -32,23 +35,32 @@ export default function ReadingsTable({ data, loading }: ReadingsTableProps) {
   );
 
   const columns: TableColumnsType<Reading> = [
-    { title: "Timestamp", dataIndex: "Timestamp", key: "Timestamp" },
-    { title: "Consumption (kWh)", dataIndex: "Consumption", key: "Consumption" },
-    { title: "Voltage (V)", dataIndex: "Voltage", key: "Voltage" },
-    { title: "Current (A)", dataIndex: "Current", key: "Current" },
-    { title: "Power factor", dataIndex: "PowerFactor", key: "PowerFactor" },
+    {
+      title: "Fecha y hora",
+      dataIndex: "Timestamp",
+      key: "Timestamp",
+      // The row key and the sort/filter inputs stay the raw `Timestamp`; only
+      // the cell text goes through the shared formatter.
+      render: (timestamp: string) => formatDateTime(timestamp),
+    },
+    { title: "Consumo (kWh)", dataIndex: "Consumption", key: "Consumption" },
+    { title: "Voltaje (V)", dataIndex: "Voltage", key: "Voltage" },
+    { title: "Corriente (A)", dataIndex: "Current", key: "Current" },
+    { title: "Factor de potencia", dataIndex: "PowerFactor", key: "PowerFactor" },
   ];
 
   if (hasStatus) {
-    columns.push({ title: "Status", dataIndex: "status", key: "status" });
+    columns.push({ title: "Estado", dataIndex: "status", key: "status" });
   }
 
   if (loading) {
-    return <Spin tip="Loading table..." />;
+    // The table's column shape is known, so a paragraph skeleton states what is
+    // coming; the bare spinner it replaced said nothing.
+    return <Skeleton active paragraph={{ rows: 5 }} />;
   }
 
   const columnTitles = hasStatus
-    ? [...signalColumnTitles, "Status"]
+    ? [...signalColumnTitles, "Estado"]
     : signalColumnTitles;
 
   return (
@@ -56,10 +68,15 @@ export default function ReadingsTable({ data, loading }: ReadingsTableProps) {
       rowKey="Timestamp"
       columns={columns}
       dataSource={data}
-      pagination={{ pageSize: 10 }}
+      pagination={{
+        pageSize: 10,
+        // Same reason as `AnomalyTable`: keep the arrows out of the accessible
+        // name so the translated title is what gets announced.
+        itemRender: paginationArrows,
+      }}
       bordered
       size="middle"
-      aria-label={`Readings table: ${columnTitles.join(", ")}`}
+      aria-label={`Tabla de lecturas: ${columnTitles.join(", ")}`}
     />
   );
 }

@@ -111,12 +111,12 @@ describe("AiReanalysis", () => {
     render(<AiReanalysis />);
 
     expect(
-      screen.getByRole("region", { name: "AI analysis" }),
+      screen.getByRole("region", { name: "Análisis con IA" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Re-run platform analysis" }),
+      screen.getByRole("button", { name: "Reintentar el análisis de la plataforma" }),
     ).toBeEnabled();
-    expect(screen.getByText(/about a minute/i)).toBeInTheDocument();
+    expect(screen.getByText(/alrededor de un minuto/i)).toBeInTheDocument();
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
@@ -124,7 +124,7 @@ describe("AiReanalysis", () => {
     render(<AiReanalysis />);
 
     fireEvent.click(
-      screen.getByRole("button", { name: "Re-run platform analysis" }),
+      screen.getByRole("button", { name: "Reintentar el análisis de la plataforma" }),
     );
 
     expect(trigger).toHaveBeenCalledTimes(1);
@@ -136,10 +136,10 @@ describe("AiReanalysis", () => {
     render(<AiReanalysis />);
 
     expect(
-      screen.getByRole("button", { name: /Re-run platform analysis/ }),
+      screen.getByRole("button", { name: /Reintentar el análisis de la plataforma/ }),
     ).toBeDisabled();
     expect(screen.getByRole("status")).toHaveTextContent(
-      "Analysis is running. It may take about a minute.",
+      "El análisis está en curso. Puede tardar alrededor de un minuto.",
     );
   });
 
@@ -150,7 +150,7 @@ describe("AiReanalysis", () => {
 
     expect(screen.getByRole("alert")).toHaveTextContent("Boom");
     expect(
-      screen.getByRole("button", { name: "Re-run platform analysis" }),
+      screen.getByRole("button", { name: "Reintentar el análisis de la plataforma" }),
     ).toBeEnabled();
   });
 
@@ -160,7 +160,7 @@ describe("AiReanalysis", () => {
     render(<AiReanalysis />);
 
     expect(screen.getByRole("alert")).toHaveTextContent(
-      "The platform analysis could not be completed. Try again.",
+      "No se pudo completar el análisis de la plataforma. Inténtalo de nuevo.",
     );
   });
 
@@ -180,11 +180,11 @@ describe("AiReanalysis", () => {
     render(<AiReanalysis />);
 
     expect(screen.getByRole("status")).toHaveTextContent(
-      "Analysis complete: 2 anomalies returned.",
+      "Análisis completado: se devolvieron 2 anomalías.",
     );
     // The API already orders by ascending priority, so the first entry is the
     // most urgent. The component only reads it, never re-sorts.
-    expect(screen.getByText("Top-priority anomaly")).toBeInTheDocument();
+    expect(screen.getByText("Anomalía más urgente")).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "M-109-2026-09-12T14:00:00Z" }),
     ).toHaveAttribute(
@@ -203,7 +203,7 @@ describe("AiReanalysis", () => {
     render(<AiReanalysis />);
 
     expect(screen.getByRole("status")).toHaveTextContent(
-      "Analysis complete: no anomalies were returned.",
+      "Análisis completado: no se devolvió ninguna anomalía.",
     );
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });

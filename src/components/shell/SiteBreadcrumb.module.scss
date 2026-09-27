@@ -1,0 +1,14 @@
+/*
+ * The trail sits between the header and the page content. The shared
+ * `shell-container` gutter, its max width, and the vertical separation from
+ * the header all live on the WRAPPER element that surrounds the breadcrumb
+ * (see SiteBreadcrumb.tsx), deliberately OFF antd's `<nav>`: on the nav both
+ * the shared class and any margin declared here tie with antd's own
+ * `:where(...).ant-breadcrumb { margin: 0; padding: 0 }` reset -- `:where()`
+ * contributes zero specificity -- and lose on source order, so the antd reset
+ * nullifies the gutter, `margin-inline: auto`, and the separation at once. A
+ * plain wrapper cannot tie with an antd component reset.
+ */
+.wrapper {
+  margin-top: 1rem;
+}

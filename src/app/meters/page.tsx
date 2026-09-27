@@ -1,12 +1,12 @@
 "use client";
 
-import { MeterList } from '../../components/MeterList';
-import { Typography } from 'antd';
+import { MeterList } from "../../components/MeterList";
+import { Typography } from "antd";
 const { Title } = Typography;
 export default function MetersPage() {
   return (
     <div>
-      <Title level={1}>Meters</Title>
+      <Title level={1}>Medidores</Title>
       <MeterList headingLevel={null} />
     </div>
   );

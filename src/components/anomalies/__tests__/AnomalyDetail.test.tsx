@@ -1,6 +1,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import type { Anomaly } from "@/types/backend";
+import { formatDateTime } from "@/components/formatters";
 import { AnomalyDetail } from "../AnomalyDetail";
 
 function makeAnomaly(overrides: Partial<Anomaly> = {}): Anomaly {
@@ -39,11 +40,18 @@ describe("AnomalyDetail", () => {
 
     expect(screen.getByText("M-109-2026-09-12T14:00:00Z")).toBeInTheDocument();
     expect(screen.getByText("M-109")).toBeInTheDocument();
-    expect(screen.getByText("2026-09-12T14:00:00Z")).toBeInTheDocument();
+    // `detected_at` is the date field, so it goes through the shared formatter;
+    // the id above only happens to embed a timestamp and stays verbatim.
+    expect(
+      screen.getByText(formatDateTime("2026-09-12T14:00:00Z")),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("2026-09-12T14:00:00Z"),
+    ).not.toBeInTheDocument();
     expect(screen.getByText("REAL_ANOMALY")).toBeInTheDocument();
     expect(screen.getByText("HIGH")).toBeInTheDocument();
     expect(screen.getByText("97%")).toBeInTheDocument();
-    expect(screen.getByText("Unexplained")).toBeInTheDocument();
+    expect(screen.getByText("Sin explicación")).toBeInTheDocument();
     expect(
       screen.getByText("Consumption jumped 240% over the baseline window."),
     ).toBeInTheDocument();
@@ -52,13 +60,35 @@ describe("AnomalyDetail", () => {
     ).toBeInTheDocument();
   });
 
+  it("links the meter id to its meter detail route", () => {
+    render(<AnomalyDetail anomaly={makeAnomaly()} />);
+
+    // The link text is the meter id verbatim, so the target is not hidden.
+    expect(screen.getByRole("link", { name: "M-109" })).toHaveAttribute(
+      "href",
+      "/meter/M-109",
+    );
+  });
+
+  it("encodes a meter id with reserved characters the same way the reverse link does", () => {
+    // `MeterId` is a bare string, so a reserved character is possible even
+    // though the seeded ids are `M-<digits>`. This is the exact encoding
+    // `MeterDetail` applies to its anomaly link.
+    render(<AnomalyDetail anomaly={makeAnomaly({ meter_id: "M 109/A" })} />);
+
+    expect(screen.getByRole("link", { name: "M 109/A" })).toHaveAttribute(
+      "href",
+      "/meter/M%20109%2FA",
+    );
+  });
+
   it("presents the recommended action as the conclusion and status as the causal reading", () => {
     render(<AnomalyDetail anomaly={makeAnomaly()} />);
 
-    expect(screen.getByText("Action / conclusion")).toBeInTheDocument();
-    expect(screen.getByText("Causal reading")).toBeInTheDocument();
+    expect(screen.getByText("Acción / conclusión")).toBeInTheDocument();
+    expect(screen.getByText("Lectura causal")).toBeInTheDocument();
     expect(
-      screen.getByText(/found no correlated explanation/i),
+      screen.getByText(/no encontró una explicación correlacionada/i),
     ).toBeInTheDocument();
   });
 
@@ -66,7 +96,7 @@ describe("AnomalyDetail", () => {
     render(<AnomalyDetail anomaly={makeAnomaly({ status: "explained" })} />);
 
     expect(
-      screen.getByText(/correlated this anomaly with an explanation/i),
+      screen.getByText(/correlacionó esta anomalía con una explicación/i),
     ).toBeInTheDocument();
   });
 
@@ -74,9 +104,11 @@ describe("AnomalyDetail", () => {
     render(<AnomalyDetail anomaly={makeAnomaly({ type: "DATA_QUALITY" })} />);
 
     expect(screen.getByText("DATA_QUALITY")).toBeInTheDocument();
-    expect(screen.getAllByText("Data quality issue").length).toBeGreaterThan(0);
     expect(
-      screen.getByText(/not a real consumption anomaly/i),
+      screen.getAllByText("Problema de calidad de datos").length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getByText(/no es una anomalía real de consumo/i),
     ).toBeInTheDocument();
   });
 
@@ -98,7 +130,7 @@ describe("AnomalyDetail", () => {
     );
 
     expect(
-      screen.getByRole("region", { name: "LLM narrative" }),
+      screen.getByRole("region", { name: "Narrativa del LLM" }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "Hallazgos" }),
@@ -117,7 +149,9 @@ describe("AnomalyDetail", () => {
     render(<AnomalyDetail anomaly={makeAnomaly()} />);
 
     expect(
-      screen.getByText("No LLM narrative is available for this anomaly."),
+      screen.getByText(
+        "No hay narrativa del LLM disponible para esta anomalía.",
+      ),
     ).toBeInTheDocument();
   });
 
@@ -138,14 +172,14 @@ describe("AnomalyDetail", () => {
   it("renders the API priority value", () => {
     render(<AnomalyDetail anomaly={makeAnomaly({ priority: 3 })} />);
 
-    expect(screen.getByText("Priority")).toBeInTheDocument();
+    expect(screen.getByText("Prioridad")).toBeInTheDocument();
     expect(screen.getByText("3")).toBeInTheDocument();
   });
 
   it("renders the baseline statistics behind the anomaly", () => {
     render(<AnomalyDetail anomaly={makeAnomaly()} />);
 
-    expect(screen.getByText("Baseline")).toBeInTheDocument();
+    expect(screen.getByText("Línea base")).toBeInTheDocument();
     expect(screen.getByText("52.16")).toBeInTheDocument();
     expect(screen.getByText("20.84")).toBeInTheDocument();
     expect(screen.getByText("336")).toBeInTheDocument();
@@ -157,7 +191,7 @@ describe("AnomalyDetail", () => {
   it("renders each per-signal change percentage with its sign", () => {
     render(<AnomalyDetail anomaly={makeAnomaly()} />);
 
-    expect(screen.getByText("Change vs baseline")).toBeInTheDocument();
+    expect(screen.getByText("Cambio vs. la línea base")).toBeInTheDocument();
     expect(screen.getByText("+125.3%")).toBeInTheDocument();
     expect(screen.getByText("-2.7%")).toBeInTheDocument();
     expect(screen.getByText("+111.2%")).toBeInTheDocument();
@@ -181,11 +215,16 @@ describe("AnomalyDetail", () => {
       />,
     );
 
-    expect(screen.getByLabelText("Correlated events")).toBeInTheDocument();
+    expect(screen.getByLabelText("Eventos correlacionados")).toBeInTheDocument();
     expect(screen.getByText("OPERATIONAL_CHANGE")).toBeInTheDocument();
     expect(
-      screen.getByText("2026-09-11T00:00:00Z – 2026-09-11T06:00:00Z"),
+      screen.getByText(
+        `${formatDateTime("2026-09-11T00:00:00Z")} – ${formatDateTime("2026-09-11T06:00:00Z")}`,
+      ),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByText("2026-09-11T00:00:00Z – 2026-09-11T06:00:00Z"),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByText("New production line activated"),
     ).toBeInTheDocument();
@@ -195,9 +234,11 @@ describe("AnomalyDetail", () => {
     render(<AnomalyDetail anomaly={makeAnomaly({ correlated_events: [] })} />);
 
     expect(
-      screen.getByText(/No correlated event explains this deviation/i),
+      screen.getByText(/Ningún evento correlacionado explica esta desviación/i),
     ).toBeInTheDocument();
-    expect(screen.queryByLabelText("Correlated events")).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Eventos correlacionados"),
+    ).not.toBeInTheDocument();
   });
 
   it("shows the data-quality flag and its reason when flagged", () => {
@@ -213,8 +254,8 @@ describe("AnomalyDetail", () => {
       />,
     );
 
-    expect(screen.getByText("Flagged")).toBeInTheDocument();
-    expect(screen.getByText("Yes")).toBeInTheDocument();
+    expect(screen.getByText("Marcado")).toBeInTheDocument();
+    expect(screen.getByText("Sí")).toBeInTheDocument();
     expect(
       screen.getByText("power factor 0.720 below 0.85"),
     ).toBeInTheDocument();
@@ -229,7 +270,7 @@ describe("AnomalyDetail", () => {
 
     expect(screen.getByText("No")).toBeInTheDocument();
     expect(
-      screen.getByText(/No data-quality issue was flagged for this anomaly/i),
+      screen.getByText(/No se marcó ningún problema de calidad de datos/i),
     ).toBeInTheDocument();
   });
 });

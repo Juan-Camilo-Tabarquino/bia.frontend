@@ -1,6 +1,7 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import ReadingsTable from '../ReadingsTable';
+import { formatDateTime } from '@/components/formatters';
 import type { Reading } from '@/types/backend';
 
 const sampleData: Reading[] = [
@@ -23,30 +24,35 @@ const sampleData: Reading[] = [
 ];
 
 describe('ReadingsTable', () => {
-  it('renders loading spinner when loading', () => {
-    render(<ReadingsTable data={[]} loading={true} />);
+  it('renders a skeleton while loading', () => {
+    const { container } = render(<ReadingsTable data={[]} loading={true} />);
 
-    expect(screen.getByText(/Loading table\.\.\./i)).toBeInTheDocument();
+    expect(container.querySelector('.ant-skeleton')).toBeInTheDocument();
   });
 
   it('renders every signal of each reading with its unit in the header', () => {
     render(<ReadingsTable data={sampleData} loading={false} />);
 
-    expect(screen.getByRole('columnheader', { name: 'Timestamp' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Fecha y hora' })).toBeInTheDocument();
     expect(
-      screen.getByRole('columnheader', { name: 'Consumption (kWh)' }),
+      screen.getByRole('columnheader', { name: 'Consumo (kWh)' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('columnheader', { name: 'Voltage (V)' }),
+      screen.getByRole('columnheader', { name: 'Voltaje (V)' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('columnheader', { name: 'Current (A)' }),
+      screen.getByRole('columnheader', { name: 'Corriente (A)' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('columnheader', { name: 'Power factor' }),
+      screen.getByRole('columnheader', { name: 'Factor de potencia' }),
     ).toBeInTheDocument();
 
-    expect(screen.getByText('2024-01-01T00:00:00Z')).toBeInTheDocument();
+    // The Timestamp column now renders the shared local-time format, so the raw
+    // wire value must be gone from the cells while every signal stays verbatim.
+    expect(
+      screen.getByText(formatDateTime('2024-01-01T00:00:00Z')),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('2024-01-01T00:00:00Z')).not.toBeInTheDocument();
     expect(screen.getByText('12.5')).toBeInTheDocument();
     expect(screen.getByText('230')).toBeInTheDocument();
     expect(screen.getByText('5.4')).toBeInTheDocument();
@@ -58,7 +64,7 @@ describe('ReadingsTable', () => {
 
     expect(
       screen.getByRole('table', {
-        name: /Timestamp, Consumption \(kWh\), Voltage \(V\), Current \(A\), Power factor/,
+        name: /Fecha y hora, Consumo \(kWh\), Voltaje \(V\), Corriente \(A\), Factor de potencia/,
       }),
     ).toBeInTheDocument();
   });
@@ -67,7 +73,7 @@ describe('ReadingsTable', () => {
     render(<ReadingsTable data={sampleData} loading={false} />);
 
     expect(
-      screen.queryByRole('columnheader', { name: 'Status' }),
+      screen.queryByRole('columnheader', { name: 'Estado' }),
     ).not.toBeInTheDocument();
   });
 
@@ -80,11 +86,36 @@ describe('ReadingsTable', () => {
     );
 
     expect(
-      screen.getByRole('columnheader', { name: 'Status' }),
+      screen.getByRole('columnheader', { name: 'Estado' }),
     ).toBeInTheDocument();
     expect(screen.getByText('OK')).toBeInTheDocument();
     expect(
-      screen.getByRole('table', { name: /Current \(A\), Power factor, Status/ }),
+      screen.getByRole('table', { name: /Corriente \(A\), Factor de potencia, Estado/ }),
     ).toBeInTheDocument();
+  });
+
+  // This is the pagination contract `AnomalyTable` was aligned to: page size 10,
+  // antd's own defaults, and reachable controls. If this changes, the two
+  // tables are no longer consistent.
+  it('paginates readings ten rows at a time with reachable controls', () => {
+    const many: Reading[] = Array.from({ length: 25 }, (_unused, index) => ({
+      ...sampleData[0],
+      Timestamp: `2024-01-${String(index + 1).padStart(2, '0')}T00:00:00Z`,
+    }));
+
+    const { container } = render(<ReadingsTable data={many} loading={false} />);
+
+    expect(container.querySelectorAll('tbody tr')).toHaveLength(10);
+
+    const paginator = container.querySelector('.ant-pagination') as HTMLElement;
+    expect(within(paginator).getByTitle('1')).toBeInTheDocument();
+    expect(within(paginator).getByTitle('2')).toBeInTheDocument();
+    expect(within(paginator).getByTitle('3')).toBeInTheDocument();
+    // This suite renders the bare component with no `ConfigProvider`, so antd's
+    // own locale defaults apply and its control titles stay English here. The
+    // Spanish paginator titles are applied at the provider boundary and are
+    // asserted in `src/app/__tests__/providers.test.tsx`.
+    expect(within(paginator).getByTitle('Next Page')).toBeInTheDocument();
+    expect(within(paginator).getByTitle('Previous Page')).toBeInTheDocument();
   });
 });

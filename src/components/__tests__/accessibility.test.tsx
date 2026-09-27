@@ -9,6 +9,7 @@ import MeterReadingsPage from '../../app/meter/[id]/readings/page';
 
 jest.mock('next/navigation', () => ({
   useParams: () => ({ id: 'meter-123' }),
+  redirect: jest.fn(),
 }));
 
 jest.mock('@/features/api/apiSlice', () => ({
@@ -22,31 +23,13 @@ jest.mock('@/features/data/dataAPI', () => ({
   useGetMeterReadingsQuery: jest.fn(),
 }));
 
-jest.mock('@/api/backend', () => ({
-  getHealth: jest.fn(),
-}));
-
 // recharts cannot measure a container in jsdom (getBoundingClientRect is 0),
 // so render a deterministic stand-in that exposes the props under test.
-jest.mock('recharts', () => {
-  const ReactModule = jest.requireActual<typeof import('react')>('react');
-  return {
-    ResponsiveContainer: ({
-      children,
-      ...rest
-    }: { children?: React.ReactNode } & Record<string, unknown>) =>
-      ReactModule.createElement('div', rest, children),
-    LineChart: ({
-      children,
-    }: {
-      children?: React.ReactNode;
-    }) => ReactModule.createElement('div', null, children),
-    Line: () => null,
-    XAxis: () => null,
-    YAxis: () => null,
-    Tooltip: () => null,
-  };
-});
+jest.mock("recharts", () =>
+  (
+    jest.requireActual("@/test-support/rechartsMock") as typeof import("@/test-support/rechartsMock")
+  ).createRechartsMock(),
+);
 
 import {
   useGetAnomaliesQuery,
@@ -55,7 +38,7 @@ import {
   useGetMetersQuery,
 } from '@/features/api/apiSlice';
 import { useGetMeterReadingsQuery } from '@/features/data/dataAPI';
-import { getHealth } from '@/api/backend';
+import { redirect } from 'next/navigation';
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -90,11 +73,21 @@ beforeEach(() => {
     error: undefined,
   });
   (useGetMeterReadingsQuery as jest.Mock).mockReturnValue({
-    data: [],
+    data: [
+      {
+        MeterID: 'M-101',
+        Timestamp: '2024-01-01T00:00:00Z',
+        Consumption: 10,
+        Voltage: 230,
+        Current: 5.4,
+        PowerFactor: 0.98,
+      },
+    ],
     isLoading: false,
+    isFetching: false,
     error: undefined,
+    refetch: jest.fn(),
   });
-  (getHealth as jest.Mock).mockResolvedValue({ status: 200 });
 });
 
 const expectSingleH1 = (name: string | RegExp): void => {
@@ -104,43 +97,41 @@ const expectSingleH1 = (name: string | RegExp): void => {
 };
 
 describe('accessibility', () => {
-  it('renders exactly one h1 on the home page', async () => {
+  it('redirects the home page to the meters route', () => {
     render(<Home />);
 
-    expectSingleH1('Meters');
-    // Flush HealthStatus' async first check so its state update is wrapped.
-    await screen.findByText('Backend Up');
+    expect(redirect).toHaveBeenCalledWith('/meters');
   });
 
   it('renders exactly one h1 on the meters page', () => {
     render(<MetersPage />);
 
-    expectSingleH1('Meters');
+    expectSingleH1('Medidores');
   });
 
   it('renders exactly one h1 on the dashboard page', () => {
     render(<DashboardPage />);
 
-    expectSingleH1('Dashboard');
+    expectSingleH1('Panel de control');
   });
 
   it('renders exactly one h1 on the meter detail page', () => {
     render(<MeterPage />);
 
-    expectSingleH1('Meter meter-123');
+    expectSingleH1('Medidor meter-123');
   });
 
   it('renders exactly one h1 on the meter readings page', () => {
     render(<MeterReadingsPage />);
 
-    expectSingleH1('Meter Readings for meter-123');
+    expectSingleH1('Lecturas del medidor meter-123');
   });
 
   it('exposes an accessible name on the readings chart', () => {
     render(<MeterReadingsPage />);
 
     expect(
-      screen.getByRole('img', { name: /Readings chart/i }),
+      screen.getByRole('img', { name: /Gráfico de lecturas/i }),
     ).toBeInTheDocument();
   });
 
@@ -148,14 +139,14 @@ describe('accessibility', () => {
     render(<MeterReadingsPage />);
 
     expect(
-      screen.getByRole('table', { name: /Readings table/i }),
+      screen.getByRole('table', { name: /Tabla de lecturas/i }),
     ).toBeInTheDocument();
   });
 
   it('exposes an accessible name on the readings date range picker', () => {
     render(<MeterReadingsPage />);
 
-    const inputs = screen.getAllByLabelText(/Readings date range/i);
+    const inputs = screen.getAllByLabelText(/Rango de fechas de lecturas/i);
 
     expect(inputs.length).toBeGreaterThan(0);
   });

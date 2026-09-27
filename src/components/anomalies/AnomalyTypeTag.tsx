@@ -16,20 +16,25 @@ interface AnomalyTypeTagProps {
 }
 
 /**
- * Renders the raw `type` value and, for `DATA_QUALITY`, an extra plain-language
- * label so a measurement problem is not read as a real consumption anomaly.
+ * Renders the raw `type` value and its plain-language Spanish label.
+ *
+ * Every type now gets the label, not only `DATA_QUALITY`: the map already
+ * covered all four members and only the render site was missing three of them,
+ * so the raw `REAL_ANOMALY`/`EXPLAINABLE_ANOMALY`/`FALSE_POSITIVE` enum leaked
+ * to the reader. The raw value stays first because a record must still match
+ * the API payload; `DATA_QUALITY` keeps its `warning` styling because a
+ * measurement problem is worth flagging, while the rest are informational.
  */
 export function AnomalyTypeTag({ type }: AnomalyTypeTagProps) {
-  if (isDataQuality(type)) {
-    return (
-      <Space orientation="vertical" size={0}>
-        <Tag color={anomalyTypeColors[type]}>{type}</Tag>
-        <Text type="warning" className={styles.plainLabel}>
-          {anomalyTypeLabels[type]}
-        </Text>
-      </Space>
-    );
-  }
-
-  return <Tag color={anomalyTypeColors[type]}>{type}</Tag>;
+  return (
+    <Space orientation="vertical" size={0}>
+      <Tag color={anomalyTypeColors[type]}>{type}</Tag>
+      <Text
+        type={isDataQuality(type) ? "warning" : "secondary"}
+        className={styles.plainLabel}
+      >
+        {anomalyTypeLabels[type]}
+      </Text>
+    </Space>
+  );
 }

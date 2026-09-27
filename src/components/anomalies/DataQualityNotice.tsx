@@ -11,10 +11,10 @@ export function DataQualityNotice() {
     <Alert
       type="warning"
       showIcon
-      title="Data quality issue"
-      description="This record flags a problem with the meter measurements (bad or missing readings). It is not a real consumption anomaly, so investigate the measurement, not the consumption."
+      title="Problema de calidad de datos"
+      description="Este registro marca un problema con las mediciones del medidor (lecturas incorrectas o faltantes). No es una anomalía real de consumo, así que revisa la medición, no el consumo."
       role="note"
-      aria-label="Data quality issue explanation"
+      aria-label="Explicación del problema de calidad de datos"
     />
   );
 }

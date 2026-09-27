@@ -1,0 +1,42 @@
+/* The card is the positioned container the stretched link anchors to. antd
+   already sets `position: relative` on `.ant-card`; pinning it here keeps the
+   overlay correct if that ever changes. */
+.card {
+  position: relative;
+}
+
+/* Keyboard focus lands on the single anchor, whose visible box is only the id
+   text, so the whole card is outlined while it holds focus. */
+.card:focus-within {
+  outline: 3px solid var(--bia-color-primary);
+  outline-offset: 2px;
+}
+
+.link {
+  display: inline-block;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Stretched link: the overlay is positioned against `.card`, so the entire card
+   surface is the hit area while the anchor itself stays the id text. Positioned
+   content paints above the static details, so clicks over the status and the
+   last reading still reach this overlay. */
+.link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
