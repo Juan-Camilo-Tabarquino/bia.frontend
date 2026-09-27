@@ -16,11 +16,11 @@ operativo.
 | | |
 | --- | --- |
 | Rama | `refactor/improve-ui`, desde `main` (`ab85e7e8`) |
-| Fases hechas | **0+1, 2, 3** (más el arreglo del tema) |
-| Fases pendientes | **4, 5, 6** |
-| Suite | **24 suites / 155 tests** (arrancó en 18/118) |
-| Gates | `lint` 0 · `tsc --noEmit` 0 · `test` 155/155 · `next build` 0 (7 rutas) |
-| Review nativo | **4 recibos, los 4 aprobados**, autoridad quemada. 12 advisories abiertos (abajo) |
+| Fases hechas | **0+1, 2, 3, 4, 5** (más el arreglo del tema); la **6** está implementada y comiteada, falta el cierre |
+| Fases pendientes | **Cierre de la fase 6**: registrar y revisar lo ya comiteado |
+| Suite | **32 suites / 279 tests** en `55399056` (arrancó en 18/118, y era 24/155 al cerrar la fase 3) |
+| Gates | `lint` 0 · `tsc --noEmit` 0 · `test` 279/279 · `next build` 0 (8 rutas) en `55399056` |
+| Review nativo | Último estado **registrado** (fase 3): **4 recibos, los 4 aprobados**, autoridad quemada. Las fases 4 y 5 se cerraron con **verificación independiente** (`gentle-ai-verify`, PASS WITH FINDINGS) registrada en sus propios ODD; **si cada una tiene un recibo de review nativo no se puede leer de los documentos → desconocido**. La fase 6 está comiteada y su review nativo sigue **pendiente** |
 | Decisiones fijadas | 3 destinos con `/meters` como entrada · **dark por defecto + toggle** · teal de Bia · health como **toast al arrancar** (sin polling ni chip) · **Inter** · `@ant-design/icons` permitido (solo componentes gratis de antd) |
 
 ## Fases hechas
@@ -31,6 +31,9 @@ operativo.
 | **2 — Shell** | `37b8cea8` (código) · `5081ee23` (registro) | Breadcrumb en español derivado del pathname (ids verbatim, path malformado no renderiza nada) y **badge con el conteo de anomalías** alimentado por el cache compartido del summary. También el `jest.config.js` arreglado en la causa en vez de parcheado |
 | **Arreglo del tema** | `8c7c4982` | Bug real: **la preferencia de tema se perdía en cada recarga en desarrollo**. Ver abajo |
 | **3 — Estados y feedback** | `4820b93f` | **Un solo vocabulario de error con "Reintentar"** (eran seis presentaciones sin salida), **toast de health al arrancar** (dispara exactamente una vez, sin polling), `Skeleton` y `Empty` donde había regiones en blanco, `"Actualizando…"` para que un refetch sea visible sin blanquear contenido, y las deprecaciones de antd 6 saneadas (`Spin tip`, `Descriptions children`). `HealthStatus.tsx` eliminado (estaba muerto) |
+| **4 — Interactividad** | `62dceaa6` … `026794d1` (T1–T8 + verificación) · registro `64c069bc` · `1147bc71` · `d3f5ca19` | Búsqueda con debounce en medidores y anomalías (con el gate que la limpieza necesitaba), orden desde los headers con un registro único, paginación consistente, **deep links de filtros y orden** por URL, cross-links medidor ↔ anomalía, fechas por un formateador único, **KPI con pastilla de delta** y banner de insight. Cierra `R3-retry-loading-flag` y `R3-breadcrumb-encoding` |
+| **5 — Chart** | `a845fc24` (código + registro en el mismo commit) | **Línea de referencia del baseline** (el `baseline.mean` existía en el DTO y el mapeo lo descartaba; la línea se dibuja solo en Consumo y en las otras señales hay un `role="note"` que lo explica), leyenda con swatches, grid suave, unidad en el eje Y y tooltip tematizado. Los tres mocks inline de recharts se unificaron en `src/test-support/rechartsMock.ts` |
+| **6 — Español** | `55399056` (implementación) · registro en `odd/tasks/refactor-improve-ui-phase-6.md`, **pendiente de commitear** | App traducida al español y antd con `locale={esES}` + `dayjs.locale("es")`; los cuatro mapas de labels que faltaban. Gates: 32 suites / 279 tests, los cuatro en 0. La review nativa **todavía no corrió** |
 
 ### Dos cosas que valen más que el código
 
@@ -73,7 +76,23 @@ Estas no son sugerencias: son cosas que ya costaron un ciclo cada una.
 
 ## Fases pendientes
 
-### Fase 4 — Interactividad
+Queda **cerrar la fase 6**: su implementación ya está comiteada (`55399056`), faltan el registro ODD y la
+review nativa.
+
+### Fase 6 — cierre
+
+- **Registro**: `odd/tasks/refactor-improve-ui-phase-6.md`, hoy **untracked** y pendiente de commitear.
+- **Review nativo**: el preflight (`inspect` → `start` → `status` → `capture` → `acknowledge-approved`) todavía
+  **no corrió** para este candidato.
+- **Deuda arrastrada**: `T-SUITE` (~2.3 s/test contra el default de 5 s de Jest); ni confirmada ni refutada.
+
+## Alcance original de las fases 4 y 5 (ya hechas — se conserva como historia)
+
+Las descripciones de abajo son el alcance tal como se planificó, **no** el estado actual. Ambas fases se
+completaron y verificaron, y su detalle real vive en `odd/tasks/refactor-improve-ui-phase-4.md` y
+`odd/tasks/refactor-improve-ui-phase-5.md`.
+
+### Fase 4 — Interactividad (hecha)
 
 Lo que separa una tabla de datos de una aplicación.
 
@@ -88,26 +107,23 @@ Lo que separa una tabla de datos de una aplicación.
 - **KPI cards con pastilla de delta** y banner de insight: es la firma visual del producto de Bia
   (verde ↓ / rojo ↑ con el porcentaje, y una línea de contexto debajo).
 - **Acá caen dos advisories**: `R3-retry-loading-flag` (pasar `retrying={isFetching}` en `MeterList` y en la
-  página de anomalías) y `R3-breadcrumb-encoding` (los segmentos del pathname se usan crudos).
+  página de anomalías) y `R3-breadcrumb-encoding` (los segmentos del pathname se usan crudos). **Ambos
+  cerrados en la fase 4.**
 
-### Fase 5 — Chart
+### Fase 5 — Chart (hecha)
 
 Teal como serie, **línea de referencia del baseline** (el `baseline.mean` por anomalía **existe** en el DTO,
 aunque el código actual afirme que el backend no expone baseline), leyenda con swatches, grid suave, unidad
 en el eje Y y tooltip tematizado — todo mirando su producto, que tiene exactamente eso.
 
-### Fase 6 — Español restante
-
-Los ~200 strings que quedan en inglés más `locale={esES}` + `dayjs/locale/es`, los cuatro mapas de labels
-que **no existen** (`HIGH`/`MEDIUM`/`LOW`, `OK`/`DEGRADED`, y el label de 3 de los 4 tipos de anomalía),
-formato localizado de fechas y números, y `lang="es"`.
-
 ---
 
-## Advisories abiertos (12 + hallazgos del verificador)
+## Advisories (15 registrados: 12 de la fase 3 + 3 de la fase 6, más hallazgos del verificador)
 
-Todos **no bloqueantes** y explícitamente **no** razón para re-revisar su candidato. Consolidados también
-en memoria (`bia-frontend/refactor-improve-ui/review-advisories`).
+Todos **no bloqueantes** y explícitamente **no** razón para re-revisar su candidato. De los 12 de la fase 3,
+**3 ya están resueltos** (`R3-1` por `8c7c4982`, y `R3-retry-loading-flag` + `R3-breadcrumb-encoding` en la
+fase 4); el resto sigue abierto. Consolidados también en memoria
+(`bia-frontend/refactor-improve-ui/review-advisories`).
 
 | ID | Gravedad | Dónde | Qué |
 | --- | --- | --- | --- |
@@ -115,20 +131,29 @@ en memoria (`bia-frontend/refactor-improve-ui/review-advisories`).
 | `R3-2` | SUGGESTION | `SiteShell.tsx:28-30` | La composición del shell |
 | `R3-3` | SUGGESTION | `SiteHeader.tsx:80-88` | El gating del badge |
 | `R3-badge-guard` | WARNING | `SiteHeader.tsx:86-89` | El gating del badge (emparenta con `R3-3`) |
-| `R3-breadcrumb-encoding` | SUGGESTION | `SiteBreadcrumb.tsx:70-72` | Segmentos del pathname crudos |
+| `R3-breadcrumb-encoding` | SUGGESTION | `src/components/shell/SiteBreadcrumb.tsx:43-44` | Segmentos del pathname crudos — **RESUELTO en la fase 4 (T8)**: el label se decodifica y el `href` se re-encoda, con guard de `URIError` |
 | `R3-shell-fetch-every-mount` | SUGGESTION | `SiteHeader.tsx:74-84` | El query del summary en el shell |
 | `R3-theme-persist-effect` | WARNING | `theme-provider.tsx:69-77` | El `toggle` perdió el updater funcional |
-| `R3-retry-loading-flag` | WARNING | `MeterList.tsx:28-38` | `retrying` no se pasa (lo marcaron **la lente y el verificador por separado**) |
+| `R3-retry-loading-flag` | WARNING | `MeterList.tsx` / `anomalies/page.tsx` | `retrying` no se pasa (lo marcaron **la lente y el verificador por separado**) — **RESUELTO en la fase 4**: `retrying={isFetching}` en `src/components/MeterList.tsx:67` y `src/app/anomalies/page.tsx:116` |
 | `R3-chart-empty-coverage` | SUGGESTION | `ReadingsChart.tsx:200-205` | Cobertura del empty state nuevo |
 | `R3-backend-status-unmount-safety` | SUGGESTION | `BackendStatus.tsx:35-52` | Seguridad del toast ante un desmontaje |
 | `R3-request-error-shared-id` | SUGGESTION | `RequestError.tsx:33-44` | Id compartido dentro del vocabulario de error |
 | `R3-theme-toggle-stale-closure` | WARNING | `theme-provider.tsx:98-100` | El `toggle` lee `mode` del closure en vez de usar un updater funcional, así que dos toggles en el mismo tick netean un solo giro |
+| `status-column-raw-value` | SUGGESTION | `AnomalyTable.tsx:262-265` | La columna **Estado** rinde solo el label, mientras las columnas vecinas muestran el valor crudo al lado. Comportamiento **pre-existente**, que la fase 6 no introdujo. Texto completo en `odd/tasks/refactor-improve-ui-phase-6.md` |
+| `pagination-nesting-spy-order` | SUGGESTION | `src/components/__tests__/paginationLabels.test.tsx` | El spy de `console.error` para `validateDOMNesting` está acoplado al orden de render. Texto completo en `odd/tasks/refactor-improve-ui-phase-6.md` |
+| `pagination-two-tooltips` | SUGGESTION | `src/components/paginationLabels.tsx` | El botón clonado lleva `title` español y el `<li>` conserva el suyo; nunca se midió con un hover real. Texto completo en `odd/tasks/refactor-improve-ui-phase-6.md` |
 
-Además, del verificador y sin advisory asociado: el skeleton de `ReadingsTable` es de párrafo para una tabla
-de 6 columnas (se contradice con su propio comentario); los 404 hermanos no coinciden de idioma
-("Medidor no encontrado" vs "Anomaly not found"); y el vocabulario de error es de página, con dos
-supervivientes defendibles (el warning secundario del filtro de medidores y el `Alert` de fallo del
-re-análisis con IA).
+**Resuelto en la fase 4, aunque no tuviera advisory propio:** los dos controles de limpieza de `/anomalies` ya
+no comparten nombre accesible — `Limpiar filtros` en la barra de filtros
+(`src/components/anomalies/AnomalyFilters.tsx:283`) y `Quitar filtros` en el empty state
+(`src/app/anomalies/page.tsx:182`). Era un hallazgo del propio T2b de la fase 4.
+
+Del verificador y sin advisory asociado, sigue **abierto**: el skeleton de `ReadingsTable` es de párrafo para
+una tabla de 6 columnas (se contradice con su propio comentario), y el vocabulario de error es de página, con
+dos supervivientes defendibles (el warning secundario del filtro de medidores y el `Alert` de fallo del
+re-análisis con IA). **Resuelto por la fase 6:** los 404 hermanos ya coinciden de idioma — `Medidor no
+encontrado` (`src/components/MeterDetail.tsx:47`) y `Anomalía no encontrada`
+(`src/app/anomalies/[id]/page.tsx:54`).
 
 ---
 

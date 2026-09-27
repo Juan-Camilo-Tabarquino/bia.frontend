@@ -1,6 +1,6 @@
 # Feature: refactor/improve-ui — Bia visual identity, dark theme, Spanish, modern UX
 
-**Status: IN PROGRESS — phase 0+1 and phase 2 done, 4 phases left.** Branch `refactor/improve-ui`, base `ab85e7e8` (which is `main` = `origin/main`).
+**Status: IN PROGRESS — phases 0+1, 2, 3, 4 and 5 done; phase 6 implementation committed as `5539905`, its record and the native review still pending.** Branch `refactor/improve-ui`, base `ab85e7e8` (which is `main` = `origin/main`).
 
 **Reference:** the read-only audit of this branch (three explorations + parent verification),
 `odd/tasks/u1-ordering-confirmed.md`, and the Bia brand research (Engram
@@ -12,7 +12,8 @@ The owner wants the UI to read as a **modern application** — appearance, not o
 **technical test being evaluated by Bia**. So Bia's own product is the design reference, and the
 identity was extracted from their live assets rather than invented (see *Brand* below).
 
-Current state, measured: **no antd theming at all** (runs on defaults), **0 of 201 UI strings in
+Current state, measured **before phase 0+1** (kept as history — it is the pre-refactor baseline, not today's
+state): **no antd theming at all** (runs on defaults), **0 of 201 UI strings in
 Spanish**, **0 media queries**, **0 uses of `refetch`/`isFetching`/`Skeleton`/toasts**, a hand-rolled
 `<header>` with a v4-era navy, two competing primaries, six different error presentations, and `/` and
 `/meters` rendering the same meter list under the same `h1`.
@@ -64,9 +65,9 @@ energy company — not a hype startup."* → **institutional and clear, never pl
 | **0+1** | **IA + foundation**: `/` redirects to `/meters`; nav collapses to 3 Spanish destinations; `ConfigProvider` with the teal tokens; dark default + light toggle; Inter via `next/font`; brand mark in the shell; `reset.css` moved to the root layout; spacing/radius scale; SCSS colors read from antd CSS variables | **done** |
 | 2 | **Shell**: breadcrumb trail derived from the pathname, and the anomaly-count badge on the Anomalías entry fed by the shared summary cache. The footer landed in phase 0+1, and the **inline filters inside the breadcrumb belong to phase 4** (deep-linked filters), not here | **done** |
 | 3 | **States**: one error vocabulary with retry, `Skeleton`, empty states, `isFetching` refetch indicators, toasts, and clearing the deprecated `Spin tip` + `Descriptions children` usages | **done** |
-| 4 | **Interactivity**: search, header sorting, consistent pagination, deep-linked filters, cross-links, readable dates, KPI delta pills, insight banner | todo |
-| 5 | **Chart**: teal series, baseline reference line from `Anomaly.baseline.mean`, legend, grid, axis unit, themed tooltip | todo |
-| 6 | **Spanish**: ~200 strings, `locale={esES}` + `dayjs/locale/es`, the four missing label maps, locale date/number formatting, `lang="es"` | todo |
+| 4 | **Interactivity**: search, header sorting, consistent pagination, deep-linked filters, cross-links, readable dates, KPI delta pills, insight banner | **done** — `62dceaa` … `026794d` (T1–T8 + the phase verification; records `64c069b`, `1147bc7`, `d3f5ca1`) |
+| 5 | **Chart**: teal series, baseline reference line from `Anomaly.baseline.mean`, legend, grid, axis unit, themed tooltip | **done** — `a845fc2` (code and record in one commit) |
+| 6 | **Spanish**: ~200 strings, `locale={esES}` + `dayjs/locale/es`, the four missing label maps, locale date/number formatting, `lang="es"` | **in progress** — implementation committed as `5539905` (35 files, 1040/372); the phase record (`odd/tasks/refactor-improve-ui-phase-6.md`) and the native review are still pending |
 
 **Why 0 and 1 ship together:** they touch the same four files (`providers.tsx`, `layout.tsx`,
 `globals.scss`, `page.tsx`). Splitting them would rewrite those files twice for no reader benefit.
