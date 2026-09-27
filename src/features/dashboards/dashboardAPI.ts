@@ -30,3 +30,20 @@ export const dashboardApi = createApi({
 });
 
 export const { usePostAnalyzeMutation, useGetAiAnalysisQuery } = dashboardApi;
+
+/** Interval between polls while the analysis has not reached a terminal state. */
+export const ANALYSIS_POLL_INTERVAL_MS = 3_000;
+
+/**
+ * `"queued"` and `"running"` — an allow-list of exactly the two statuses the
+ * analysis endpoint reports before the run reaches a terminal state.
+ *
+ * It is deliberately an allow-list and not "everything except the terminal
+ * values": the safety property is that an UNKNOWN status — a future
+ * `"processing"`, a malformed payload — stops the polling instead of making the
+ * client request forever. An unrecognised status is therefore never polled and
+ * never presented as a finished analysis.
+ */
+export function isAnalysisPending(status: string | undefined): boolean {
+  return status === "queued" || status === "running";
+}
