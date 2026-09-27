@@ -124,14 +124,14 @@ function AnomaliesContent() {
 
   return (
     <div style={{ padding: "1rem" }}>
-      <Title level={1}>Anomalies</Title>
+      <Title level={1}>Anomalías</Title>
       <p className="sr-only">
-        Anomalies arrive ordered by priority (most urgent first). Filtering and
-        sorting on this page run in the browser over the anomalies already
-        fetched from the backend.
+        Las anomalías llegan ordenadas por prioridad (la más urgente primero).
+        El filtrado y el ordenamiento de esta página se ejecutan en el navegador
+        sobre las anomalías ya obtenidas del backend.
       </p>
 
-      <section aria-label="Anomaly filters">
+      <section aria-label="Filtros de anomalías">
         <AnomalyFilters
           meters={meters}
           values={filters}
@@ -150,7 +150,7 @@ function AnomaliesContent() {
         )}
       </section>
 
-      <section aria-label="Anomaly results" style={{ marginTop: "1.5rem" }}>
+      <section aria-label="Resultados de anomalías" style={{ marginTop: "1.5rem" }}>
         {/* The list below is paginated, so this count may only speak about how
             many anomalies MATCH the filters -- the old "Showing X of Y" claimed
             every X was on screen while antd renders a single page. Keeping it as
@@ -168,17 +168,18 @@ function AnomaliesContent() {
           <Empty description="El backend no reportó anomalías." />
         ) : visibleAnomalies.length === 0 ? (
           <Empty description="Ninguna anomalía coincide con los filtros actuales.">
-            {/* Named for what it clears. This button sits next to the filter
-                bar's own "Clear filters", and two controls with the same
-                accessible name make `getByRole("button", { name: "Clear
-                filters" })` throw for every assistive-technology user and
-                test once the empty state is on screen. */}
+            {/* Named for what it clears. It sits next to the filter bar's own
+                "Limpiar filtros", so the two actions must keep DIFFERENT
+                accessible names: two controls with the same name make
+                `getByRole("button", { name: ... })` throw for every
+                assistive-technology user and test once the empty state is on
+                screen. */}
             <Button
               onClick={() =>
                 setUrlState((previous) => ({ ...previous, ...emptyAnomalyFilters }))
               }
             >
-              Limpiar filtros
+              Quitar filtros
             </Button>
           </Empty>
         ) : (
@@ -196,9 +197,9 @@ function AnomaliesContent() {
 
       {hasActiveFilters(filters) && (
         <Text type="secondary" style={{ display: "block", marginTop: "1rem" }}>
-          Filters are applied in the browser to the fetched array; the backend
-          is not re-queried. The API already returns the array in priority
-          order.
+          Los filtros se aplican en el navegador sobre la lista obtenida; no se
+          vuelve a consultar el backend. La API ya devuelve la lista en orden de
+          prioridad.
         </Text>
       )}
     </div>

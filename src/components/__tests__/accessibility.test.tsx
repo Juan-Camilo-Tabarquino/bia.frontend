@@ -112,26 +112,26 @@ describe('accessibility', () => {
   it('renders exactly one h1 on the dashboard page', () => {
     render(<DashboardPage />);
 
-    expectSingleH1('Dashboard');
+    expectSingleH1('Panel de control');
   });
 
   it('renders exactly one h1 on the meter detail page', () => {
     render(<MeterPage />);
 
-    expectSingleH1('Meter meter-123');
+    expectSingleH1('Medidor meter-123');
   });
 
   it('renders exactly one h1 on the meter readings page', () => {
     render(<MeterReadingsPage />);
 
-    expectSingleH1('Meter Readings for meter-123');
+    expectSingleH1('Lecturas del medidor meter-123');
   });
 
   it('exposes an accessible name on the readings chart', () => {
     render(<MeterReadingsPage />);
 
     expect(
-      screen.getByRole('img', { name: /Readings chart/i }),
+      screen.getByRole('img', { name: /Gráfico de lecturas/i }),
     ).toBeInTheDocument();
   });
 
@@ -139,14 +139,14 @@ describe('accessibility', () => {
     render(<MeterReadingsPage />);
 
     expect(
-      screen.getByRole('table', { name: /Readings table/i }),
+      screen.getByRole('table', { name: /Tabla de lecturas/i }),
     ).toBeInTheDocument();
   });
 
   it('exposes an accessible name on the readings date range picker', () => {
     render(<MeterReadingsPage />);
 
-    const inputs = screen.getAllByLabelText(/Readings date range/i);
+    const inputs = screen.getAllByLabelText(/Rango de fechas de lecturas/i);
 
     expect(inputs.length).toBeGreaterThan(0);
   });

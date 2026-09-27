@@ -74,13 +74,13 @@ export default function MeterReadingsPage() {
     <Row gutter={[16, 16]} style={{ padding: "1rem" }}>
       <Col xs={24}>
         <Typography.Title level={1}>
-          Meter Readings for {meterId}
+          Lecturas del medidor {meterId}
         </Typography.Title>
       </Col>
       <Col xs={24}>
         <Space align="center" wrap>
           <RangePicker
-            aria-label="Readings date range"
+            aria-label="Rango de fechas de lecturas"
             onChange={(values) => {
               const fromValue = values?.[0];
               const toValue = values?.[1];
@@ -114,7 +114,7 @@ export default function MeterReadingsPage() {
         </Col>
       )}
       <Col xs={24}>
-        <section aria-label={`Readings chart for meter ${meterId}`}>
+        <section aria-label={`Gráfico de lecturas del medidor ${meterId}`}>
           <ReadingsChart
             data={rows}
             anomalyMarkers={anomalyMarkers}
@@ -123,7 +123,7 @@ export default function MeterReadingsPage() {
         </section>
       </Col>
       <Col xs={24}>
-        <section aria-label={`Readings table for meter ${meterId}`}>
+        <section aria-label={`Tabla de lecturas del medidor ${meterId}`}>
           <ReadingsTable data={rows} loading={isLoading} />
         </section>
       </Col>

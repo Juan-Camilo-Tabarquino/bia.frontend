@@ -13,10 +13,11 @@ const { Text } = Typography;
 
 /** Latency disclosure shown both before and during the request. */
 const LATENCY_HELPER =
-  "Re-runs the deterministic anomaly pipeline and the LLM narrative for every anomaly, then loads the result. It can take about a minute.";
-const RUNNING_MESSAGE = "Analysis is running. It may take about a minute.";
+  "Vuelve a ejecutar el pipeline determinístico de anomalías y la narrativa del LLM para cada anomalía, y luego carga el resultado. Puede tardar alrededor de un minuto.";
+const RUNNING_MESSAGE =
+  "El análisis está en curso. Puede tardar alrededor de un minuto.";
 const FALLBACK_ERROR =
-  "The platform analysis could not be completed. Try again.";
+  "No se pudo completar el análisis de la plataforma. Inténtalo de nuevo.";
 
 function getErrorMessage(error: unknown, fallback: string): string {
   if (error && typeof error === "object" && "message" in error) {
@@ -58,7 +59,7 @@ export function AiReanalysis() {
   const failed = Boolean(error) || Boolean(resultError);
 
   return (
-    <section aria-label="AI analysis" className={styles.section}>
+    <section aria-label="Análisis con IA" className={styles.section}>
       <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
         <div>
           <Button
@@ -70,7 +71,7 @@ export function AiReanalysis() {
             disabled={isLoading}
             aria-describedby="ai-reanalysis-latency"
           >
-            Re-run platform analysis
+            Reintentar el análisis de la plataforma
           </Button>
           <Text
             id="ai-reanalysis-latency"
@@ -91,7 +92,7 @@ export function AiReanalysis() {
           <Alert
             type="error"
             showIcon
-            title="Analysis failed"
+            title="El análisis falló"
             description={getErrorMessage(
               error ?? resultError,
               FALLBACK_ERROR,
@@ -103,15 +104,15 @@ export function AiReanalysis() {
           <div className={styles.result}>
             <Text role="status" className={styles.status}>
               {result.anomalies.length === 0
-                ? "Analysis complete: no anomalies were returned."
-                : `Analysis complete: ${result.anomalies.length} ${
-                    result.anomalies.length === 1 ? "anomaly" : "anomalies"
-                  } returned.`}
+                ? "Análisis completado: no se devolvió ninguna anomalía."
+                : `Análisis completado: se devolvieron ${result.anomalies.length} ${
+                    result.anomalies.length === 1 ? "anomalía" : "anomalías"
+                  }.`}
             </Text>
 
             {topAnomaly && (
               <div className={styles.topAnomaly}>
-                <Text strong>Top-priority anomaly</Text>
+                <Text strong>Anomalía más urgente</Text>
                 <div className={styles.linkRow}>
                   <Link
                     href={`/anomalies/${encodeURIComponent(topAnomaly.id)}`}

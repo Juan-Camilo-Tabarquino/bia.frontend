@@ -51,7 +51,7 @@ describe("AnomalyDetail", () => {
     expect(screen.getByText("REAL_ANOMALY")).toBeInTheDocument();
     expect(screen.getByText("HIGH")).toBeInTheDocument();
     expect(screen.getByText("97%")).toBeInTheDocument();
-    expect(screen.getByText("Unexplained")).toBeInTheDocument();
+    expect(screen.getByText("Sin explicación")).toBeInTheDocument();
     expect(
       screen.getByText("Consumption jumped 240% over the baseline window."),
     ).toBeInTheDocument();
@@ -85,10 +85,10 @@ describe("AnomalyDetail", () => {
   it("presents the recommended action as the conclusion and status as the causal reading", () => {
     render(<AnomalyDetail anomaly={makeAnomaly()} />);
 
-    expect(screen.getByText("Action / conclusion")).toBeInTheDocument();
-    expect(screen.getByText("Causal reading")).toBeInTheDocument();
+    expect(screen.getByText("Acción / conclusión")).toBeInTheDocument();
+    expect(screen.getByText("Lectura causal")).toBeInTheDocument();
     expect(
-      screen.getByText(/found no correlated explanation/i),
+      screen.getByText(/no encontró una explicación correlacionada/i),
     ).toBeInTheDocument();
   });
 
@@ -96,7 +96,7 @@ describe("AnomalyDetail", () => {
     render(<AnomalyDetail anomaly={makeAnomaly({ status: "explained" })} />);
 
     expect(
-      screen.getByText(/correlated this anomaly with an explanation/i),
+      screen.getByText(/correlacionó esta anomalía con una explicación/i),
     ).toBeInTheDocument();
   });
 
@@ -104,9 +104,11 @@ describe("AnomalyDetail", () => {
     render(<AnomalyDetail anomaly={makeAnomaly({ type: "DATA_QUALITY" })} />);
 
     expect(screen.getByText("DATA_QUALITY")).toBeInTheDocument();
-    expect(screen.getAllByText("Data quality issue").length).toBeGreaterThan(0);
     expect(
-      screen.getByText(/not a real consumption anomaly/i),
+      screen.getAllByText("Problema de calidad de datos").length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getByText(/no es una anomalía real de consumo/i),
     ).toBeInTheDocument();
   });
 
@@ -128,7 +130,7 @@ describe("AnomalyDetail", () => {
     );
 
     expect(
-      screen.getByRole("region", { name: "LLM narrative" }),
+      screen.getByRole("region", { name: "Narrativa del LLM" }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "Hallazgos" }),
@@ -147,7 +149,9 @@ describe("AnomalyDetail", () => {
     render(<AnomalyDetail anomaly={makeAnomaly()} />);
 
     expect(
-      screen.getByText("No LLM narrative is available for this anomaly."),
+      screen.getByText(
+        "No hay narrativa del LLM disponible para esta anomalía.",
+      ),
     ).toBeInTheDocument();
   });
 
@@ -168,14 +172,14 @@ describe("AnomalyDetail", () => {
   it("renders the API priority value", () => {
     render(<AnomalyDetail anomaly={makeAnomaly({ priority: 3 })} />);
 
-    expect(screen.getByText("Priority")).toBeInTheDocument();
+    expect(screen.getByText("Prioridad")).toBeInTheDocument();
     expect(screen.getByText("3")).toBeInTheDocument();
   });
 
   it("renders the baseline statistics behind the anomaly", () => {
     render(<AnomalyDetail anomaly={makeAnomaly()} />);
 
-    expect(screen.getByText("Baseline")).toBeInTheDocument();
+    expect(screen.getByText("Línea base")).toBeInTheDocument();
     expect(screen.getByText("52.16")).toBeInTheDocument();
     expect(screen.getByText("20.84")).toBeInTheDocument();
     expect(screen.getByText("336")).toBeInTheDocument();
@@ -187,7 +191,7 @@ describe("AnomalyDetail", () => {
   it("renders each per-signal change percentage with its sign", () => {
     render(<AnomalyDetail anomaly={makeAnomaly()} />);
 
-    expect(screen.getByText("Change vs baseline")).toBeInTheDocument();
+    expect(screen.getByText("Cambio vs. la línea base")).toBeInTheDocument();
     expect(screen.getByText("+125.3%")).toBeInTheDocument();
     expect(screen.getByText("-2.7%")).toBeInTheDocument();
     expect(screen.getByText("+111.2%")).toBeInTheDocument();
@@ -211,7 +215,7 @@ describe("AnomalyDetail", () => {
       />,
     );
 
-    expect(screen.getByLabelText("Correlated events")).toBeInTheDocument();
+    expect(screen.getByLabelText("Eventos correlacionados")).toBeInTheDocument();
     expect(screen.getByText("OPERATIONAL_CHANGE")).toBeInTheDocument();
     expect(
       screen.getByText(
@@ -230,9 +234,11 @@ describe("AnomalyDetail", () => {
     render(<AnomalyDetail anomaly={makeAnomaly({ correlated_events: [] })} />);
 
     expect(
-      screen.getByText(/No correlated event explains this deviation/i),
+      screen.getByText(/Ningún evento correlacionado explica esta desviación/i),
     ).toBeInTheDocument();
-    expect(screen.queryByLabelText("Correlated events")).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Eventos correlacionados"),
+    ).not.toBeInTheDocument();
   });
 
   it("shows the data-quality flag and its reason when flagged", () => {
@@ -248,8 +254,8 @@ describe("AnomalyDetail", () => {
       />,
     );
 
-    expect(screen.getByText("Flagged")).toBeInTheDocument();
-    expect(screen.getByText("Yes")).toBeInTheDocument();
+    expect(screen.getByText("Marcado")).toBeInTheDocument();
+    expect(screen.getByText("Sí")).toBeInTheDocument();
     expect(
       screen.getByText("power factor 0.720 below 0.85"),
     ).toBeInTheDocument();
@@ -264,7 +270,7 @@ describe("AnomalyDetail", () => {
 
     expect(screen.getByText("No")).toBeInTheDocument();
     expect(
-      screen.getByText(/No data-quality issue was flagged for this anomaly/i),
+      screen.getByText(/No se marcó ningún problema de calidad de datos/i),
     ).toBeInTheDocument();
   });
 });

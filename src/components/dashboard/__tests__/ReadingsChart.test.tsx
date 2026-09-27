@@ -72,7 +72,7 @@ describe('ReadingsChart', () => {
       screen.getByText('No hay lecturas en el rango seleccionado.'),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole('img', { name: /Readings chart/i }),
+      screen.queryByRole('img', { name: /Gráfico de lecturas/i }),
     ).not.toBeInTheDocument();
   });
 
@@ -81,11 +81,11 @@ describe('ReadingsChart', () => {
 
     expect(
       screen.getByRole('img', {
-        name: 'Readings chart: Consumption (kWh) over time',
+        name: 'Gráfico de lecturas: Consumo (kWh) a lo largo del tiempo',
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/Consumption in kWh over time/i),
+      screen.getByText(/Consumo en kWh a lo largo del tiempo/i),
     ).toBeInTheDocument();
   });
 
@@ -94,10 +94,10 @@ describe('ReadingsChart', () => {
 
     (
       [
-        'Consumption (kWh)',
-        'Voltage (V)',
-        'Current (A)',
-        'Power factor (dimensionless 0-1)',
+        'Consumo (kWh)',
+        'Voltaje (V)',
+        'Corriente (A)',
+        'Factor de potencia (adimensional 0-1)',
       ] as const
     ).forEach((label) => {
       expect(screen.getByRole('radio', { name: label })).toBeInTheDocument();
@@ -107,11 +107,11 @@ describe('ReadingsChart', () => {
     expect(consumptionPoints).toHaveLength(sampleReadings.length);
     expect(consumptionPoints.map((point) => point.value)).toEqual([10, 20, 30]);
 
-    fireEvent.click(screen.getByRole('radio', { name: 'Voltage (V)' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Voltaje (V)' }));
 
     expect(
       screen.getByRole('img', {
-        name: 'Readings chart: Voltage (V) over time',
+        name: 'Gráfico de lecturas: Voltaje (V) a lo largo del tiempo',
       }),
     ).toBeInTheDocument();
     expect(plottedPoints().map((point) => point.value)).toEqual([
@@ -158,7 +158,7 @@ describe('ReadingsChart', () => {
       screen.getAllByText(/LOW · False positive/).length,
     ).toBeGreaterThan(0);
     expect(
-      screen.getByRole('heading', { name: /Anomaly markers/i, level: 2 }),
+      screen.getByRole('heading', { name: /Marcadores de anomalía/i, level: 2 }),
     ).toBeInTheDocument();
 
     // The sr-only figcaption interpolation goes through the shared formatter
@@ -198,7 +198,7 @@ describe('ReadingsChart', () => {
   it('states that no anomaly markers exist when none are supplied', () => {
     render(<ReadingsChart data={sampleReadings} />);
 
-    expect(screen.getByText(/No anomalies recorded for this meter/i)).toBeInTheDocument();
+    expect(screen.getByText(/No hay anomalías registradas para este medidor/i)).toBeInTheDocument();
   });
 
   it('draws a dashed reference line at the DTO baseline mean for Consumption', () => {
@@ -237,7 +237,7 @@ describe('ReadingsChart', () => {
     render(<ReadingsChart data={sampleReadings} anomalyMarkers={anomalyMarkers} />);
     expect(screen.getAllByTestId('reference-line')).toHaveLength(1);
 
-    fireEvent.click(screen.getByRole('radio', { name: 'Voltage (V)' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Voltaje (V)' }));
 
     // `baseline.mean` is kWh consumption, so it must not sit on a voltage axis.
     expect(screen.queryAllByTestId('reference-line')).toHaveLength(0);
@@ -281,7 +281,7 @@ describe('ReadingsChart', () => {
     render(<ReadingsChart data={sampleReadings} anomalyMarkers={anomalyMarkers} />);
 
     const legend = screen.getByRole('list', { name: 'Leyenda del gráfico' });
-    expect(within(legend).getByText('Consumption (kWh)')).toBeInTheDocument();
+    expect(within(legend).getByText('Consumo (kWh)')).toBeInTheDocument();
     expect(within(legend).getByText('Marcador de anomalía')).toBeInTheDocument();
     expect(
       within(legend).getByText('Media de referencia: 12.1 kWh'),
@@ -292,11 +292,11 @@ describe('ReadingsChart', () => {
     render(<ReadingsChart data={sampleReadings} />);
     expect(screen.getByTestId('y-axis')).toHaveAttribute('data-unit', 'kWh');
 
-    fireEvent.click(screen.getByRole('radio', { name: 'Voltage (V)' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Voltaje (V)' }));
     expect(screen.getByTestId('y-axis')).toHaveAttribute('data-unit', 'V');
 
     fireEvent.click(
-      screen.getByRole('radio', { name: 'Power factor (dimensionless 0-1)' }),
+      screen.getByRole('radio', { name: 'Factor de potencia (adimensional 0-1)' }),
     );
     expect(screen.getByTestId('y-axis')).toHaveAttribute('data-unit', '');
   });

@@ -166,14 +166,17 @@ describe('DashboardPage component', () => {
 
     render(<DashboardPage />);
 
-    expect(screen.getByText('Health')).toBeInTheDocument();
-    expect(screen.getByText('ok')).toBeInTheDocument();
-    expect(screen.getByText('Meters')).toBeInTheDocument();
-    expect(screen.getByText('3')).toBeInTheDocument();
-    expect(screen.getByText('Anomalies')).toBeInTheDocument();
-    expect(screen.getByText('2')).toBeInTheDocument();
-    expect(screen.getByText('Last run')).toBeInTheDocument();
-    expect(screen.getByText('latest')).toBeInTheDocument();
+    const kpis = within(
+      screen.getByRole('region', { name: 'Indicadores clave' }),
+    );
+    expect(kpis.getByText('Estado')).toBeInTheDocument();
+    expect(kpis.getByText('Operativo')).toBeInTheDocument();
+    expect(kpis.getByText('Medidores')).toBeInTheDocument();
+    expect(kpis.getByText('3')).toBeInTheDocument();
+    expect(kpis.getByText('Anomalías')).toBeInTheDocument();
+    expect(kpis.getByText('2')).toBeInTheDocument();
+    expect(kpis.getByText('Última ejecución')).toBeInTheDocument();
+    expect(kpis.getByText('latest')).toBeInTheDocument();
   });
 
   it('renders the anomaly overview with a link to each anomaly detail', () => {
@@ -185,7 +188,7 @@ describe('DashboardPage component', () => {
     expect(screen.getByText('REAL_ANOMALY')).toBeInTheDocument();
     expect(screen.getByText('HIGH')).toBeInTheDocument();
     expect(screen.getByText('90%')).toBeInTheDocument();
-    expect(screen.getByText('Unexplained')).toBeInTheDocument();
+    expect(screen.getByText('Sin explicación')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'a1' })).toHaveAttribute(
       'href',
       '/anomalies/a1',
@@ -202,9 +205,9 @@ describe('DashboardPage component', () => {
     render(<DashboardPage />);
 
     expect(
-      screen.getByRole('link', { name: 'View all anomalies' }),
+      screen.getByRole('link', { name: 'Ver todas las anomalías' }),
     ).toHaveAttribute('href', '/anomalies');
-    expect(screen.getByRole('link', { name: 'Browse meters' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Ver medidores' })).toHaveAttribute(
       'href',
       '/meters',
     );
@@ -215,10 +218,12 @@ describe('DashboardPage component', () => {
 
     render(<DashboardPage />);
 
-    expect(screen.getByText('Real anomaly: 1')).toBeInTheDocument();
-    expect(screen.getByText('Data quality issue: 1')).toBeInTheDocument();
-    expect(screen.getByText('HIGH: 1')).toBeInTheDocument();
-    expect(screen.getByText('LOW: 1')).toBeInTheDocument();
+    expect(screen.getByText('Anomalía real: 1')).toBeInTheDocument();
+    expect(
+      screen.getByText('Problema de calidad de datos: 1'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Alta: 1')).toBeInTheDocument();
+    expect(screen.getByText('Baja: 1')).toBeInTheDocument();
   });
 
   it('renders an empty overview when the backend reports no anomalies', () => {
@@ -226,7 +231,7 @@ describe('DashboardPage component', () => {
 
     render(<DashboardPage />);
 
-    expect(screen.getByText('No anomalies reported.')).toBeInTheDocument();
+    expect(screen.getByText('No se reportaron anomalías.')).toBeInTheDocument();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
 
@@ -240,7 +245,7 @@ describe('DashboardPage component', () => {
     render(<DashboardPage />);
 
     expect(
-      screen.getByText(/Showing the first 5 of 7 anomalies/),
+      screen.getByText(/Mostrando las primeras 5 de 7 anomalías/),
     ).toBeInTheDocument();
   });
 
@@ -282,8 +287,11 @@ describe('DashboardPage component', () => {
 
     render(<DashboardPage />);
 
-    for (const title of ['Health', 'Meters', 'Anomalies', 'Last run']) {
-      expect(screen.getByText(title)).toBeInTheDocument();
+    const kpis = within(
+      screen.getByRole('region', { name: 'Indicadores clave' }),
+    );
+    for (const title of ['Estado', 'Medidores', 'Anomalías', 'Última ejecución']) {
+      expect(kpis.getByText(title)).toBeInTheDocument();
     }
     expect(screen.getByRole('table')).toBeInTheDocument();
   });

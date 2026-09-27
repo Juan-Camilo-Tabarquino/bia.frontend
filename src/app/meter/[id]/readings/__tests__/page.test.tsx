@@ -149,9 +149,9 @@ describe('MeterReadingsPage', () => {
     render(<MeterReadingsPage />);
 
     expect(
-      screen.getByRole('heading', { name: /Meter Readings for meter-123/i }),
+      screen.getByRole('heading', { name: /Lecturas del medidor meter-123/i }),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText(/Readings chart: Consumption/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Gráfico de lecturas: Consumo/)).toBeInTheDocument();
     expect(screen.getByRole('table')).toBeInTheDocument();
   });
 
@@ -170,7 +170,7 @@ describe('MeterReadingsPage', () => {
     render(<MeterReadingsPage />);
 
     expect(screen.getByText('Actualizando…')).toBeInTheDocument();
-    expect(screen.getByLabelText(/Readings chart: Consumption/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Gráfico de lecturas: Consumo/)).toBeInTheDocument();
     expect(screen.getByText('12.5')).toBeInTheDocument();
   });
 
@@ -240,7 +240,7 @@ describe('MeterReadingsPage', () => {
     render(<MeterReadingsPage />);
 
     expect(
-      screen.getByRole('heading', { name: /Meter Readings for meter-123/i }),
+      screen.getByRole('heading', { name: /Lecturas del medidor meter-123/i }),
     ).toBeInTheDocument();
     expect(
       screen.getByText('No hay lecturas en el rango seleccionado.'),
@@ -248,7 +248,7 @@ describe('MeterReadingsPage', () => {
     expect(screen.getByRole('table')).toBeInTheDocument();
     expect(screen.queryByText(/Error loading readings/i)).not.toBeInTheDocument();
     expect(
-      screen.queryByRole('img', { name: /Readings chart/i }),
+      screen.queryByRole('img', { name: /Gráfico de lecturas/i }),
     ).not.toBeInTheDocument();
   });
 
@@ -266,7 +266,7 @@ describe('MeterReadingsPage', () => {
     expect(screen.getByText('230')).toBeInTheDocument();
     expect(screen.getByText('5.4')).toBeInTheDocument();
     expect(screen.getByText('0.98')).toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: 'Voltage (V)' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Voltaje (V)' })).toBeInTheDocument();
   });
 
   it('marks only the anomalies of this meter on the timeline', () => {
@@ -285,7 +285,7 @@ describe('MeterReadingsPage', () => {
       screen.getByText(formatDateTime('2024-01-01T06:00:00Z')),
     ).toBeInTheDocument();
     expect(
-      screen.getAllByText(/HIGH · Real anomaly/).length,
+      screen.getAllByText(/HIGH · Anomalía real/).length,
     ).toBeGreaterThan(0);
     expect(
       screen.queryByText(formatDateTime('2024-02-09T00:00:00Z')),

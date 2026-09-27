@@ -16,6 +16,8 @@ import {
 } from "./anomalyFiltering";
 import {
   anomalySeverities,
+  anomalySeverityLabels,
+  anomalyStatusLabels,
   anomalyStatuses,
   anomalyTypeLabels,
   anomalyTypes,
@@ -33,12 +35,12 @@ const typeOptions = anomalyTypes.map((value: AnomalyType) => ({
 
 const severityOptions = anomalySeverities.map((value: AnomalySeverity) => ({
   value,
-  label: value,
+  label: anomalySeverityLabels[value],
 }));
 
 const statusOptions = anomalyStatuses.map((value: AnomalyStatus) => ({
   value,
-  label: value,
+  label: anomalyStatusLabels[value],
 }));
 
 interface AnomalySearchInputProps {
@@ -168,7 +170,7 @@ export function AnomalyFilters({
       : null;
 
   return (
-    <div className={styles.filters} role="group" aria-label="Anomaly filters">
+    <div className={styles.filters} role="group" aria-label="Filtros de anomalías">
       {/* Search composes with the selects through `applyAnomalyFilters` instead
           of post-filtering the array a second time. */}
       <AnomalySearchInput
@@ -178,14 +180,14 @@ export function AnomalyFilters({
 
       <div className={styles.field}>
         <label className={styles.label} htmlFor="anomaly-filter-meter">
-          Meter
+          Medidor
         </label>
         <Select
           id="anomaly-filter-meter"
-          aria-label="Filter by meter"
+          aria-label="Filtrar por medidor"
           allowClear
           showSearch
-          placeholder="All meters"
+          placeholder="Todos los medidores"
           className={styles.control}
           value={values.meterId ?? undefined}
           options={meterOptions}
@@ -197,13 +199,13 @@ export function AnomalyFilters({
 
       <div className={styles.field}>
         <label className={styles.label} htmlFor="anomaly-filter-type">
-          Type
+          Tipo
         </label>
         <Select
           id="anomaly-filter-type"
-          aria-label="Filter by type"
+          aria-label="Filtrar por tipo"
           allowClear
-          placeholder="All types"
+          placeholder="Todos los tipos"
           className={styles.control}
           value={values.type ?? undefined}
           options={typeOptions}
@@ -213,13 +215,13 @@ export function AnomalyFilters({
 
       <div className={styles.field}>
         <label className={styles.label} htmlFor="anomaly-filter-severity">
-          Severity
+          Severidad
         </label>
         <Select
           id="anomaly-filter-severity"
-          aria-label="Filter by severity"
+          aria-label="Filtrar por severidad"
           allowClear
-          placeholder="All severities"
+          placeholder="Todas las severidades"
           className={styles.control}
           value={values.severity ?? undefined}
           options={severityOptions}
@@ -231,13 +233,13 @@ export function AnomalyFilters({
 
       <div className={styles.field}>
         <label className={styles.label} htmlFor="anomaly-filter-status">
-          Status
+          Estado
         </label>
         <Select
           id="anomaly-filter-status"
-          aria-label="Filter by status"
+          aria-label="Filtrar por estado"
           allowClear
-          placeholder="All statuses"
+          placeholder="Todos los estados"
           className={styles.control}
           value={values.status ?? undefined}
           options={statusOptions}
@@ -247,11 +249,11 @@ export function AnomalyFilters({
 
       <div className={styles.field}>
         <label className={styles.label} htmlFor="anomaly-filter-detected">
-          Detected at
+          Fecha de detección
         </label>
         <RangePicker
           id="anomaly-filter-detected"
-          aria-label="Filter by detected at date range"
+          aria-label="Filtrar por rango de fechas de detección"
           className={styles.control}
           value={rangeValue}
           onChange={(dates) => {
@@ -268,7 +270,7 @@ export function AnomalyFilters({
       <div className={styles.field}>
         {/* The box can hold a term the user has typed but that the debounce has
             not committed yet. In that window every committed filter is empty, so
-            gating on them alone leaves "Clear filters" DISABLED while a visible
+            gating on them alone leaves "Limpiar filtros" DISABLED while a visible
             term sits in the input: the user cannot clear what they just typed,
             and the term lands in the URL moments later. The gate therefore also
             looks at the RAW box value, not its trimmed form -- a box showing
@@ -278,14 +280,14 @@ export function AnomalyFilters({
           onClick={clearFilters}
           disabled={!hasActiveFilters(values) && typed.length === 0}
         >
-          Clear filters
+          Limpiar filtros
         </Button>
       </div>
 
       <Text type="secondary" className={styles.note}>
-        Filtering and sorting run in the browser over the fetched list. The
-        anomalies endpoint returns the full array, already in priority order,
-        and accepts no query parameters.
+        El filtrado y el ordenamiento se ejecutan en el navegador sobre la lista
+        obtenida. El endpoint de anomalías devuelve la lista completa, ya en
+        orden de prioridad, y no acepta parámetros de consulta.
       </Text>
     </div>
   );

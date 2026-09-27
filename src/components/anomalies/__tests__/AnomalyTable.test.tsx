@@ -120,7 +120,7 @@ describe("AnomalyTable", () => {
     expect(screen.getByText("REAL_ANOMALY")).toBeInTheDocument();
     expect(screen.getByText("HIGH")).toBeInTheDocument();
     expect(screen.getByText("97%")).toBeInTheDocument();
-    expect(screen.getByText("Unexplained")).toBeInTheDocument();
+    expect(screen.getByText("Sin explicación")).toBeInTheDocument();
   });
 
   it("links each meter id to its meter detail route", () => {
@@ -168,7 +168,7 @@ describe("AnomalyTable", () => {
     render(<AnomalyTable anomalies={[realAnomaly, dataQualityAnomaly]} />);
 
     expect(
-      screen.getByRole("columnheader", { name: "Priority" }),
+      screen.getByRole("columnheader", { name: "Prioridad" }),
     ).toBeInTheDocument();
     // The values are the API numbers, shown verbatim.
     expect(screen.getByText("1")).toBeInTheDocument();
@@ -179,13 +179,17 @@ describe("AnomalyTable", () => {
     render(<AnomalyTable anomalies={[dataQualityAnomaly]} />);
 
     expect(screen.getByText("DATA_QUALITY")).toBeInTheDocument();
-    expect(screen.getByText("Data quality issue")).toBeInTheDocument();
+    expect(screen.getByText("Problema de calidad de datos")).toBeInTheDocument();
   });
 
   it("does not add the data-quality label to real anomalies", () => {
     render(<AnomalyTable anomalies={[realAnomaly]} />);
 
-    expect(screen.queryByText("Data quality issue")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Problema de calidad de datos"),
+    ).not.toBeInTheDocument();
+    // The real anomaly keeps its own label, so the map is exercised for it too.
+    expect(screen.getByText("Anomalía real")).toBeInTheDocument();
   });
 
   it("marks the DATA_QUALITY row as visually distinct", () => {
@@ -238,10 +242,10 @@ describe("AnomalyTable header sorting", () => {
     // identifiers (`id`, `meter_id`) and unordered categories (`type`,
     // `status`) deliberately get no sorter.
     expect(sortableTitles).toEqual([
-      "Priority",
-      "Detected at",
-      "Severity",
-      "Confidence",
+      "Prioridad",
+      "Detectada",
+      "Severidad",
+      "Confianza",
     ]);
   });
 
@@ -255,7 +259,7 @@ describe("AnomalyTable header sorting", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("columnheader", { name: "Severity" }));
+    fireEvent.click(screen.getByRole("columnheader", { name: "Severidad" }));
 
     expect(onSortChange).toHaveBeenCalledWith("severity");
   });
@@ -270,7 +274,7 @@ describe("AnomalyTable header sorting", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("columnheader", { name: "Severity" }));
+    fireEvent.click(screen.getByRole("columnheader", { name: "Severidad" }));
 
     expect(onSortChange).toHaveBeenCalledWith("backend");
   });
@@ -286,10 +290,10 @@ describe("AnomalyTable header sorting", () => {
     );
 
     expect(
-      screen.getByRole("columnheader", { name: "Severity" }),
+      screen.getByRole("columnheader", { name: "Severidad" }),
     ).toHaveAttribute("aria-sort", "descending");
 
-    fireEvent.click(screen.getByRole("columnheader", { name: "Confidence" }));
+    fireEvent.click(screen.getByRole("columnheader", { name: "Confianza" }));
     expect(onSortChange).toHaveBeenCalledWith("confidence");
 
     // The caller owns the value, so the switch shows once it feeds it back.
@@ -302,10 +306,10 @@ describe("AnomalyTable header sorting", () => {
     );
 
     expect(
-      screen.getByRole("columnheader", { name: "Confidence" }),
+      screen.getByRole("columnheader", { name: "Confianza" }),
     ).toHaveAttribute("aria-sort", "descending");
     expect(
-      screen.getByRole("columnheader", { name: "Severity" }),
+      screen.getByRole("columnheader", { name: "Severidad" }),
     ).not.toHaveAttribute("aria-sort");
   });
 
@@ -339,10 +343,10 @@ describe("AnomalyTable header sorting", () => {
     );
 
     expect(
-      screen.getByRole("columnheader", { name: "Detected at" }),
+      screen.getByRole("columnheader", { name: "Detectada" }),
     ).toHaveAttribute("aria-sort", "descending");
     // No stale arrow survives on the other sortable headers.
-    for (const name of ["Priority", "Severity", "Confidence"]) {
+    for (const name of ["Prioridad", "Severidad", "Confianza"]) {
       expect(screen.getByRole("columnheader", { name })).not.toHaveAttribute(
         "aria-sort",
       );
@@ -358,7 +362,7 @@ describe("AnomalyTable header sorting", () => {
       />,
     );
     expect(
-      screen.getByRole("columnheader", { name: "Priority" }),
+      screen.getByRole("columnheader", { name: "Prioridad" }),
     ).toHaveAttribute("aria-sort", "ascending");
 
     rerender(
@@ -369,7 +373,7 @@ describe("AnomalyTable header sorting", () => {
       />,
     );
     expect(
-      screen.getByRole("columnheader", { name: "Priority" }),
+      screen.getByRole("columnheader", { name: "Prioridad" }),
     ).not.toHaveAttribute("aria-sort");
   });
 });
@@ -516,13 +520,15 @@ describe("AnomalyTable pagination", () => {
     );
     const paginator = paginatorOf(container);
 
-    // antd's own (still English; phase 6 localises them) control names and page
-    // numbers are all reachable...
+    // This suite renders the bare component with no `ConfigProvider`, so antd's
+    // own locale defaults apply and its control names stay English here. The
+    // Spanish paginator titles are applied at the provider boundary and are
+    // asserted in `src/app/__tests__/providers.test.tsx`. What this test owns is
+    // that the table adds no total label of its own that could stay untranslated
+    // or restate the count the page status owns.
     expect(paginator.getByTitle("Previous Page")).toBeInTheDocument();
     expect(paginator.getByTitle("Next Page")).toBeInTheDocument();
     expect(paginator.getByTitle("2")).toBeInTheDocument();
-    // ...and this table adds no total label of its own that could stay
-    // untranslated or restate the count the page status owns.
     expect(container.querySelector(".ant-pagination-total-text")).toBeNull();
   });
 });

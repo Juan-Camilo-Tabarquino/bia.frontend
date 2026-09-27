@@ -25,7 +25,7 @@ function isNotFound(error: unknown): boolean {
 }
 
 function backLink() {
-  return <Link href="/anomalies">Back to anomalies</Link>;
+  return <Link href="/anomalies">Volver a las anomalías</Link>;
 }
 
 /**
@@ -51,8 +51,8 @@ export default function AnomalyInvestigationPage() {
     content = (
       <Result
         status="404"
-        title="Anomaly not found"
-        subTitle="No anomaly id was provided in the route."
+        title="Anomalía no encontrada"
+        subTitle="No se proporcionó ningún id de anomalía en la ruta."
         extra={backLink()}
       />
     );
@@ -62,8 +62,8 @@ export default function AnomalyInvestigationPage() {
     content = (
       <Result
         status="404"
-        title="Anomaly not found"
-        subTitle={`No anomaly matches id "${anomalyId}".`}
+        title="Anomalía no encontrada"
+        subTitle={`Ninguna anomalía coincide con el id "${anomalyId}".`}
         extra={backLink()}
       />
     );
@@ -87,8 +87,8 @@ export default function AnomalyInvestigationPage() {
     content = (
       <Result
         status="404"
-        title="Anomaly not found"
-        subTitle={`No anomaly matches id "${anomalyId}".`}
+        title="Anomalía no encontrada"
+        subTitle={`Ninguna anomalía coincide con el id "${anomalyId}".`}
         extra={backLink()}
       />
     );
@@ -96,7 +96,7 @@ export default function AnomalyInvestigationPage() {
 
   return (
     <div style={{ padding: "1rem" }}>
-      <Title level={1}>Anomaly investigation</Title>
+      <Title level={1}>Investigación de la anomalía</Title>
       {content}
     </div>
   );

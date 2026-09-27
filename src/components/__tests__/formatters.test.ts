@@ -1,4 +1,4 @@
-import { formatDateTime } from "../formatters";
+import { formatDateTime, meterStatusLabel, meterStatusLabels } from "../formatters";
 
 /**
  * The expected LOCAL rendering, built from the native `Date` getters instead of
@@ -51,5 +51,23 @@ describe("formatDateTime", () => {
   it("returns an empty timestamp unchanged", () => {
     expect(formatDateTime("")).toBe("");
     expect(formatDateTime("")).not.toMatch(/Invalid/);
+  });
+});
+
+describe("meterStatusLabel", () => {
+  it("labels every member of the meter status map", () => {
+    // `OK`/`DEGRADED` are the two wire values; both must resolve to a label.
+    expect(meterStatusLabel("OK")).toBe(meterStatusLabels.OK);
+    expect(meterStatusLabel("DEGRADED")).toBe(meterStatusLabels.DEGRADED);
+  });
+
+  it("matches the lower-case health value the dashboard summary emits", () => {
+    // `DashboardSummary.health` is an untyped string observed as `ok`.
+    expect(meterStatusLabel("ok")).toBe("Operativo");
+  });
+
+  it("returns an unknown status unchanged instead of hiding it", () => {
+    expect(meterStatusLabel("UNKNOWN")).toBe("UNKNOWN");
+    expect(meterStatusLabel("")).toBe("");
   });
 });

@@ -5,7 +5,7 @@ import { Card, Descriptions, Result, Skeleton, Space } from "antd";
 import type { DescriptionsProps } from "antd";
 
 import { useGetMeterDetailQuery } from "../features/api/apiSlice";
-import { formatDateTime } from "./formatters";
+import { formatDateTime, meterStatusLabel } from "./formatters";
 import {
   RequestError,
   requestErrorMessage,
@@ -78,21 +78,27 @@ export default function MeterDetail({ meterId }: MeterDetailProps) {
   // the card renders the metadata the contract actually populates.
   const items: DescriptionsProps["items"] = [
     { key: "id", label: "ID", children: data.id },
-    { key: "meter_id", label: "Meter ID", children: data.meter_id },
-    { key: "status", label: "Status", children: data.status },
+    { key: "meter_id", label: "ID del medidor", children: data.meter_id },
+    {
+      key: "status",
+      label: "Estado",
+      // The raw `OK`/`DEGRADED` wire value stays visible; the Spanish label is
+      // added next to it so the record still matches the API payload.
+      children: `${data.status} · ${meterStatusLabel(data.status)}`,
+    },
     {
       key: "readings_count",
-      label: "Readings count",
+      label: "Cantidad de lecturas",
       children: data.readings_count,
     },
     {
       key: "created_at",
-      label: "Created at",
+      label: "Creado",
       children: formatDateTime(data.created_at),
     },
     {
       key: "last_reading_at",
-      label: "Last reading at",
+      label: "Última lectura",
       children: formatDateTime(data.last_reading_at),
     },
   ];
@@ -102,17 +108,17 @@ export default function MeterDetail({ meterId }: MeterDetailProps) {
       aria-live="polite"
       extra={
         <Space>
-          <Link href={readingsHref}>View readings</Link>
-          <Link href={anomaliesHref}>View anomalies</Link>
+          <Link href={readingsHref}>Ver lecturas</Link>
+          <Link href={anomaliesHref}>Ver anomalías</Link>
         </Space>
       }
     >
       <Descriptions
-        title="Meter Details"
+        title="Detalles del medidor"
         bordered
         column={1}
         role="region"
-        aria-label="Meter details"
+        aria-label="Detalles del medidor"
         items={items}
       />
     </Card>

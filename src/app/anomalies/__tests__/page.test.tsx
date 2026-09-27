@@ -325,7 +325,7 @@ describe("AnomaliesPage", () => {
       "M-112",
     ]);
     expect(
-      screen.getByRole("columnheader", { name: "Priority" }),
+      screen.getByRole("columnheader", { name: "Prioridad" }),
     ).toBeInTheDocument();
   });
 
@@ -364,7 +364,7 @@ describe("AnomaliesPage", () => {
       "M-109",
     ]);
 
-    clickHeader("Priority");
+    clickHeader("Prioridad");
 
     await waitFor(() => {
       expect(linkNames()).toEqual([
@@ -384,7 +384,7 @@ describe("AnomaliesPage", () => {
   it("filters the fetched list by type without re-querying the backend", async () => {
     render(<AnomaliesPage />);
 
-    await chooseOption("Filter by type", "Data quality issue");
+    await chooseOption("Filtrar por tipo", "Problema de calidad de datos");
 
     await waitFor(() => {
       expect(screen.getByText("1 de 2 anomalías coinciden con los filtros.")).toBeInTheDocument();
@@ -396,12 +396,12 @@ describe("AnomaliesPage", () => {
   it("clears every filter with the clear action", async () => {
     render(<AnomaliesPage />);
 
-    await chooseOption("Filter by type", "Data quality issue");
+    await chooseOption("Filtrar por tipo", "Problema de calidad de datos");
     await waitFor(() => {
       expect(screen.getByText("1 de 2 anomalías coinciden con los filtros.")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
+    fireEvent.click(screen.getByRole("button", { name: "Limpiar filtros" }));
 
     await waitFor(() => {
       expect(screen.getByText("2 de 2 anomalías coinciden con los filtros.")).toBeInTheDocument();
@@ -420,7 +420,7 @@ describe("AnomaliesPage", () => {
       "M-109",
     ]);
 
-    clickHeader("Severity");
+    clickHeader("Severidad");
 
     await waitFor(() => {
       expect(linkNames()).toEqual([
@@ -437,7 +437,7 @@ describe("AnomaliesPage", () => {
 
     render(<AnomaliesPage />);
 
-    clickHeader("Detected at");
+    clickHeader("Detectada");
 
     await waitFor(() => {
       expect(linkNames()).toEqual([
@@ -457,7 +457,7 @@ describe("AnomaliesPage", () => {
 
     render(<AnomaliesPage />);
 
-    clickHeader("Confidence");
+    clickHeader("Confianza");
 
     await waitFor(() => {
       expect(linkNames()).toEqual([
@@ -488,7 +488,7 @@ describe("AnomaliesPage", () => {
       "M-112-2026-09-10T09:00:00Z",
       "M-112",
     ]);
-    expect(screen.getByRole("columnheader", { name: "Detected at" })).toHaveAttribute(
+    expect(screen.getByRole("columnheader", { name: "Detectada" })).toHaveAttribute(
       "aria-sort",
       "descending",
     );
@@ -536,7 +536,7 @@ describe("AnomaliesPage", () => {
     // The URL sort is reflected in the header, so a shared link shows the arrow
     // for the order it carries instead of silently defaulting.
     expect(
-      screen.getByRole("columnheader", { name: "Severity" }),
+      screen.getByRole("columnheader", { name: "Severidad" }),
     ).toHaveAttribute("aria-sort", "descending");
     // Restoring the view is a read-only action: the deep link is not rewritten.
     expect(replaceUrl).not.toHaveBeenCalled();
@@ -545,7 +545,7 @@ describe("AnomaliesPage", () => {
   it("writes a filter change back to the URL with replace and no history entry", async () => {
     render(<AnomaliesPage />);
 
-    await chooseOption("Filter by type", "Data quality issue");
+    await chooseOption("Filtrar por tipo", "Problema de calidad de datos");
 
     await waitFor(() => {
       expect(replaceUrl).toHaveBeenCalledWith("/anomalies?type=DATA_QUALITY", {
@@ -569,7 +569,7 @@ describe("AnomaliesPage", () => {
       "M-109",
     ]);
 
-    clickHeader("Severity");
+    clickHeader("Severidad");
 
     await waitFor(() => {
       expect(replaceUrl).toHaveBeenCalledWith("/anomalies?sort=severity", {
@@ -588,7 +588,7 @@ describe("AnomaliesPage", () => {
 
     // The header is now active; clicking it again turns the ordering off back to
     // the untouched API order and must leave no `sort=backend` behind.
-    clickHeader("Severity");
+    clickHeader("Severidad");
 
     await waitFor(() => {
       expect(replaceUrl).toHaveBeenLastCalledWith("/anomalies", {
@@ -611,7 +611,7 @@ describe("AnomaliesPage", () => {
 
     render(<AnomaliesPage />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
+    fireEvent.click(screen.getByRole("button", { name: "Limpiar filtros" }));
 
     await waitFor(() => {
       expect(replaceUrl).toHaveBeenCalledWith("/anomalies?sort=priority", {
@@ -634,21 +634,21 @@ describe("AnomaliesPage", () => {
     expect(screen.getByText("2 de 2 anomalías coinciden con los filtros.")).toBeInTheDocument();
     // ...and no header shows an arrow, which is how the untouched API order is
     // represented...
-    for (const name of ["Priority", "Detected at", "Severity", "Confidence"]) {
+    for (const name of ["Prioridad", "Detectada", "Severidad", "Confianza"]) {
       expect(screen.getByRole("columnheader", { name })).not.toHaveAttribute(
         "aria-sort",
       );
     }
     // ...and an ignored value is not an active filter.
     expect(
-      screen.queryByText(/Filters are applied in the browser/),
+      screen.queryByText(/Los filtros se aplican en el navegador/),
     ).not.toBeInTheDocument();
     expect(replaceUrl).not.toHaveBeenCalled();
   });
 
   const searchBox = () => screen.getByLabelText("Buscar anomalías");
   const clearButton = () =>
-    screen.getByRole("button", { name: "Clear filters" });
+    screen.getByRole("button", { name: "Limpiar filtros" });
 
   it("restores the search from a `?q=` deep link and filters the list", () => {
     mockedUseSearchParams.mockReturnValue(new URLSearchParams("q=m-112"));
@@ -689,10 +689,12 @@ describe("AnomaliesPage", () => {
   });
 
   // Regression for the recorded open finding: the filter bar and the empty state
-  // both used to render a button named exactly "Clear filters", so
-  // `getByRole("button", { name: "Clear filters" })` THREW once the empty state
-  // was visible. The two actions now have distinct accessible names, and this
-  // test proves both can coexist and be addressed unambiguously.
+  // used to render buttons with the same accessible name, so
+  // `getByRole("button", { name: ... })` THREW once the empty state
+  // was visible. The two actions now have distinct Spanish names --
+  // "Limpiar filtros" for the filter bar and "Quitar filtros" for the empty
+  // state -- and this test proves both can coexist and be addressed
+  // unambiguously.
   it("addresses the filter-bar and empty-state clear actions by distinct names", async () => {
     render(<AnomaliesPage />);
 
@@ -708,7 +710,7 @@ describe("AnomaliesPage", () => {
     // one button instead of throwing on an ambiguous match.
     expect(clearButton()).toBeEnabled();
     const emptyStateClear = screen.getByRole("button", {
-      name: "Limpiar filtros",
+      name: "Quitar filtros",
     });
 
     // The empty-state action restores the unfiltered list.
@@ -796,7 +798,7 @@ describe("AnomaliesPage", () => {
       screen.getByText("24 de 25 anomalías coinciden con los filtros."),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("columnheader", { name: "Priority" }),
+      screen.getByRole("columnheader", { name: "Prioridad" }),
     ).toHaveAttribute("aria-sort", "ascending");
 
     fireEvent.click(paginatorOf(container).getByTitle("2"));
@@ -808,7 +810,7 @@ describe("AnomaliesPage", () => {
       screen.getByText("24 de 25 anomalías coinciden con los filtros."),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("columnheader", { name: "Priority" }),
+      screen.getByRole("columnheader", { name: "Prioridad" }),
     ).toHaveAttribute("aria-sort", "ascending");
     expect(replaceUrl).not.toHaveBeenCalled();
   });
@@ -820,7 +822,7 @@ describe("AnomaliesPage", () => {
     fireEvent.click(paginatorOf(container).getByTitle("3"));
     expect(anomalyRowIds()).toEqual(rowIdsFrom(21, 25));
 
-    await chooseOption("Filter by type", "Data quality issue");
+    await chooseOption("Filtrar por tipo", "Problema de calidad de datos");
 
     await waitFor(() => {
       expect(

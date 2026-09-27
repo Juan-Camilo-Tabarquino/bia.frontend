@@ -73,13 +73,13 @@ interface SignalConfig {
  * figure whose axis always belongs to one unit at a time.
  */
 const signals: SignalConfig[] = [
-  { key: "Consumption", label: "Consumption", unit: "kWh", axisUnit: "kWh" },
-  { key: "Voltage", label: "Voltage", unit: "V", axisUnit: "V" },
-  { key: "Current", label: "Current", unit: "A", axisUnit: "A" },
+  { key: "Consumption", label: "Consumo", unit: "kWh", axisUnit: "kWh" },
+  { key: "Voltage", label: "Voltaje", unit: "V", axisUnit: "V" },
+  { key: "Current", label: "Corriente", unit: "A", axisUnit: "A" },
   {
     key: "PowerFactor",
-    label: "Power factor",
-    unit: "dimensionless 0-1",
+    label: "Factor de potencia",
+    unit: "adimensional 0-1",
     axisUnit: "",
   },
 ];
@@ -225,18 +225,18 @@ export default function ReadingsChart({
 
   const markerSummary =
     anomalyMarkers.length === 0
-      ? "No anomaly markers are recorded for this meter in the loaded window."
-      : `Anomaly markers for this meter (${anomalyMarkers.length}): ${anomalyMarkers
+      ? "No hay marcadores de anomalías registrados para este medidor en la ventana cargada."
+      : `Marcadores de anomalías para este medidor (${anomalyMarkers.length}): ${anomalyMarkers
           .map(
             (marker) =>
               `${formatDateTime(marker.detectedAt)} ${marker.label}`,
           )
-          .join("; ")}. Markers outside the plotted window are listed but not drawn.`;
+          .join("; ")}. Los marcadores fuera de la ventana graficada se listan pero no se dibujan.`;
 
   return (
     <figure className={styles.figure}>
       <fieldset className={styles.selector}>
-        <legend className={styles.legend}>Signal</legend>
+        <legend className={styles.legend}>Señal</legend>
         <div className={styles.options}>
           {signals.map((signal) => (
             <label key={signal.key} className={styles.option}>
@@ -265,7 +265,7 @@ export default function ReadingsChart({
           <ResponsiveContainer
             width="100%"
             height={300}
-            aria-label={`Readings chart: ${selected.label} (${selected.unit}) over time`}
+            aria-label={`Gráfico de lecturas: ${selected.label} (${selected.unit}) a lo largo del tiempo`}
             aria-describedby={descriptionId}
             role="img"
           >
@@ -339,7 +339,7 @@ export default function ReadingsChart({
               <Line
                 type="monotone"
                 dataKey={ANOMALY_DATA_KEY}
-                name="Anomaly marker"
+                name="Marcador de anomalía"
                 stroke="transparent"
                 connectNulls={false}
                 isAnimationActive={false}
@@ -398,11 +398,11 @@ export default function ReadingsChart({
         </>
       )}
       <figcaption id={descriptionId} className="sr-only">
-        {`Line chart of ${selected.label} in ${selected.unit} over time, ${data.length} readings. ${markerSummary}`}
+        {`Gráfico de líneas de ${selected.label} en ${selected.unit} a lo largo del tiempo, ${data.length} lecturas. ${markerSummary}`}
       </figcaption>
       <section className={styles.markerList} aria-labelledby={markerHeadingId}>
         <h2 id={markerHeadingId} className={styles.markerHeading}>
-          Anomaly markers
+          Marcadores de anomalía
         </h2>
         <p className={styles.note}>
           Los marcadores se derivan en el navegador de la lista de anomalías
@@ -411,7 +411,9 @@ export default function ReadingsChart({
           referencia solo sobre la señal Consumo.
         </p>
         {anomalyMarkers.length === 0 ? (
-          <p className={styles.note}>No anomalies recorded for this meter.</p>
+          <p className={styles.note}>
+            No hay anomalías registradas para este medidor.
+          </p>
         ) : (
           <ul className={styles.markerItems}>
             {markerRows.map((marker) => (
@@ -422,8 +424,8 @@ export default function ReadingsChart({
                 <span className={styles.markerLabel}>{` ${marker.label}`}</span>
                 <span className="sr-only">
                   {marker.plottedAt
-                    ? ` plotted at the closest reading, ${formatDateTime(marker.plottedAt)}.`
-                    : " outside the plotted window, so it is not drawn on the timeline."}
+                    ? ` dibujado en la lectura más cercana, ${formatDateTime(marker.plottedAt)}.`
+                    : " fuera de la ventana graficada, por lo que no se dibuja en la línea de tiempo."}
                 </span>
               </li>
             ))}

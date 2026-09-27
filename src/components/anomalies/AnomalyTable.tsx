@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Table, Tag } from "antd";
+import { Table, Tag, Space, Typography } from "antd";
 import type { TableColumnsType } from "antd";
 import type {
   Anomaly,
@@ -12,6 +12,7 @@ import type {
 } from "@/types/backend";
 import { AnomalyTypeTag } from "./AnomalyTypeTag";
 import {
+  anomalySeverityLabels,
   anomalyStatusLabels,
   isDataQuality,
   severityColors,
@@ -22,7 +23,10 @@ import {
   type AnomalySortField,
   type AnomalySortKey,
 } from "./anomalyFiltering";
+import { paginationArrows } from "@/components/paginationLabels";
 import styles from "./AnomalyTable.module.scss";
+
+const { Text } = Typography;
 
 /**
  * Rows per page for the full list.
@@ -187,14 +191,14 @@ export function AnomalyTable({
 
   const columns: TableColumnsType<Anomaly> = [
     {
-      title: "Priority",
+      title: "Prioridad",
       dataIndex: "priority",
       key: "priority",
       render: (priority: number) => priority,
       ...sorterProps("priority"),
     },
     {
-      title: "Anomaly",
+      title: "Anomalía",
       dataIndex: "id",
       key: "id",
       render: (_value: string, anomaly: Anomaly) => (
@@ -202,7 +206,7 @@ export function AnomalyTable({
       ),
     },
     {
-      title: "Meter",
+      title: "Medidor",
       dataIndex: "meter_id",
       key: "meter_id",
       // The second link in the row. It lives in its own cell as a sibling of
@@ -218,7 +222,7 @@ export function AnomalyTable({
       ),
     },
     {
-      title: "Detected at",
+      title: "Detectada",
       dataIndex: "detected_at",
       key: "detected_at",
       // Presentation only: the raw RFC3339 value stays in the DTO and in the
@@ -227,29 +231,34 @@ export function AnomalyTable({
       ...sorterProps("detected_at"),
     },
     {
-      title: "Type",
+      title: "Tipo",
       dataIndex: "type",
       key: "type",
       render: (type: AnomalyType) => <AnomalyTypeTag type={type} />,
     },
     {
-      title: "Severity",
+      title: "Severidad",
       dataIndex: "severity",
       key: "severity",
+      // The raw `HIGH`/`MEDIUM`/`LOW` value stays visible (it is the exact wire
+      // value in the API payload); the Spanish label is added next to it.
       render: (severity: AnomalySeverity) => (
-        <Tag color={severityColors[severity]}>{severity}</Tag>
+        <Space size="small">
+          <Tag color={severityColors[severity]}>{severity}</Tag>
+          <Text type="secondary">{anomalySeverityLabels[severity]}</Text>
+        </Space>
       ),
       ...sorterProps("severity"),
     },
     {
-      title: "Confidence",
+      title: "Confianza",
       dataIndex: "confidence",
       key: "confidence",
       render: (confidence: number) => formatConfidence(confidence),
       ...sorterProps("confidence"),
     },
     {
-      title: "Status",
+      title: "Estado",
       dataIndex: "status",
       key: "status",
       render: (status: AnomalyStatus) => anomalyStatusLabels[status],
@@ -264,11 +273,18 @@ export function AnomalyTable({
       pagination={
         paginationConfig === false
           ? false
-          : { pageSize: paginationConfig.pageSize, current: currentPage }
+          : {
+              pageSize: paginationConfig.pageSize,
+              current: currentPage,
+              // Without this the arrows are announced as "left"/"right" (the
+              // icon's own `aria-label`) instead of the translated title. See
+              // `paginationLabels` for the measurement and the reasoning.
+              itemRender: paginationArrows,
+            }
       }
       size="middle"
       tableLayout="auto"
-      aria-label="Anomaly list"
+      aria-label="Lista de anomalías"
       rowClassName={(anomaly) =>
         isDataQuality(anomaly.type) ? styles.dataQualityRow : ""
       }

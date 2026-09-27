@@ -33,18 +33,18 @@ describe('ReadingsTable', () => {
   it('renders every signal of each reading with its unit in the header', () => {
     render(<ReadingsTable data={sampleData} loading={false} />);
 
-    expect(screen.getByRole('columnheader', { name: 'Timestamp' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Fecha y hora' })).toBeInTheDocument();
     expect(
-      screen.getByRole('columnheader', { name: 'Consumption (kWh)' }),
+      screen.getByRole('columnheader', { name: 'Consumo (kWh)' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('columnheader', { name: 'Voltage (V)' }),
+      screen.getByRole('columnheader', { name: 'Voltaje (V)' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('columnheader', { name: 'Current (A)' }),
+      screen.getByRole('columnheader', { name: 'Corriente (A)' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('columnheader', { name: 'Power factor' }),
+      screen.getByRole('columnheader', { name: 'Factor de potencia' }),
     ).toBeInTheDocument();
 
     // The Timestamp column now renders the shared local-time format, so the raw
@@ -64,7 +64,7 @@ describe('ReadingsTable', () => {
 
     expect(
       screen.getByRole('table', {
-        name: /Timestamp, Consumption \(kWh\), Voltage \(V\), Current \(A\), Power factor/,
+        name: /Fecha y hora, Consumo \(kWh\), Voltaje \(V\), Corriente \(A\), Factor de potencia/,
       }),
     ).toBeInTheDocument();
   });
@@ -73,7 +73,7 @@ describe('ReadingsTable', () => {
     render(<ReadingsTable data={sampleData} loading={false} />);
 
     expect(
-      screen.queryByRole('columnheader', { name: 'Status' }),
+      screen.queryByRole('columnheader', { name: 'Estado' }),
     ).not.toBeInTheDocument();
   });
 
@@ -86,11 +86,11 @@ describe('ReadingsTable', () => {
     );
 
     expect(
-      screen.getByRole('columnheader', { name: 'Status' }),
+      screen.getByRole('columnheader', { name: 'Estado' }),
     ).toBeInTheDocument();
     expect(screen.getByText('OK')).toBeInTheDocument();
     expect(
-      screen.getByRole('table', { name: /Current \(A\), Power factor, Status/ }),
+      screen.getByRole('table', { name: /Corriente \(A\), Factor de potencia, Estado/ }),
     ).toBeInTheDocument();
   });
 
@@ -111,6 +111,10 @@ describe('ReadingsTable', () => {
     expect(within(paginator).getByTitle('1')).toBeInTheDocument();
     expect(within(paginator).getByTitle('2')).toBeInTheDocument();
     expect(within(paginator).getByTitle('3')).toBeInTheDocument();
+    // This suite renders the bare component with no `ConfigProvider`, so antd's
+    // own locale defaults apply and its control titles stay English here. The
+    // Spanish paginator titles are applied at the provider boundary and are
+    // asserted in `src/app/__tests__/providers.test.tsx`.
     expect(within(paginator).getByTitle('Next Page')).toBeInTheDocument();
     expect(within(paginator).getByTitle('Previous Page')).toBeInTheDocument();
   });

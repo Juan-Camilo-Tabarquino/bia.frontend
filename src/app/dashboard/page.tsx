@@ -22,11 +22,13 @@ import { InsightBanner } from "@/components/dashboard/InsightBanner";
 import { KpiDeltaPill } from "@/components/dashboard/KpiDeltaPill";
 import {
   anomalySeverities,
+  anomalySeverityLabels,
   anomalyTypeColors,
   anomalyTypeLabels,
   anomalyTypes,
   severityColors,
 } from "@/components/anomalies/anomalyLabels";
+import { meterStatusLabel } from "@/components/formatters";
 import type {
   Anomaly,
   AnomalySeverity,
@@ -146,15 +148,16 @@ export default function DashboardPage() {
   return (
     <PrivateRoute>
       <div style={{ padding: "1rem" }}>
-        <Title level={1}>Dashboard</Title>
+        <Title level={1}>Panel de control</Title>
         <p className="sr-only">
-          Key indicators for the latest deterministic run and a preview of the
-          detected anomalies, which arrive from the API ordered by priority
-          (most urgent first). Per-type and per-severity counts are computed in
-          the browser from the fetched anomaly list. The delta pills show the
-          signed change percentages of the most urgent anomaly against its own
-          baseline, and the insight banner uses the summary total plus the
-          HIGH-severity row count; no other metric is displayed.
+          Indicadores clave de la última ejecución determinística y una
+          previsualización de las anomalías detectadas, que llegan desde la API
+          ordenadas por prioridad (la más urgente primero). Los conteos por tipo
+          y por severidad se calculan en el navegador a partir de la lista de
+          anomalías obtenida. Las píldoras de cambio muestran los porcentajes
+          con signo de la anomalía más urgente respecto de su propia línea base,
+          y el banner de análisis usa el total del resumen más el conteo de
+          filas de severidad HIGH; no se muestra ninguna otra métrica.
         </p>
 
         {isLoading ? (
@@ -181,29 +184,39 @@ export default function DashboardPage() {
           />
         ) : (
           <>
-            <section aria-label="Key indicators">
+            <section aria-label="Indicadores clave">
               <Row gutter={[16, 16]}>
                 <Col xs={24} sm={12} lg={6}>
                   <Card>
-                    <Statistic title="Health" value={summary?.health ?? "—"} />
+                    <Statistic
+                      title="Estado"
+                      value={
+                        summary?.health
+                          ? meterStatusLabel(summary.health)
+                          : "—"
+                      }
+                    />
                   </Card>
                 </Col>
                 <Col xs={24} sm={12} lg={6}>
                   <Card>
-                    <Statistic title="Meters" value={summary?.meters ?? "—"} />
+                    <Statistic title="Medidores" value={summary?.meters ?? "—"} />
                   </Card>
                 </Col>
                 <Col xs={24} sm={12} lg={6}>
                   <Card>
                     <Statistic
-                      title="Anomalies"
+                      title="Anomalías"
                       value={summary?.anomalies ?? anomalies.length}
                     />
                   </Card>
                 </Col>
                 <Col xs={24} sm={12} lg={6}>
                   <Card>
-                    <Statistic title="Last run" value={summary?.lastRun ?? "—"} />
+                    <Statistic
+                      title="Última ejecución"
+                      value={summary?.lastRun ?? "—"}
+                    />
                   </Card>
                 </Col>
               </Row>
@@ -243,16 +256,16 @@ export default function DashboardPage() {
             </section>
 
             <section
-              aria-label="Anomaly overview"
+              aria-label="Resumen de anomalías"
               style={{ marginTop: "1.5rem" }}
             >
               <Card
-                title="Anomaly overview"
+                title="Resumen de anomalías"
                 extra={
                   <Space>
-                    <Link href="/meters">Browse meters</Link>
+                    <Link href="/meters">Ver medidores</Link>
                     <Button type="primary" href="/anomalies">
-                      View all anomalies
+                      Ver todas las anomalías
                     </Button>
                   </Space>
                 }
@@ -263,9 +276,9 @@ export default function DashboardPage() {
                   style={{ width: "100%" }}
                 >
                   <div>
-                    <Text strong>By type</Text>
+                    <Text strong>Por tipo</Text>
                     <section
-                      aria-label="Anomaly counts by type"
+                      aria-label="Conteo de anomalías por tipo"
                       style={{ marginTop: "0.5rem" }}
                     >
                       <Space wrap>
@@ -283,9 +296,9 @@ export default function DashboardPage() {
                   </div>
 
                   <div>
-                    <Text strong>By severity</Text>
+                    <Text strong>Por severidad</Text>
                     <section
-                      aria-label="Anomaly counts by severity"
+                      aria-label="Conteo de anomalías por severidad"
                       style={{ marginTop: "0.5rem" }}
                     >
                       <Space wrap>
@@ -297,7 +310,7 @@ export default function DashboardPage() {
                               key={severity}
                               color={severityColors[severity]}
                             >
-                              {severity}: {count}
+                              {anomalySeverityLabels[severity]}: {count}
                             </Tag>
                           );
                         })}
@@ -306,27 +319,29 @@ export default function DashboardPage() {
                   </div>
 
                   <Text type="secondary">
-                    Counts are derived in the browser from the fetched anomaly
-                    list; the summary endpoint only reports totals.
+                    Los conteos se calculan en el navegador a partir de la lista
+                    de anomalías obtenida; el endpoint de resumen solo informa
+                    totales.
                   </Text>
 
                   {anomalies.length === 0 ? (
-                    <Empty description="No anomalies reported." />
+                    <Empty description="No se reportaron anomalías." />
                   ) : (
                     <>
                       <AnomalyTable anomalies={overview} />
                       {anomalies.length > overview.length && (
                         <Text type="secondary">
-                          Showing the first {overview.length} of{" "}
-                          {anomalies.length} anomalies in priority order (most
-                          urgent first). Open{" "}
-                          <Link href="/anomalies">the full list</Link> to filter
-                          and sort every anomaly.
+                          Mostrando las primeras {overview.length} de{" "}
+                          {anomalies.length} anomalías en orden de prioridad (la
+                          más urgente primero). Abre{" "}
+                          <Link href="/anomalies">la lista completa</Link> para
+                          filtrar y ordenar todas las anomalías.
                         </Text>
                       )}
                       {anomalies.length <= overview.length && (
                         <Text type="secondary">
-                          Ordered by backend priority, most urgent first.
+                          Ordenadas por prioridad del backend, la más urgente
+                          primero.
                         </Text>
                       )}
                     </>

@@ -75,7 +75,7 @@ describe("AnomalyInvestigationPage", () => {
     expect(container.querySelector(".ant-skeleton")).toBeInTheDocument();
     const headings = screen.getAllByRole("heading", { level: 1 });
     expect(headings).toHaveLength(1);
-    expect(headings[0]).toHaveAccessibleName("Anomaly investigation");
+    expect(headings[0]).toHaveAccessibleName("Investigación de la anomalía");
   });
 
   it("requests the anomaly for the routed id", () => {
@@ -101,7 +101,7 @@ describe("AnomalyInvestigationPage", () => {
     expect(screen.getByText("Consumption spike")).toBeInTheDocument();
     expect(screen.getByText("Inspect the meter")).toBeInTheDocument();
     expect(screen.getByText("97%")).toBeInTheDocument();
-    expect(screen.getByText("Causal reading")).toBeInTheDocument();
+    expect(screen.getByText("Lectura causal")).toBeInTheDocument();
   });
 
   it("renders the statistical evidence blocks when the anomaly loads", () => {
@@ -115,11 +115,11 @@ describe("AnomalyInvestigationPage", () => {
 
     render(<AnomalyInvestigationPage />);
 
-    expect(screen.getByText("Baseline")).toBeInTheDocument();
-    expect(screen.getByText("Change vs baseline")).toBeInTheDocument();
+    expect(screen.getByText("Línea base")).toBeInTheDocument();
+    expect(screen.getByText("Cambio vs. la línea base")).toBeInTheDocument();
     expect(screen.getByText("+125.3%")).toBeInTheDocument();
     expect(
-      screen.getByText(/No correlated event explains this deviation/i),
+      screen.getByText(/Ningún evento correlacionado explica esta desviación/i),
     ).toBeInTheDocument();
   });
 
@@ -134,9 +134,9 @@ describe("AnomalyInvestigationPage", () => {
 
     render(<AnomalyInvestigationPage />);
 
-    expect(screen.getByText("Anomaly not found")).toBeInTheDocument();
+    expect(screen.getByText("Anomalía no encontrada")).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: "Back to anomalies" }),
+      screen.getByRole("link", { name: "Volver a las anomalías" }),
     ).toHaveAttribute("href", "/anomalies");
   });
 
@@ -154,9 +154,9 @@ describe("AnomalyInvestigationPage", () => {
     expect(
       screen.getByText("No se pudo cargar la anomalía"),
     ).toBeInTheDocument();
-    expect(screen.queryByText("Anomaly not found")).not.toBeInTheDocument();
+    expect(screen.queryByText("Anomalía no encontrada")).not.toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: "Back to anomalies" }),
+      screen.getByRole("link", { name: "Volver a las anomalías" }),
     ).toHaveAttribute("href", "/anomalies");
     fireEvent.click(screen.getByRole("button", { name: /Reintentar/ }));
     expect(refetch).toHaveBeenCalledTimes(1);
@@ -167,7 +167,7 @@ describe("AnomalyInvestigationPage", () => {
 
     render(<AnomalyInvestigationPage />);
 
-    expect(screen.getByText("Anomaly not found")).toBeInTheDocument();
+    expect(screen.getByText("Anomalía no encontrada")).toBeInTheDocument();
     expect(mockedUseGetAnomalyByIdQuery).toHaveBeenCalledWith("", {
       skip: true,
     });

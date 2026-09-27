@@ -35,6 +35,34 @@ export function formatMetric(value: number, fractionDigits = 2): string {
 }
 
 /**
+ * Display labels for the `status` value `MeterDetail` carries (`OK`/`DEGRADED`)
+ * and the `health` value the dashboard summary carries (`ok`, lower-case).
+ *
+ * This lives here rather than in `anomalies/anomalyLabels.ts` on purpose: a
+ * meter-status label is not anomaly metadata, and the module-boundary lesson
+ * those formatters were extracted for applies just as much to a second label
+ * map as it did to the date formatter. It is presentation only; the wire value
+ * stays in the DTO and travels on unchanged.
+ */
+export const meterStatusLabels: Record<"OK" | "DEGRADED", string> = {
+  OK: "Operativo",
+  DEGRADED: "Degradado",
+};
+
+/**
+ * Labels a meter status or health string, tolerating the lower-case `ok` the
+ * summary emits. An unknown value is returned unchanged rather than hidden, so
+ * a new backend status surfaces instead of rendering a blank cell.
+ */
+export function meterStatusLabel(status: string): string {
+  const key = status.trim().toUpperCase();
+  if (key === "OK" || key === "DEGRADED") {
+    return meterStatusLabels[key];
+  }
+  return status;
+}
+
+/**
  * Renders an RFC3339 timestamp as a readable date and time.
  *
  * Timestamp decision: **local time**, not UTC. Every timestamp in the DTO is

@@ -117,9 +117,9 @@ describe('MeterDetail component', () => {
 
     render(<MeterDetail meterId="meter-123" />);
 
-    expect(screen.getByText('Meter Details')).toBeInTheDocument();
+    expect(screen.getByText('Detalles del medidor')).toBeInTheDocument();
     expect(screen.getByText('M-101')).toBeInTheDocument();
-    expect(screen.getByText('OK')).toBeInTheDocument();
+    expect(screen.getByText('OK · Operativo')).toBeInTheDocument();
     expect(screen.getByText('12')).toBeInTheDocument();
     // Both timestamps render the shared local format and not the wire string.
     expect(
@@ -130,6 +130,21 @@ describe('MeterDetail component', () => {
     ).toBeInTheDocument();
     expect(screen.queryByText('2024-01-01T00:00:00Z')).not.toBeInTheDocument();
     expect(screen.queryByText('2024-01-10T00:00:00Z')).not.toBeInTheDocument();
+  });
+
+  it('renders the DEGRADED member of the meter status map', () => {
+    mockedUseGetMeterDetailQuery.mockReturnValue({
+      data: { ...detail, status: 'DEGRADED' as const },
+      isLoading: false,
+      isFetching: false,
+      error: undefined,
+      refetch,
+    });
+
+    render(<MeterDetail meterId="meter-123" />);
+
+    // The raw wire value stays visible next to the Spanish label.
+    expect(screen.getByText('DEGRADED · Degradado')).toBeInTheDocument();
   });
 
   it('links to the meter readings and to its filtered anomalies', () => {
@@ -143,11 +158,11 @@ describe('MeterDetail component', () => {
 
     render(<MeterDetail meterId="M-101" />);
 
-    expect(screen.getByRole('link', { name: 'View readings' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Ver lecturas' })).toHaveAttribute(
       'href',
       '/meter/M-101/readings',
     );
-    expect(screen.getByRole('link', { name: 'View anomalies' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Ver anomalías' })).toHaveAttribute(
       'href',
       '/anomalies?meter_id=M-101',
     );
