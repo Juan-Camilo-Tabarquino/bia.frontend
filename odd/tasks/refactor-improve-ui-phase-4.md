@@ -1,6 +1,6 @@
 # Feature: refactor/improve-ui — phase 4 (Interactividad)
 
-**Status: IN PROGRESS — 1/8 (T1 done).** Branch `refactor/improve-ui`, base `cdb610b` (phase 3 complete).
+**Status: IN PROGRESS — 3/8 (T1, T2, T2b done).** Branch `refactor/improve-ui`, base `cdb610b` (phase 3 complete).
 
 **Reference:** `odd/tasks/refactor-improve-ui.md` (the whole feature and its phases),
 `docs/ui-refactor-plan.md` (the resume entry point), and the 12 open advisories recorded there.
@@ -108,11 +108,9 @@ Measured against the branch at `cdb610b`. Corrections to the plan's assumptions 
       URL and write changes back, without breaking the static prerender (`useSearchParams` already forces the
       Suspense boundary) and without a history entry per keystroke. Round-trip: refresh and a shared link both
       restore the exact view. **Done** — see the T1 result below.
-- [ ] **T2 — Search in `MeterList` and `AnomalyTable`.** **Partially done.** `MeterList` search and the
-      `useDebouncedValue` hook shipped. The **anomaly** search was reverted after the verification reproduced a
-      BLOCKER (a clear racing the debounce resurrects the cleared term); see the T2 result for the evidence and
-      the six failed attempts. Re-attempt it with an explicit reset in the state the box is given, rather than
-      inferring the reset from the value.
+- [x] **T2 — Search in `MeterList` and `AnomalyTable`.** **Done across T2 and T2b.** `MeterList` search and the
+      `useDebouncedValue` hook shipped in T2; the anomaly search shipped in T2b after the root cause turned out to
+      be a disabled gate rather than a state race. See both results above.
 - [ ] **T3 — Header sorting on `AnomalyTable`.** Move sorting onto antd column `sorter` props, keeping the
       existing `applyAnomalySort` semantics (and the "API order" default) so the page's `Select` and the
       header do not fight. `priority` stays the API value, never re-derived.
@@ -134,6 +132,7 @@ Measured against the branch at `cdb610b`. Corrections to the plan's assumptions 
 | --- | --- | --- | --- | --- |
 | T1 | `62dceaa` | eslint 0 · tsc 0 · **25 suites / 170 tests** · next build 0 (7 routes, `/anomalies` still static) | 2 by the writer, 3 probes by the verifier | `gentle-ai-verify`: PASS WITH FINDINGS, no BLOCKER. 3 of 7 findings fixed here; 4 recorded below |
 | T2 | `8bbd7e0` | eslint 0 · tsc 0 · **26 suites / 171 tests** · next build 0 (7 routes) | 1 probe proving the stale-closure fix | `gentle-ai-verify`: **FAIL**, 1 BLOCKER. Scope reduced by owner decision — see below |
+| T2b | `a533122` | eslint 0 · tsc 0 · **26 suites / 177 tests** · next build 0 (7 routes) | 2 gate mutations by the verifier; real-Chrome probes by the parent | `gentle-ai-verify`: PASS WITH FINDINGS, no BLOCKER. 3 findings fixed; 4 recorded |
 | T3 | — | — | — | — |
 | T4 | — | — | — | — |
 | T5 | — | — | — | — |
@@ -185,6 +184,58 @@ Both reverted and re-verified.
   crash; T2 or T6 territory.
 - Date parameters accept any `Date.parse`-able string, which is consistent with `applyAnomalyFilters` (same
   parser) and therefore never filters inconsistently — only loose link validation.
+
+### T2b result — the anomaly search, and the real cause of the revert
+
+**Shipped.** The client-side anomaly search, deep-linked as `?q=`, composing with the other filters through
+`applyAnomalyFilters`. Searches `id`, `meter_id`, `reason` and `recommended_action`; `type`/`severity`/`status`
+are excluded because they already have exact-match controls, and unrendered nested fields are excluded because a
+match the user cannot see looks like a bug.
+
+**The finding that mattered: the earlier revert had the wrong root cause.** Six attempts had failed to fix
+"clearing the filters while a draft is inside the debounce resurrects the term". All six attacked the state
+machine. Driving real Chrome against `next dev` showed the cause immediately, in the DOM:
+
+```
+after typing 'zzz':  {"boxValue":"zzz","clearDisabled":true}
+```
+
+`disabled={!hasActiveFilters(values)}` reads only the **committed** filters. While a typed term sat in the
+debounce, every committed filter was still empty, so "Clear filters" rendered **disabled**. The user could not
+clear what they had just typed, and the term reached the URL moments later. **Nothing was ever resurrected — the
+button never fired.**
+
+**Why jsdom hid it:** the earlier probes reasoned about state and asserted the box value, while the decisive
+fact was the `disabled` attribute. The harness never asserted it. The lesson, now recorded in the task: when a
+probe and the app disagree, the probe is the suspect — go to a real browser before iterating further.
+
+**The fix.** The gate also reads the raw box value (`typed.length === 0`), so the action is available whenever
+something visible is on screen, including whitespace, which never commits but is still something to clear. The
+search state is an explicit `{ text, resetToken }` object so an external reset is always an observable change
+instead of something inferred from a value that may not differ. `onChange` takes a **patch** rather than a whole
+snapshot, because the search publishes from a timer and a snapshot would overwrite whatever the user changed
+while that timer was pending.
+
+**Verified in real Chrome** (the parent drove it over CDP, no new dependency): scenario A (type, clear before the
+settle) and scenario B (type, settle, clear) both pass; `?q=` survives a reload; a no-match search shows the
+filter empty state and not the backend one; the antd clear icon works; whitespace enables the button; zero
+console errors. Three regression tests cover the gate, and moving the gate back to committed-only fails two of
+them — so the tests guard the fix rather than decorate it.
+
+**What the falsification round corrected in this task's own reasoning:** the claim that "jsdom clicks a disabled
+button anyway" is **false** — React suppresses the handler and the old tests did fail under mutation. The test
+comment that repeated it was rewritten. A whitespace-only entry left the button disabled while visibly holding
+characters, contradicting the comment; fixed and covered by a test. The full-snapshot `onChange` was replaced by
+a patch. Four suggestions remain open and are listed below.
+
+**Findings recorded, not fixed:** two consecutive clears can emit one duplicate `router.replace` with identical
+state (harmless; skip publishing when the serialized state is unchanged); `resetToken` is not monotonic because
+the page's own Empty-state reset path sets it to 0 instead of incrementing it (the box still clears, via the
+external-adoption path, so the token is currently belt-and-braces rather than load-bearing); the Empty-state and
+filter-bar clear actions share the accessible name "Clear filters", so a `getByRole` lookup by that name would
+throw in that state — worth differentiating when T3/T4 touch that region; and the new pure logic
+(`matchesSearch`, `normalizedTerm`, the `q` parse/serialize) has no direct unit coverage in
+`anomalyFiltering.test.ts`, only indirect coverage through the page suite.
 
 ## Verification plan (phase 4)
 
