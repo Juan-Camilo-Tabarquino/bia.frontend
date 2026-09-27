@@ -18,6 +18,8 @@ jest.mock("@/features/dashboards/dashboardAPI", () => ({
 
 jest.mock("next/navigation", () => ({
   useSearchParams: jest.fn(),
+  usePathname: jest.fn(),
+  useRouter: jest.fn(),
 }));
 
 import {
@@ -28,7 +30,7 @@ import {
   useGetAiAnalysisQuery,
   usePostAnalyzeMutation,
 } from "@/features/dashboards/dashboardAPI";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 // jsdom does not implement MessageChannel, which rc-select (antd Select) uses to
 // schedule its open/close macro-tasks. Provide a minimal stand-in in this suite
@@ -65,10 +67,18 @@ if (typeof globalThis.MessageChannel === "undefined") {
 const mockedUseGetAnomaliesQuery = useGetAnomaliesQuery as jest.Mock;
 const mockedUseGetMetersQuery = useGetMetersQuery as jest.Mock;
 const mockedUseSearchParams = useSearchParams as jest.Mock;
+const mockedUsePathname = usePathname as jest.Mock;
+const mockedUseRouter = useRouter as jest.Mock;
 const mockedUsePostAnalyzeMutation = usePostAnalyzeMutation as jest.Mock;
 const mockedUseGetAiAnalysisQuery = useGetAiAnalysisQuery as jest.Mock;
 
 const refetch = jest.fn();
+
+// The page now mirrors its filter/sort state into the URL through the router.
+// `push` is stubbed but must never be used: a per-change history entry would
+// make the back button walk through every filter the user tried.
+const replaceUrl = jest.fn();
+const pushUrl = jest.fn();
 
 const anomalies: Anomaly[] = [
   {
@@ -165,6 +175,12 @@ describe("AnomaliesPage", () => {
     mockedUseGetMetersQuery.mockReset();
     mockedUseSearchParams.mockReset();
     mockedUseSearchParams.mockReturnValue(new URLSearchParams());
+    mockedUsePathname.mockReset();
+    mockedUsePathname.mockReturnValue("/anomalies");
+    mockedUseRouter.mockReset();
+    mockedUseRouter.mockReturnValue({ replace: replaceUrl, push: pushUrl });
+    replaceUrl.mockReset();
+    pushUrl.mockReset();
     mockedUsePostAnalyzeMutation.mockReset();
     mockedUseGetAiAnalysisQuery.mockReset();
     mockedUsePostAnalyzeMutation.mockReturnValue([
@@ -322,5 +338,97 @@ describe("AnomaliesPage", () => {
 
     expect(screen.getByText("Showing 1 of 2 anomalies")).toBeInTheDocument();
     expect(linkNames()).toEqual(["M-109-2026-09-12T14:00:00Z"]);
+  });
+
+  it("restores every filter and the sort from the query string on mount", () => {
+    mockedUseSearchParams.mockReturnValue(
+      new URLSearchParams(
+        "meter_id=M-109&type=REAL_ANOMALY&severity=HIGH&status=unexplained" +
+          "&detected_from=2026-09-01T00:00:00.000Z" +
+          "&detected_to=2026-09-30T23:59:59.999Z&sort=severity",
+      ),
+    );
+
+    render(<AnomaliesPage />);
+
+    expect(screen.getByText("Showing 1 of 2 anomalies")).toBeInTheDocument();
+    expect(linkNames()).toEqual(["M-109-2026-09-12T14:00:00Z"]);
+    expect(
+      screen.getByText("UI sort: severity (high to low)"),
+    ).toBeInTheDocument();
+    // Restoring the view is a read-only action: the deep link is not rewritten.
+    expect(replaceUrl).not.toHaveBeenCalled();
+  });
+
+  it("writes a filter change back to the URL with replace and no history entry", async () => {
+    render(<AnomaliesPage />);
+
+    await chooseOption("Filter by type", "Data quality issue");
+
+    await waitFor(() => {
+      expect(replaceUrl).toHaveBeenCalledWith("/anomalies?type=DATA_QUALITY", {
+        scroll: false,
+      });
+    });
+    expect(pushUrl).not.toHaveBeenCalled();
+    expect(screen.getByText("Showing 1 of 2 anomalies")).toBeInTheDocument();
+  });
+
+  it("writes a non-default sort to the URL and keeps the default out of it", async () => {
+    render(<AnomaliesPage />);
+
+    await chooseOption(sortLabel, "UI sort: severity (high to low)");
+
+    await waitFor(() => {
+      expect(replaceUrl).toHaveBeenCalledWith("/anomalies?sort=severity", {
+        scroll: false,
+      });
+    });
+
+    // Going back to the default sort must leave no `sort=backend` behind.
+    await chooseOption(sortLabel, "Priority (API order)");
+
+    await waitFor(() => {
+      expect(replaceUrl).toHaveBeenLastCalledWith("/anomalies", {
+        scroll: false,
+      });
+    });
+  });
+
+  it("removes a cleared filter parameter while keeping the non-default sort", async () => {
+    mockedUseSearchParams.mockReturnValue(
+      new URLSearchParams("type=DATA_QUALITY&sort=priority"),
+    );
+
+    render(<AnomaliesPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
+
+    await waitFor(() => {
+      expect(replaceUrl).toHaveBeenCalledWith("/anomalies?sort=priority", {
+        scroll: false,
+      });
+    });
+  });
+
+  it("ignores invalid query string values instead of crashing or filtering", () => {
+    mockedUseSearchParams.mockReturnValue(
+      new URLSearchParams(
+        "meter_id=&type=NOPE&severity=BOGUS&status=??" +
+          "&detected_from=not-a-date&sort=whatever",
+      ),
+    );
+
+    render(<AnomaliesPage />);
+
+    // Every invalid value falls back to its default, so the list is unfiltered...
+    expect(screen.getByText("Showing 2 of 2 anomalies")).toBeInTheDocument();
+    // ...the default (absent) sort is still selected...
+    expect(screen.getByText("Priority (API order)")).toBeInTheDocument();
+    // ...and an ignored value is not an active filter.
+    expect(
+      screen.queryByText(/Filters are applied in the browser/),
+    ).not.toBeInTheDocument();
+    expect(replaceUrl).not.toHaveBeenCalled();
   });
 });

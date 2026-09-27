@@ -1,7 +1,6 @@
 "use client";
 
-import { Suspense, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { Suspense, useMemo } from "react";
 import { Alert, Button, Empty, Select, Skeleton, Space, Typography } from "antd";
 import {
   useGetAnomaliesQuery,
@@ -12,13 +11,16 @@ import { AnomalyFilters } from "@/components/anomalies/AnomalyFilters";
 import { AnomalyTable } from "@/components/anomalies/AnomalyTable";
 import {
   anomalySortOptions,
+  anomalyUrlSchema,
   applyAnomalyFilters,
   applyAnomalySort,
   emptyAnomalyFilters,
   hasActiveFilters,
   type AnomalyFilterValues,
   type AnomalySortKey,
+  type AnomalyUrlState,
 } from "@/components/anomalies/anomalyFiltering";
+import { useUrlState } from "@/hooks/useUrlState";
 import {
   RequestError,
   requestErrorMessage,
@@ -49,22 +51,19 @@ export default function AnomaliesPage() {
  * by priority is what the API already does; the UI only relabels it and offers
  * optional re-sorts.
  *
- * The optional `meter_id` URL parameter is read only to pre-seed the meter
- * filter when arriving from a meter detail page; it is a local UI concern and
- * is never forwarded to the backend.
+ * The whole view is deep-linkable: `anomalyUrlSchema` reads the filters and the
+ * sort key from the query string on mount (the pre-existing `?meter_id=M-109`
+ * link keeps working) and every change is written back with `router.replace`,
+ * so refreshing or sharing the URL restores the same view without adding a
+ * history entry and without the backend ever seeing these parameters.
  */
 function AnomaliesContent() {
-  const searchParams = useSearchParams();
-  const initialMeterId = searchParams?.get("meter_id") ?? null;
+  const [urlState, setUrlState] = useUrlState<AnomalyUrlState>(anomalyUrlSchema);
 
-  const [filters, setFilters] = useState<AnomalyFilterValues>(() => ({
-    ...emptyAnomalyFilters,
-    meterId:
-      initialMeterId !== null && initialMeterId.length > 0
-        ? initialMeterId
-        : null,
-  }));
-  const [sortKey, setSortKey] = useState<AnomalySortKey>("backend");
+  // The URL layer only mirrors this state; the list below is still filtered and
+  // ordered by the pure functions in `anomalyFiltering`.
+  const filters: AnomalyFilterValues = urlState;
+  const sortKey = urlState.sort;
 
   const {
     data: anomalies = [],
@@ -117,7 +116,11 @@ function AnomaliesContent() {
       </p>
 
       <section aria-label="Anomaly filters">
-        <AnomalyFilters meters={meters} values={filters} onChange={setFilters} />
+        <AnomalyFilters
+          meters={meters}
+          values={filters}
+          onChange={(next) => setUrlState({ ...urlState, ...next })}
+        />
         {metersError && (
           <Alert
             type="warning"
@@ -143,7 +146,7 @@ function AnomaliesContent() {
               aria-label="Sort anomalies, applied in the browser over the fetched list"
               value={sortKey}
               options={anomalySortOptions}
-              onChange={(value) => setSortKey(value)}
+              onChange={(value) => setUrlState({ ...urlState, sort: value })}
               style={{ minWidth: "16rem" }}
             />
           </div>
@@ -153,7 +156,9 @@ function AnomaliesContent() {
           <Empty description="El backend no reportó anomalías." />
         ) : visibleAnomalies.length === 0 ? (
           <Empty description="Ninguna anomalía coincide con los filtros actuales.">
-            <Button onClick={() => setFilters(emptyAnomalyFilters)}>
+            <Button
+              onClick={() => setUrlState({ ...urlState, ...emptyAnomalyFilters })}
+            >
               Clear filters
             </Button>
           </Empty>

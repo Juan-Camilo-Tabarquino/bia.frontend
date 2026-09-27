@@ -4,7 +4,13 @@ import type {
   AnomalyStatus,
   AnomalyType,
 } from "@/types/backend";
-import { severityRank } from "./anomalyLabels";
+import type { UrlStateSchema } from "@/hooks/useUrlState";
+import {
+  anomalySeverities,
+  anomalyStatuses,
+  anomalyTypes,
+  severityRank,
+} from "./anomalyLabels";
 
 /**
  * Client-side list handling for `GET /api/anomalies`.
@@ -142,3 +148,101 @@ export function applyAnomalySort(
   }
   return sorted;
 }
+
+/* ------------------------------------------------------------------ *
+ * URL serialization
+ *
+ * `applyAnomalyFilters` / `applyAnomalySort` above remain the single source of
+ * truth for what a filter or a sort *means*; the schema below only describes
+ * how that state travels through the query string, so a refresh or a shared
+ * link restores the exact same view. No value is ever sent to the backend:
+ * `GET /api/anomalies` takes no query parameters and accepts none.
+ * ------------------------------------------------------------------ */
+
+/** The complete deep-linkable view: the filters plus the sort key. */
+export type AnomalyUrlState = AnomalyFilterValues & { sort: AnomalySortKey };
+
+/**
+ * Every sort key the UI knows, used to reject unknown `sort` values.
+ *
+ * Derived from `anomalySortOptions` rather than re-listed, so the selector the
+ * user sees and the parser that accepts a deep link can never disagree: adding
+ * an option without teaching the URL about it would offer a choice the link
+ * silently discards.
+ */
+export const anomalySortKeys: readonly AnomalySortKey[] =
+  anomalySortOptions.map((option) => option.value);
+
+/**
+ * Parses a raw parameter against the enum values the UI can actually render.
+ * An unknown value yields `undefined`, so the URL layer falls back to the
+ * declared default and the bogus value is never treated as active state.
+ */
+function parseEnumValue<Value extends string>(
+  allowed: readonly Value[],
+): (raw: string) => Value | undefined {
+  return (raw) =>
+    (allowed as readonly string[]).includes(raw) ? (raw as Value) : undefined;
+}
+
+/** A filter that is off serializes to `null`, which drops the parameter. */
+function serializeOptionalFilter(value: string | null): string | null {
+  return value;
+}
+
+/** Only parses the way the filter itself parses, so the URL agrees with it. */
+function parseDateFilter(raw: string): string | undefined {
+  return Number.isNaN(Date.parse(raw)) ? undefined : raw;
+}
+
+/** `backend` is today's default (untouched API order): keep it out of the URL. */
+function serializeSortKey(value: AnomalySortKey): string | null {
+  return value === "backend" ? null : value;
+}
+
+export const anomalyUrlSchema: UrlStateSchema<AnomalyUrlState> = {
+  meterId: {
+    param: "meter_id",
+    defaultValue: null,
+    // Preserves the `?meter_id=M-109` link built by `MeterDetail`: any non-empty
+    // id is accepted, because the filter itself is a plain string comparison.
+    parse: (raw) => (raw.trim().length > 0 ? raw : undefined),
+    serialize: serializeOptionalFilter,
+  },
+  type: {
+    param: "type",
+    defaultValue: null,
+    parse: parseEnumValue(anomalyTypes),
+    serialize: serializeOptionalFilter,
+  },
+  severity: {
+    param: "severity",
+    defaultValue: null,
+    parse: parseEnumValue(anomalySeverities),
+    serialize: serializeOptionalFilter,
+  },
+  status: {
+    param: "status",
+    defaultValue: null,
+    parse: parseEnumValue(anomalyStatuses),
+    serialize: serializeOptionalFilter,
+  },
+  detectedFrom: {
+    param: "detected_from",
+    defaultValue: null,
+    parse: parseDateFilter,
+    serialize: serializeOptionalFilter,
+  },
+  detectedTo: {
+    param: "detected_to",
+    defaultValue: null,
+    parse: parseDateFilter,
+    serialize: serializeOptionalFilter,
+  },
+  sort: {
+    param: "sort",
+    defaultValue: "backend",
+    parse: parseEnumValue(anomalySortKeys),
+    serialize: serializeSortKey,
+  },
+};
