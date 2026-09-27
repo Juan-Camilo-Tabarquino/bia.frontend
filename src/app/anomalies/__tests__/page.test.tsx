@@ -432,4 +432,96 @@ describe("AnomaliesPage", () => {
     expect(replaceUrl).not.toHaveBeenCalled();
   });
 
+  const searchBox = () => screen.getByLabelText("Buscar anomalías");
+  const clearButton = () =>
+    screen.getByRole("button", { name: "Clear filters" });
+
+  it("restores the search from a `?q=` deep link and filters the list", () => {
+    mockedUseSearchParams.mockReturnValue(new URLSearchParams("q=m-112"));
+
+    render(<AnomaliesPage />);
+
+    expect(searchBox()).toHaveValue("m-112");
+    expect(screen.getByText("Showing 1 of 2 anomalies")).toBeInTheDocument();
+    expect(linkNames()).toEqual(["M-112-2026-09-10T09:00:00Z"]);
+  });
+
+  it("matches a case-insensitive substring typed into the box", async () => {
+    render(<AnomaliesPage />);
+
+    fireEvent.change(searchBox(), { target: { value: "spike" } });
+
+    // "spike" appears only in the first anomaly's free text, not in any id.
+    await waitFor(() => {
+      expect(screen.getByText("Showing 1 of 2 anomalies")).toBeInTheDocument();
+    });
+    expect(linkNames()).toEqual(["M-109-2026-09-12T14:00:00Z"]);
+  });
+
+  it("shows the filter empty state, not the backend empty state, when the search matches nothing", async () => {
+    render(<AnomaliesPage />);
+
+    fireEvent.change(searchBox(), { target: { value: "zzzzz" } });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Ninguna anomalía coincide con los filtros actuales."),
+      ).toBeInTheDocument();
+    });
+    // The backend did report two anomalies; the search hid them.
+    expect(
+      screen.queryByText("El backend no reportó anomalías."),
+    ).not.toBeInTheDocument();
+  });
+
+  // Regression, and the reason this feature was reverted once. The button used
+  // to be gated only on the COMMITTED filters, so while a typed term was still
+  // inside the debounce the committed filters were all empty and "Clear filters"
+  // rendered DISABLED: the user could not clear what they had just typed, and
+  // the term reached the URL moments later. Found by driving a real browser,
+  // which is what surfaced the `disabled` attribute; the jsdom probes had been
+  // reasoning about the state machine instead. Reverting this gate makes BOTH
+  // this test and the one below fail.
+  it("enables the clear action while a typed term is still inside the debounce", () => {
+    render(<AnomaliesPage />);
+
+    expect(clearButton()).toBeDisabled();
+
+    fireEvent.change(searchBox(), { target: { value: "zzz" } });
+
+    expect(clearButton()).toBeEnabled();
+  });
+
+  it("enables the clear action for a whitespace-only entry the box is showing", () => {
+    render(<AnomaliesPage />);
+
+    fireEvent.change(searchBox(), { target: { value: "   " } });
+
+    // The box visibly holds something, so the action that empties it must be
+    // available even though whitespace never commits as a filter.
+    expect(searchBox()).toHaveValue("   ");
+    expect(clearButton()).toBeEnabled();
+  });
+
+  it("clears a pending draft and does not resurrect the term once the debounce settles", async () => {
+    render(<AnomaliesPage />);
+
+    fireEvent.change(searchBox(), { target: { value: "zzz" } });
+    // Deliberately no waitFor: the draft is still pending in the debounce.
+    fireEvent.click(clearButton());
+
+    await waitFor(() => {
+      expect(searchBox()).toHaveValue("");
+    });
+
+    // And the term must not come back after the debounce window elapses.
+    await waitFor(() => {
+      expect(screen.getByText("Showing 2 of 2 anomalies")).toBeInTheDocument();
+    });
+    expect(searchBox()).toHaveValue("");
+    expect(replaceUrl).not.toHaveBeenCalledWith(
+      expect.stringContaining("q=zzz"),
+      expect.anything(),
+    );
+  });
 });

@@ -119,7 +119,9 @@ function AnomaliesContent() {
         <AnomalyFilters
           meters={meters}
           values={filters}
-          onChange={(next) => setUrlState((previous) => ({ ...previous, ...next }))}
+          onChange={(patch) =>
+            setUrlState((previous) => ({ ...previous, ...patch }))
+          }
         />
         {metersError && (
           <Alert

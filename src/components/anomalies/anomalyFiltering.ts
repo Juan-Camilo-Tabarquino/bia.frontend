@@ -24,6 +24,18 @@ import {
  */
 
 export interface AnomalyFilterValues {
+  /**
+   * Free-text search. `null` (or a blank string) means "no search".
+   *
+   * The search also carries an explicit reset counter. That is the resolution of
+   * a bug that survived six other designs: clearing the filters while a draft is
+   * still inside the debounce window set `q` to `null` when it was ALREADY
+   * `null`, so the reset produced no observable change in the value the box
+   * receives. Nothing that infers the reset from `q` can see that event. Making
+   * it an explicit counter in the state the box is given means two consecutive
+   * clears are two distinct values, and the box always has something to react to.
+   */
+  search: { text: string; resetToken: number };
   meterId: string | null;
   type: AnomalyType | null;
   severity: AnomalySeverity | null;
@@ -35,6 +47,7 @@ export interface AnomalyFilterValues {
 }
 
 export const emptyAnomalyFilters: AnomalyFilterValues = {
+  search: { text: "", resetToken: 0 },
   meterId: null,
   type: null,
   severity: null,
@@ -44,6 +57,11 @@ export const emptyAnomalyFilters: AnomalyFilterValues = {
 };
 
 export function hasActiveFilters(filters: AnomalyFilterValues): boolean {
+  // A whitespace-only term filters nothing, so it must not count as active.
+  if (filters.search.text.trim().length > 0) {
+    return true;
+  }
+
   return (
     filters.meterId !== null ||
     filters.type !== null ||
@@ -73,12 +91,44 @@ export const anomalySortOptions: AnomalySortOption[] = [
   { value: "detected_at", label: "UI sort: detected at (newest first)" },
 ];
 
+/** Trims and case-folds a term so callers compare apples to apples. */
+function normalizedTerm(text: string): string {
+  return text.trim().toLowerCase();
+}
+
+/**
+ * Fields the search looks at, and why only these:
+ *
+ * `id` and `meter_id` are the identifiers the table renders. `reason` and
+ * `recommended_action` are the only other free-text human-readable DTO fields,
+ * so a word like "spike" finds a row whose id says nothing useful.
+ *
+ * `type`, `severity` and `status` are excluded: they already have dedicated
+ * exact-match controls, and a substring match would put two semantics on one
+ * field. Nested `correlated_events[].description` and `data_quality.reason` are
+ * excluded because the list does not render them, so a match would be invisible.
+ */
+function matchesSearch(anomaly: Anomaly, term: string): boolean {
+  return [
+    anomaly.id,
+    anomaly.meter_id,
+    anomaly.reason,
+    anomaly.recommended_action,
+  ].some((field) => field.toLowerCase().includes(term));
+}
+
 /** Returns a new array with only the anomalies matching every active filter. */
 export function applyAnomalyFilters(
   anomalies: Anomaly[],
   filters: AnomalyFilterValues,
 ): Anomaly[] {
+  const term = normalizedTerm(filters.search.text);
+
   return anomalies.filter((anomaly) => {
+    if (term.length > 0 && !matchesSearch(anomaly, term)) {
+      return false;
+    }
+
     if (filters.meterId !== null && anomaly.meter_id !== filters.meterId) {
       return false;
     }
@@ -201,6 +251,19 @@ function serializeSortKey(value: AnomalySortKey): string | null {
 }
 
 export const anomalyUrlSchema: UrlStateSchema<AnomalyUrlState> = {
+  search: {
+    param: "q",
+    defaultValue: { text: "", resetToken: 0 },
+    // Only the text travels in the URL; the reset counter is local UI intent.
+    parse: (raw) => {
+      const trimmed = raw.trim();
+      return { text: trimmed, resetToken: 0 };
+    },
+    serialize: (value) => {
+      const trimmed = value.text.trim();
+      return trimmed.length > 0 ? trimmed : null;
+    },
+  },
   meterId: {
     param: "meter_id",
     defaultValue: null,
