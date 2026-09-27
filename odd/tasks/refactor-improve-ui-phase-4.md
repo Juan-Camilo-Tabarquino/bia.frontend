@@ -1,6 +1,6 @@
 # Feature: refactor/improve-ui — phase 4 (Interactividad)
 
-**Status: IN PROGRESS — 6/8 (T1, T2, T2b, T3, T4, T5 done; 1 debt task open).** Branch `refactor/improve-ui`, base `cdb610b` (phase 3 complete).
+**Status: IN PROGRESS — 7/8 (T1, T2, T2b, T3, T4, T5, T6 done; T7, T8 and 1 debt task open).** Branch `refactor/improve-ui`, base `cdb610b` (phase 3 complete).
 
 **Reference:** `odd/tasks/refactor-improve-ui.md` (the whole feature and its phases),
 `docs/ui-refactor-plan.md` (the resume entry point), and the 12 open advisories recorded there.
@@ -111,23 +111,23 @@ Measured against the branch at `cdb610b`. Corrections to the plan's assumptions 
 - [x] **T2 — Search in `MeterList` and `AnomalyTable`.** **Done across T2 and T2b.** `MeterList` search and the
       `useDebouncedValue` hook shipped in T2; the anomaly search shipped in T2b after the root cause turned out to
       be a disabled gate rather than a state race. See both results above.
-- [ ] **T3 — Header sorting on `AnomalyTable`.** Move sorting onto antd column `sorter` props, keeping the
-      existing `applyAnomalySort` semantics (and the "API order" default) so the page's `Select` and the
-      header do not fight. `priority` stays the API value, never re-derived.
+- [x] **T3 — Header sorting on `AnomalyTable`.** Done: sorting moved onto antd column `sorter` props driven by the
+      URL `sort`, with one comparator registry shared by the page and the header. `priority` stays the API value. See
+      the T3 result below.
 - [x] **T4 — Consistent pagination.** Done: `AnomalyTable` paginates at `ReadingsTable`'s page size, the dashboard
       preview stays control-free, page stranding is impossible, and the ambiguous count wording was removed. See the
       T4 result below.
-- [ ] **T-SUITE — Reduce the page suite's runtime.** ~2.3 s per test against Jest's 5 s default; one flaky timeout
-      observed. See the open-debt section above.
-- [ ] **T5 — Cross-links meter ↔ anomaly.** `meter_id` becomes a link to `/meter/{id}` on the anomaly detail
-      and in the table; the anomaly list keeps filtering by the same id without navigating.
-- [ ] **T6 — Readable dates.** One formatting helper, used everywhere a date is rendered to the user
-      (including the chart X axis in phase 5 by contract), while the DTO keeps the raw RFC3339 value.
+- [x] **T6 — Readable dates.** Done: one shared `formatDateTime`, six field sites and three chart surfaces, local
+      time with a safe fallback, and the formatters extracted out of the anomaly module. See the T6 result below.
+- [x] **T5 — Cross-links meter ↔ anomaly.** Done: `meter_id` links to `/meter/{id}` in both `AnomalyDetail`
+      (was plain text) and the `AnomalyTable` column, closing the round trip. See the T5 result above.
 - [ ] **T7 — KPI delta pills and the insight banner** on `/dashboard`, reading only fields the DTO actually
       carries. No invented metric, no derived baseline: `baseline.mean` and the four signed
       `*_change_pct` values **exist**, so the UI must not claim the backend lacks them.
 - [ ] **T8 — Close the two advisories that belong to this phase** (`R3-retry-loading-flag`,
       `R3-breadcrumb-encoding`) and record the phase result here.
+- [ ] **T-SUITE — Reduce the page suite's runtime.** ~2.3 s per test against Jest's 5 s default; one flaky timeout
+      observed. See the open-debt section below.
 
 ## Per-task evidence (filled as each task closes)
 
@@ -136,14 +136,14 @@ Measured against the branch at `cdb610b`. Corrections to the plan's assumptions 
 | T1 | `62dceaa` | eslint 0 · tsc 0 · **25 suites / 170 tests** · next build 0 (7 routes, `/anomalies` still static) | 2 by the writer, 3 probes by the verifier | `gentle-ai-verify`: PASS WITH FINDINGS, no BLOCKER. 3 of 7 findings fixed here; 4 recorded below |
 | T2 | `8bbd7e0` | eslint 0 · tsc 0 · **26 suites / 171 tests** · next build 0 (7 routes) | 1 probe proving the stale-closure fix | `gentle-ai-verify`: **FAIL**, 1 BLOCKER. Scope reduced by owner decision — see below |
 | T2b | `a533122` | eslint 0 · tsc 0 · **26 suites / 177 tests** · next build 0 (7 routes) | 2 gate mutations by the verifier; real-Chrome probes by the parent | `gentle-ai-verify`: PASS WITH FINDINGS, no BLOCKER. 3 findings fixed; 4 recorded |
-| T3 | _(this commit)_ | eslint 0 · tsc 0 · **26 suites / 196 tests** · next build 0 (7 routes) | 2 gate mutations by the parent | `gentle-ai-verify`: PASS WITH FINDINGS, no BLOCKER. 1 finding fixed; 4 recorded |
+| T3 | `63644a2` | eslint 0 · tsc 0 · **26 suites / 196 tests** · next build 0 (7 routes) | 2 gate mutations by the parent | `gentle-ai-verify`: PASS WITH FINDINGS, no BLOCKER. 1 finding fixed; 4 recorded |
 | T5 | _(this commit)_ | eslint 0 · tsc 0 · **26 suites / 202 tests** · next build 0 (7 routes) | n/a — verified by reading the whole diff (small, presentation-only) | parent audit: code matches the `MeterDetail.tsx:72` precedent; assertions strengthened, none loosened |
-| T4 | _(this commit)_ | eslint 0 · tsc 0 · **26 suites / 217 tests** · next build 0 (7 routes) | 3 mutations by the worker, 1 load-bearing | parent audit: the `onChange` guard fixes a URL-rewrite bug the new tests caught |
-| **T-SUITE** | — | — | — | **OPEN DEBT**: the page suite runs ~2.3 s/test (~90 s total, was ~15 s at `cdb610b`). One flaky timeout observed. See below. |
-| T5 | — | — | — | — |
-| T6 | — | — | — | — |
+| T4 | `76c352d` | eslint 0 · tsc 0 · **26 suites / 217 tests** · next build 0 (7 routes) | 3 mutations by the worker, 1 load-bearing | parent audit: the `onChange` guard fixes a URL-rewrite bug the new tests caught |
+| T5 | `93f1e45` | eslint 0 · tsc 0 · **26 suites / 202 tests** · next build 0 (7 routes) | n/a — verified by reading the whole diff (small, presentation-only) | parent audit: code matches the `MeterDetail.tsx:72` precedent; assertions strengthened, none loosened |
+| T6 | _(this commit)_ | eslint 0 · tsc 0 · **27 suites / 223 tests** · next build 0 (7 routes) | n/a — verified by reading the diff; two traps checked by hand | parent audit: formatters extracted to `components/formatters.ts` (see below) |
 | T7 | — | — | — | — |
 | T8 | — | — | — | — |
+| **T-SUITE** | — | — | — | **OPEN DEBT**: the page suite runs ~2.3 s/test (~85 s total, was ~15 s at `cdb610b`). One flaky timeout observed. See below. |
 
 ### T1 result
 
@@ -366,6 +366,31 @@ The cause is that 31 tests each render the full page, and the page now renders a
 This is pre-existing debt that this task aggravated rather than introduced. It was deliberately NOT papered over with a
 raised `testTimeout`, and it was NOT bundled into T4's commit: it is its own task. Left unattended, the next phase that
 adds tests will turn it into a genuine red suite and the failure will be blamed on whatever code is in flight.
+
+### T6 result — readable dates, and a module boundary that had gone wrong
+
+Every user-facing date rendered the raw RFC3339 string. They now all go through **one** helper, `formatDateTime`.
+Six field sites were fixed (`AnomalyTable.detected_at`, `AnomalyDetail.detected_at`, the correlated-event
+`start – end` range, `MeterDetail.created_at`, `MeterDetail.last_reading_at`, `ReadingsTable.Timestamp`) plus the
+three chart surfaces (axis tick, tooltip label, marker list / `sr-only` figcaption).
+
+**Local time, not UTC**, and the reason is that the app's own filters already work in local days: `AnomalyFilters`
+builds bounds with `dayjs(...).startOf("day")` and the readings page uses an antd `RangePicker`. Rendering UTC
+would make the filtered window and the displayed hours disagree for every viewer outside UTC. Format is
+`DD/MM/YYYY HH:mm`. A malformed or empty value is returned unchanged — never `Invalid Date`, never a throw.
+
+**Both traps avoided, checked by hand.** `dashboard/page.tsx` renders `summary.lastRun`, the literal `"latest"`,
+and was left alone. And the chart's axis category key is still the raw `Timestamp`: the formatters are *wrapped*
+(`(value) => formatDateTime(String(value))`) rather than passed directly, because recharts hands the tick index as
+the second argument and passing the helper directly would have fed that index in as `timeZone`. The
+`Date.parse` marker snapping is untouched.
+
+**A module boundary this task had to fix.** The helpers lived in `anomalyLabels.ts`, a module about anomaly
+metadata. That was survivable while only anomaly components used them, but a generic date formatter made it wrong:
+`MeterDetail`, `ReadingsTable` and `ReadingsChart` — none of which is about anomalies — were importing a file named
+after another feature. All four presentational formatters moved to `src/components/formatters.ts`, `anomalyLabels.ts`
+kept only its own metadata, and every import was repointed (nine files, including six suites). Leaving it would have
+guaranteed a second date formatter the next time a chart needed one.
 
 ## Verification plan (phase 4)
 

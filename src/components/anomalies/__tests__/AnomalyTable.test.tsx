@@ -1,6 +1,7 @@
 import React from "react";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import type { Anomaly } from "@/types/backend";
+import { formatDateTime } from "@/components/formatters";
 import { anomalySortDefinitions } from "../anomalyFiltering";
 import { AnomalyTable } from "../AnomalyTable";
 
@@ -109,7 +110,13 @@ describe("AnomalyTable", () => {
     expect(
       screen.getByRole("link", { name: realAnomaly.meter_id }),
     ).toHaveAttribute("href", `/meter/${realAnomaly.meter_id}`);
-    expect(screen.getByText("2026-09-12T14:00:00Z")).toBeInTheDocument();
+    expect(
+      screen.getByText(formatDateTime("2026-09-12T14:00:00Z")),
+    ).toBeInTheDocument();
+    // The cell renders the shared local format; the raw wire value is gone.
+    expect(
+      screen.queryByText("2026-09-12T14:00:00Z"),
+    ).not.toBeInTheDocument();
     expect(screen.getByText("REAL_ANOMALY")).toBeInTheDocument();
     expect(screen.getByText("HIGH")).toBeInTheDocument();
     expect(screen.getByText("97%")).toBeInTheDocument();

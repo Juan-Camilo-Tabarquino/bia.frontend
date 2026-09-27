@@ -13,6 +13,7 @@ import { Empty, Spin } from "antd";
 import type { Reading } from "@/types/backend";
 import { chartColors } from "@/theme/tokens";
 import { ThemeModeContext } from "@/theme/theme-provider";
+import { formatDateTime } from "../formatters";
 import styles from "./ReadingsChart.module.scss";
 
 /**
@@ -175,7 +176,10 @@ export default function ReadingsChart({
     anomalyMarkers.length === 0
       ? "No anomaly markers are recorded for this meter in the loaded window."
       : `Anomaly markers for this meter (${anomalyMarkers.length}): ${anomalyMarkers
-          .map((marker) => `${marker.detectedAt} ${marker.label}`)
+          .map(
+            (marker) =>
+              `${formatDateTime(marker.detectedAt)} ${marker.label}`,
+          )
           .join("; ")}. Markers outside the plotted window are listed but not drawn.`;
 
   return (
@@ -214,9 +218,20 @@ export default function ReadingsChart({
           role="img"
         >
           <LineChart data={points}>
-            <XAxis dataKey="Timestamp" tick={{ fontSize: 12 }} />
+            {/* The axis category key stays the raw `Timestamp`: the marker
+                snapping above and the point rows below both depend on it. Only
+                the rendered tick label is formatted. */}
+            <XAxis
+              dataKey="Timestamp"
+              tick={{ fontSize: 12 }}
+              tickFormatter={(value) => formatDateTime(String(value))}
+            />
             <YAxis tick={{ fontSize: 12 }} />
-            <Tooltip />
+            {/* The default tooltip would print the raw category label; the
+                formatter only changes the shown text, never the data. */}
+            <Tooltip
+              labelFormatter={(label) => formatDateTime(String(label))}
+            />
             <Line
               type="monotone"
               dataKey="value"
@@ -262,11 +277,13 @@ export default function ReadingsChart({
           <ul className={styles.markerItems}>
             {markerRows.map((marker) => (
               <li key={marker.id}>
-                <span className={styles.markerTime}>{marker.detectedAt}</span>
+                <span className={styles.markerTime}>
+                  {formatDateTime(marker.detectedAt)}
+                </span>
                 <span className={styles.markerLabel}>{` ${marker.label}`}</span>
                 <span className="sr-only">
                   {marker.plottedAt
-                    ? ` plotted at the closest reading, ${marker.plottedAt}.`
+                    ? ` plotted at the closest reading, ${formatDateTime(marker.plottedAt)}.`
                     : " outside the plotted window, so it is not drawn on the timeline."}
                 </span>
               </li>

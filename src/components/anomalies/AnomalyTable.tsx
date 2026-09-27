@@ -13,10 +13,10 @@ import type {
 import { AnomalyTypeTag } from "./AnomalyTypeTag";
 import {
   anomalyStatusLabels,
-  formatConfidence,
   isDataQuality,
   severityColors,
 } from "./anomalyLabels";
+import { formatConfidence, formatDateTime } from "@/components/formatters";
 import {
   anomalySortDefinitions,
   type AnomalySortField,
@@ -221,6 +221,9 @@ export function AnomalyTable({
       title: "Detected at",
       dataIndex: "detected_at",
       key: "detected_at",
+      // Presentation only: the raw RFC3339 value stays in the DTO and in the
+      // sorter comparator, and the shared helper renders the local wall clock.
+      render: (detectedAt: string) => formatDateTime(detectedAt),
       ...sorterProps("detected_at"),
     },
     {

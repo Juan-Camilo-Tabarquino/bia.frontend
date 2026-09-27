@@ -3,10 +3,15 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import ReadingsChart, {
   type ReadingAnomalyMarker,
 } from '../ReadingsChart';
+import { formatDateTime } from '@/components/formatters';
 import type { Reading } from '@/types/backend';
 
 // recharts cannot measure a container in jsdom (getBoundingClientRect is 0),
-// so render deterministic stand-ins that expose the props under test.
+// so render deterministic stand-ins that expose the props under test. The X
+// axis and tooltip stand-ins apply the formatter the component passes, so the
+// assertions can see what would be shown without any real SVG text. The probe
+// timestamp is a literal inside the factory (a hoisted `jest.mock` factory
+// cannot read a module-scope `const`).
 jest.mock('recharts', () => {
   const ReactModule = jest.requireActual<typeof import('react')>('react');
   return {
@@ -35,9 +40,32 @@ jest.mock('recharts', () => {
         'data-testid': 'line',
         'data-key': dataKey,
       }),
-    XAxis: () => null,
+    XAxis: ({
+      dataKey,
+      tickFormatter,
+    }: {
+      dataKey?: string;
+      tickFormatter?: (value: unknown) => string;
+    }) =>
+      ReactModule.createElement('div', {
+        'data-testid': 'x-axis',
+        'data-key': dataKey,
+        'data-tick-output': tickFormatter
+          ? tickFormatter('2024-01-01T00:00:00Z')
+          : '',
+      }),
     YAxis: () => null,
-    Tooltip: () => null,
+    Tooltip: ({
+      labelFormatter,
+    }: {
+      labelFormatter?: (label: unknown) => React.ReactNode;
+    }) =>
+      ReactModule.createElement('div', {
+        'data-testid': 'tooltip',
+        'data-label-output': labelFormatter
+          ? String(labelFormatter('2024-01-01T00:00:00Z'))
+          : '',
+      }),
   };
 });
 
@@ -149,7 +177,7 @@ describe('ReadingsChart', () => {
       { id: 'an-2', detectedAt: '2024-06-01T00:00:00Z', label: 'LOW · False positive' },
     ];
 
-    render(
+    const { container } = render(
       <ReadingsChart data={sampleReadings} anomalyMarkers={anomalyMarkers} />,
     );
 
@@ -163,9 +191,16 @@ describe('ReadingsChart', () => {
     expect(markedPoints[0].anomalyValue).toBe(20);
 
     // Every marker is still described in text, including the out-of-window one,
-    // so the marker meaning never depends on colour alone.
-    expect(screen.getByText('2024-01-02T03:00:00Z')).toBeInTheDocument();
-    expect(screen.getByText('2024-06-01T00:00:00Z')).toBeInTheDocument();
+    // so the marker meaning never depends on colour alone. The times go through
+    // the shared formatter, so the raw RFC3339 string must be gone.
+    expect(
+      screen.getByText(formatDateTime('2024-01-02T03:00:00Z')),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(formatDateTime('2024-06-01T00:00:00Z')),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('2024-01-02T03:00:00Z')).not.toBeInTheDocument();
+    expect(screen.queryByText('2024-06-01T00:00:00Z')).not.toBeInTheDocument();
     expect(
       screen.getAllByText(/HIGH · Real anomaly/).length,
     ).toBeGreaterThan(0);
@@ -175,6 +210,39 @@ describe('ReadingsChart', () => {
     expect(
       screen.getByRole('heading', { name: /Anomaly markers/i, level: 2 }),
     ).toBeInTheDocument();
+
+    // The sr-only figcaption interpolation goes through the shared formatter
+    // too: its summary carries formatted times and no raw timestamp.
+    const figcaption = container.querySelector('figcaption')?.textContent ?? '';
+    expect(figcaption).toContain(formatDateTime('2024-01-02T03:00:00Z'));
+    expect(figcaption).toContain(formatDateTime('2024-06-01T00:00:00Z'));
+    expect(figcaption).not.toContain('2024-01-02T03:00:00Z');
+    expect(figcaption).not.toContain('2024-06-01T00:00:00Z');
+  });
+
+  it('formats the axis ticks and the tooltip label without changing the axis key', () => {
+    render(<ReadingsChart data={sampleReadings} />);
+
+    // The category KEY stays the raw `Timestamp`: the marker snapping and the
+    // plotted points depend on it, and the first point below still carries it.
+    expect(screen.getByTestId('x-axis')).toHaveAttribute(
+      'data-key',
+      'Timestamp',
+    );
+    expect(plottedPoints()[0].Timestamp).toBe('2024-01-01T00:00:00Z');
+
+    // Only the LABEL is formatted, and the default tooltip label too.
+    expect(screen.getByTestId('x-axis')).toHaveAttribute(
+      'data-tick-output',
+      formatDateTime('2024-01-01T00:00:00Z'),
+    );
+    expect(screen.getByTestId('tooltip')).toHaveAttribute(
+      'data-label-output',
+      formatDateTime('2024-01-01T00:00:00Z'),
+    );
+    expect(screen.getByTestId('x-axis').getAttribute('data-tick-output')).not.toBe(
+      '2024-01-01T00:00:00Z',
+    );
   });
 
   it('states that no anomaly markers exist when none are supplied', () => {

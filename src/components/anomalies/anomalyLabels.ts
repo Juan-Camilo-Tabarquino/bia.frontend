@@ -66,22 +66,3 @@ export function isDataQuality(type: AnomalyType): boolean {
   return type === DATA_QUALITY_TYPE;
 }
 
-/** Renders the `0..1` confidence as a whole-number percentage. */
-export function formatConfidence(confidence: number): string {
-  return `${Math.round(confidence * 100)}%`;
-}
-
-/**
- * Renders a signed percentage with one decimal and a trailing `%`, so a
- * negative deviation keeps its minus sign and a positive one is marked with
- * `+`. The value is the API-provided number, never re-derived in the UI.
- */
-export function formatSignedPercent(value: number): string {
-  const rounded = Math.round(value * 10) / 10;
-  return `${rounded > 0 ? "+" : ""}${rounded}%`;
-}
-
-/** Renders a number with a fixed number of decimals for evidence display. */
-export function formatMetric(value: number, fractionDigits = 2): string {
-  return value.toFixed(fractionDigits);
-}

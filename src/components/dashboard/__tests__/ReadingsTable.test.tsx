@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen, within } from '@testing-library/react';
 import ReadingsTable from '../ReadingsTable';
+import { formatDateTime } from '@/components/formatters';
 import type { Reading } from '@/types/backend';
 
 const sampleData: Reading[] = [
@@ -46,7 +47,12 @@ describe('ReadingsTable', () => {
       screen.getByRole('columnheader', { name: 'Power factor' }),
     ).toBeInTheDocument();
 
-    expect(screen.getByText('2024-01-01T00:00:00Z')).toBeInTheDocument();
+    // The Timestamp column now renders the shared local-time format, so the raw
+    // wire value must be gone from the cells while every signal stays verbatim.
+    expect(
+      screen.getByText(formatDateTime('2024-01-01T00:00:00Z')),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('2024-01-01T00:00:00Z')).not.toBeInTheDocument();
     expect(screen.getByText('12.5')).toBeInTheDocument();
     expect(screen.getByText('230')).toBeInTheDocument();
     expect(screen.getByText('5.4')).toBeInTheDocument();

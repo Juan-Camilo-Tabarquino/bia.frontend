@@ -5,6 +5,7 @@ import { Card, Descriptions, Result, Skeleton, Space } from "antd";
 import type { DescriptionsProps } from "antd";
 
 import { useGetMeterDetailQuery } from "../features/api/apiSlice";
+import { formatDateTime } from "./formatters";
 import {
   RequestError,
   requestErrorMessage,
@@ -84,11 +85,15 @@ export default function MeterDetail({ meterId }: MeterDetailProps) {
       label: "Readings count",
       children: data.readings_count,
     },
-    { key: "created_at", label: "Created at", children: data.created_at },
+    {
+      key: "created_at",
+      label: "Created at",
+      children: formatDateTime(data.created_at),
+    },
     {
       key: "last_reading_at",
       label: "Last reading at",
-      children: data.last_reading_at,
+      children: formatDateTime(data.last_reading_at),
     },
   ];
 

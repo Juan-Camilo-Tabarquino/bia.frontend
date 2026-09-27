@@ -3,6 +3,7 @@
 import { Skeleton, Table } from "antd";
 import type { TableColumnsType } from "antd";
 import type { Reading } from "@/types/backend";
+import { formatDateTime } from "../formatters";
 
 interface ReadingsTableProps {
   data: Reading[];
@@ -32,7 +33,14 @@ export default function ReadingsTable({ data, loading }: ReadingsTableProps) {
   );
 
   const columns: TableColumnsType<Reading> = [
-    { title: "Timestamp", dataIndex: "Timestamp", key: "Timestamp" },
+    {
+      title: "Timestamp",
+      dataIndex: "Timestamp",
+      key: "Timestamp",
+      // The row key and the sort/filter inputs stay the raw `Timestamp`; only
+      // the cell text goes through the shared formatter.
+      render: (timestamp: string) => formatDateTime(timestamp),
+    },
     { title: "Consumption (kWh)", dataIndex: "Consumption", key: "Consumption" },
     { title: "Voltage (V)", dataIndex: "Voltage", key: "Voltage" },
     { title: "Current (A)", dataIndex: "Current", key: "Current" },

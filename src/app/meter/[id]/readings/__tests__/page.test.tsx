@@ -1,6 +1,7 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import MeterReadingsPage from '../page';
+import { formatDateTime } from '@/components/formatters';
 import type { Anomaly, Reading } from '@/types/backend';
 
 jest.mock('next/navigation', () => ({
@@ -283,8 +284,12 @@ describe('MeterReadingsPage', () => {
     render(<MeterReadingsPage />);
 
     // The four signals survive to the table cells with their own units, so the
-    // old `Consumption -> value` reduction is gone.
-    expect(screen.getByText('2024-01-01T00:00:00Z')).toBeInTheDocument();
+    // old `Consumption -> value` reduction is gone. The timestamp cell now uses
+    // the shared local format instead of the raw wire string.
+    expect(
+      screen.getByText(formatDateTime('2024-01-01T00:00:00Z')),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('2024-01-01T00:00:00Z')).not.toBeInTheDocument();
     expect(screen.getByText('12.5')).toBeInTheDocument();
     expect(screen.getByText('230')).toBeInTheDocument();
     expect(screen.getByText('5.4')).toBeInTheDocument();
@@ -303,10 +308,16 @@ describe('MeterReadingsPage', () => {
     expect(markedPoints).toHaveLength(1);
     expect(markedPoints[0].Timestamp).toBe('2024-01-01T00:00:00Z');
 
-    expect(screen.getByText('2024-01-01T06:00:00Z')).toBeInTheDocument();
+    // The marker list prints the shared local format, never the raw timestamp.
+    expect(
+      screen.getByText(formatDateTime('2024-01-01T06:00:00Z')),
+    ).toBeInTheDocument();
     expect(
       screen.getAllByText(/HIGH · Real anomaly/).length,
     ).toBeGreaterThan(0);
-    expect(screen.queryByText('2024-02-09T00:00:00Z')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(formatDateTime('2024-02-09T00:00:00Z')),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('2024-01-01T06:00:00Z')).not.toBeInTheDocument();
   });
 });

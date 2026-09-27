@@ -1,6 +1,7 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import MeterDetail from '../MeterDetail';
+import { formatDateTime } from '@/components/formatters';
 
 jest.mock('@/features/api/apiSlice', () => ({
   useGetMeterDetailQuery: jest.fn(),
@@ -120,8 +121,15 @@ describe('MeterDetail component', () => {
     expect(screen.getByText('M-101')).toBeInTheDocument();
     expect(screen.getByText('OK')).toBeInTheDocument();
     expect(screen.getByText('12')).toBeInTheDocument();
-    expect(screen.getByText('2024-01-01T00:00:00Z')).toBeInTheDocument();
-    expect(screen.getByText('2024-01-10T00:00:00Z')).toBeInTheDocument();
+    // Both timestamps render the shared local format and not the wire string.
+    expect(
+      screen.getByText(formatDateTime('2024-01-01T00:00:00Z')),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(formatDateTime('2024-01-10T00:00:00Z')),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('2024-01-01T00:00:00Z')).not.toBeInTheDocument();
+    expect(screen.queryByText('2024-01-10T00:00:00Z')).not.toBeInTheDocument();
   });
 
   it('links to the meter readings and to its filtered anomalies', () => {

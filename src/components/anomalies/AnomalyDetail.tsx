@@ -8,12 +8,15 @@ import { AnomalyNarrative } from "./AnomalyNarrative";
 import { DataQualityNotice } from "./DataQualityNotice";
 import {
   anomalyStatusLabels,
-  formatConfidence,
-  formatMetric,
-  formatSignedPercent,
   isDataQuality,
   severityColors,
 } from "./anomalyLabels";
+import {
+  formatConfidence,
+  formatDateTime,
+  formatMetric,
+  formatSignedPercent,
+} from "@/components/formatters";
 
 const { Paragraph, Text } = Typography;
 
@@ -74,7 +77,7 @@ export function AnomalyDetail({ anomaly }: AnomalyDetailProps) {
             {
               key: "detected_at",
               label: "Detected at",
-              children: anomaly.detected_at,
+              children: formatDateTime(anomaly.detected_at),
             },
             { key: "priority", label: "Priority", children: anomaly.priority },
             {
@@ -201,7 +204,7 @@ export function AnomalyDetail({ anomaly }: AnomalyDetailProps) {
                 <Text strong>{event.type}</Text>
                 <br />
                 <Text type="secondary">
-                  {event.start} – {event.end}
+                  {formatDateTime(event.start)} – {formatDateTime(event.end)}
                 </Text>
                 <br />
                 <Text>{event.description}</Text>
