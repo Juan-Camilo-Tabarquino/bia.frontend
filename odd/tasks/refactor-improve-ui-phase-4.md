@@ -1,6 +1,6 @@
 # Feature: refactor/improve-ui — phase 4 (Interactividad)
 
-**Status: ALL PHASE-4 TASKS DONE — T1, T2, T2b, T3, T4, T5, T6, T7, T8 complete. One debt task open (T-SUITE).** Branch `refactor/improve-ui`, base `cdb610b` (phase 3 complete).
+**Status: PHASE 4 COMPLETE — all 8 tasks done and independently verified (PASS WITH FINDINGS). 29 suites / 254 tests, lint 0, tsc 0, next build 0 with 7 routes. One debt task open (T-SUITE).** Branch `refactor/improve-ui`, base `cdb610b` (phase 3 complete).
 
 **Reference:** `odd/tasks/refactor-improve-ui.md` (the whole feature and its phases),
 `docs/ui-refactor-plan.md` (the resume entry point), and the 12 open advisories recorded there.
@@ -138,12 +138,12 @@ the breadcrumb decodes its label while keeping the href encoded, with a `URIErro
 | T2 | `8bbd7e0` | eslint 0 · tsc 0 · **26 suites / 171 tests** · next build 0 (7 routes) | 1 probe proving the stale-closure fix | `gentle-ai-verify`: **FAIL**, 1 BLOCKER. Scope reduced by owner decision — see below |
 | T2b | `a533122` | eslint 0 · tsc 0 · **26 suites / 177 tests** · next build 0 (7 routes) | 2 gate mutations by the verifier; real-Chrome probes by the parent | `gentle-ai-verify`: PASS WITH FINDINGS, no BLOCKER. 3 findings fixed; 4 recorded |
 | T3 | `63644a2` | eslint 0 · tsc 0 · **26 suites / 196 tests** · next build 0 (7 routes) | 2 gate mutations by the parent | `gentle-ai-verify`: PASS WITH FINDINGS, no BLOCKER. 1 finding fixed; 4 recorded |
-| T5 | _(this commit)_ | eslint 0 · tsc 0 · **26 suites / 202 tests** · next build 0 (7 routes) | n/a — verified by reading the whole diff (small, presentation-only) | parent audit: code matches the `MeterDetail.tsx:72` precedent; assertions strengthened, none loosened |
 | T4 | `76c352d` | eslint 0 · tsc 0 · **26 suites / 217 tests** · next build 0 (7 routes) | 3 mutations by the worker, 1 load-bearing | parent audit: the `onChange` guard fixes a URL-rewrite bug the new tests caught |
 | T5 | `93f1e45` | eslint 0 · tsc 0 · **26 suites / 202 tests** · next build 0 (7 routes) | n/a — verified by reading the whole diff (small, presentation-only) | parent audit: code matches the `MeterDetail.tsx:72` precedent; assertions strengthened, none loosened |
-| T6 | _(this commit)_ | eslint 0 · tsc 0 · **27 suites / 223 tests** · next build 0 (7 routes) | n/a — verified by reading the diff; two traps checked by hand | parent audit: formatters extracted to `components/formatters.ts` (see below) |
-| T7 | _(this commit)_ | eslint 0 · tsc 0 · **29 suites / 237 tests** · next build 0 (7 routes) | n/a — audited by reading the diff and by a real-browser check | parent audit: zero invented metrics; contrast measured in both themes |
-| T8 | _(this commit)_ | eslint 0 · tsc 0 · **29 suites / 246 tests** · next build 0 (7 routes) | RED observed before the write; 3 mutations reverted with hashes | parent audit: 5 cases re-verified in real Chrome (see below) |
+| T6 | `512593f` | eslint 0 · tsc 0 · **27 suites / 223 tests** · next build 0 (7 routes) | n/a — verified by reading the diff; two traps checked by hand | parent audit: formatters extracted to `components/formatters.ts` (see below) |
+| T7 | `db0e73c` | eslint 0 · tsc 0 · **29 suites / 237 tests** · next build 0 (7 routes) | n/a — audited by reading the diff and by a real-browser check | parent audit: zero invented metrics; contrast measured in both themes |
+| T8 | `652c04b` | eslint 0 · tsc 0 · **29 suites / 246 tests** · next build 0 (7 routes) | RED observed before the write; 3 mutations reverted with hashes | parent audit: 5 cases re-verified in real Chrome (see below) |
+| **Phase verification** | _(this commit)_ | eslint 0 · tsc 0 · **29 suites / 254 tests** · next build 0 (7 routes) | 4 mutations by the verifier, all reproduced | `gentle-ai-verify`: PASS WITH FINDINGS. 3 coverage gaps + 2 doc defects fixed; rest recorded |
 | **T-SUITE** | — | — | — | **OPEN DEBT**: the page suite runs ~2.3 s/test (~85 s total, was ~15 s at `cdb610b`). One flaky timeout observed. See below. |
 
 ### T1 result
@@ -467,6 +467,46 @@ malformed case:
 The last row is the one that matters: it proves the href was re-encoded rather than the decoded label being
 interpolated into the path, which would have split `M 109/A` into two route segments. No crash in any case.
 
+## Phase 4 verification result — PASS WITH FINDINGS
+
+The end-to-end falsification round executed every mutation the phase claimed and reproduced all of them: T2b's clear
+button gate (2 tests fail when reverted), T8's `try/catch` (2 fail), T3's direction negation (**4** fail, none of them
+rendered — confirming the ordering is unguardable from the DOM), and T4's `nextSort !== sortKey` guard (2 fail). It
+also confirmed the corrected statement that jsdom does **not** click a disabled button, and that no DTO invention or
+phase-3 regression exists.
+
+**Three coverage gaps it found, all now closed — each one had allowed a real bug back in with the suite fully green:**
+
+1. **The stale-closure fix had no guard.** Reintroducing the exact bug T2 called its highest-value change left the
+   page suite at 33/33 green, because no test ever used the updater form. Two `useUrlState` tests now exercise it;
+   re-mutating makes one fail. Worth recording precisely: the *state* assertion alone does **not** catch it (the
+   internal ref carries the merged object either way) — only the serialized URL write distinguishes the two
+   implementations, which is why both tests exist and why the weaker one says so in its own comment.
+2. **`hasActiveFilters`' search branch had no direct guard.** Deleting it left **246 tests green**. That branch is what
+   shows the "Filters are applied…" note and keeps the clear action enabled for a search-only filter. Four unit tests
+   now pin it, and deleting it makes one fail.
+3. **The StrictMode rule was violated on `AnomalyFilters`**, which gained two effects and three render-phase state
+   updates this phase with no StrictMode coverage anywhere in `src/app/anomalies/` or `src/components/anomalies/`. The
+   verifier probed it and found no live bug, but it is the exact class of gap the project rule exists for — and the
+   coverage that had existed was **lost while T3 and T4 rewrote the page suite**, so it was restored rather than
+   added. Two StrictMode tests now cover the restored and typed-then-cleared paths.
+
+**Documentation defects it found, now corrected:** the per-task table listed T5 twice with identical text, the three
+later rows carried no commit hash, and the T2 section still described the anomaly search as "removed" and
+`AnomalyFilters.tsx` as "reverted to its `cdb610b` state" — false by phase end, since T2b re-implemented it and the
+file ended among the most-changed in the phase. A superseded-by-T2b banner now marks that section as history.
+
+**Recorded, not fixed (all pre-existing or disclosed):** a one-sided `detected_from` still parses to an active filter
+behind an empty `RangePicker` (disclosed since T1); the dashboard's control-free preview remains *structurally*
+guaranteed but implicit — and the T4 note promising to make it explicit "when that file is next authorized" is now
+**stale, because T7 edited exactly that file without adding it**, so that follow-up is re-flagged rather than
+considered done; the `useDebouncedValue` StrictMode test cannot detect double emission (React bails out of identical
+state) so its name overstates what it proves; and the new paginator adds repeated jsdom `getComputedStyle` noise that
+is the visible face of the T-SUITE debt.
+
+**Not verifiable from the repository alone**, and therefore still on the parent's browser evidence only: the
+`next build` output, every real-Chrome result, and the T7 contrast measurements.
+
 ## Verification plan (phase 4)
 
 ### T2 result — partially shipped, scope reduced on purpose
@@ -475,6 +515,11 @@ interpolated into the path, which would have split `M 109/A` into two route segm
 **real bug fix in `useUrlState`** (below). `MeterList` search filters the already-fetched id array
 case-insensitively, with an honest "mostrando X de Y" count and a search-empty state distinct from the
 backend-empty state.
+
+> **Superseded by T2b — read this as history, not as current state.** The anomaly search described as removed
+> below was re-implemented in T2b once the real cause turned out to be a disabled clear button rather than a state
+> race, and `AnomalyFilters.tsx` is by phase end one of the most-changed files in the phase. The paragraph stands as
+> the record of a wrong diagnosis, not as a description of the tree.
 
 **What was deliberately removed: the anomaly search box.** The independent verification returned **FAIL with a
 reproduced BLOCKER**: pressing "Clear filters" while a search draft is still inside the debounce window

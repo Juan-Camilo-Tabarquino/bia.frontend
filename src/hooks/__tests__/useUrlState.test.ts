@@ -154,4 +154,42 @@ describe("useUrlState", () => {
     expect(result.current[0]).toEqual({ name: "alpha", level: "high" });
     expect(replace).not.toHaveBeenCalled();
   });
+
+  // Regression guard for the silent-data-loss bug this hook was fixed to
+  // prevent. The page merges filter patches with `setUrlState((previous) =>
+  // ({ ...previous, ...patch }))`; before the updater form existed it spread a
+  // value captured at render time, so TWO updates landing before a re-render
+  // dropped one of them.
+  //
+  // The assertion that actually catches a regression is the URL one below, not
+  // the state one: `stateRef` would carry the merged object even if the updater
+  // form were removed, so only the serialized write distinguishes the two
+  // implementations. Both are kept because they fail for different reasons.
+  it("keeps both updates when two land before a re-render", () => {
+    const { result } = renderHook(() => useUrlState(demoSchema));
+
+    act(() => {
+      result.current[1]((previous) => ({ ...previous, name: "alpha" }));
+      result.current[1]((previous) => ({ ...previous, level: "low" }));
+    });
+
+    expect(result.current[0]).toEqual({ name: "alpha", level: "low" });
+  });
+
+  it("derives each URL write from the updater's own result, not the stale value", () => {
+    const { result } = renderHook(() => useUrlState(demoSchema));
+
+    act(() => {
+      result.current[1]((previous) => ({ ...previous, name: "alpha" }));
+      result.current[1]((previous) => ({ ...previous, level: "low" }));
+    });
+
+    // Each updater writes the URL for the state IT produced. With the updater
+    // form removed, the write is built from a value captured at render time and
+    // this drops one of the two keys.
+    expect(replace).toHaveBeenLastCalledWith("/demo?name=alpha", {
+      scroll: false,
+    });
+    expect(result.current[0]).toEqual({ name: "alpha", level: "low" });
+  });
 });

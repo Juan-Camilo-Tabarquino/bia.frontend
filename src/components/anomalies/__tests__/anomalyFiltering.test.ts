@@ -4,6 +4,7 @@ import {
   applyAnomalyFilters,
   applyAnomalySort,
   emptyAnomalyFilters,
+  hasActiveFilters,
   type AnomalyFilterValues,
 } from "../anomalyFiltering";
 
@@ -228,5 +229,34 @@ describe("applyAnomalySort", () => {
         order: ids(applyAnomalySort(sample, definition.key)),
       }).toEqual({ key: definition.key, order: ids(expected) });
     }
+  });
+});
+
+/** Builds filters with a search term, so `hasActiveFilters` can be probed. */
+function withSearch(text: string): AnomalyFilterValues {
+  return { ...emptyAnomalyFilters, search: { text, resetToken: 0 } };
+}
+
+describe("hasActiveFilters and the search term", () => {
+  // The search branch is what shows the "Filters are applied..." note and keeps
+  // the clear action enabled for a search-only filter. Deleting that branch
+  // used to leave the entire suite green, so it is pinned directly here rather
+  // than only through the page.
+  it("counts a non-blank search term as an active filter", () => {
+    expect(hasActiveFilters(withSearch("spike"))).toBe(true);
+  });
+
+  it("counts a whitespace-only term as no filter, because it hides nothing", () => {
+    expect(hasActiveFilters(withSearch("   "))).toBe(false);
+  });
+
+  it("counts an empty term as no filter", () => {
+    expect(hasActiveFilters(withSearch(""))).toBe(false);
+  });
+
+  it("still reports the other filters when the term is blank", () => {
+    expect(
+      hasActiveFilters({ ...withSearch("  "), severity: "HIGH" }),
+    ).toBe(true);
   });
 });

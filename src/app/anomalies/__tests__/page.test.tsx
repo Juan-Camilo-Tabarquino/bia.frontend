@@ -1,4 +1,4 @@
-import React from "react";
+import React, { StrictMode } from "react";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { Anomaly } from "@/types/backend";
 import AnomaliesPage from "../page";
@@ -864,5 +864,50 @@ describe("AnomaliesPage", () => {
     expect(paginatorOf(container).getByTitle("1")).toHaveClass(
       "ant-pagination-item-active",
     );
+  });
+
+  // `AnomalyFilters` gained two effects this phase (the debounced publish and
+  // the external-term adoption) plus render-phase state adjustment, and the
+  // project rule is that every effect-bearing component renders inside
+  // StrictMode at least once. That coverage was lost while T3 and T4 rewrote
+  // this suite, so it is restored here.
+  it("keeps a restored search stable under StrictMode's double-invoked effects", () => {
+    mockedUseSearchParams.mockReturnValue(new URLSearchParams("q=spike"));
+
+    render(
+      <StrictMode>
+        <AnomaliesPage />
+      </StrictMode>,
+    );
+
+    expect(searchBox()).toHaveValue("spike");
+    expect(
+      screen.getByText("1 de 2 anomalías coinciden con los filtros."),
+    ).toBeInTheDocument();
+    // StrictMode re-runs effects; a mount must not emit a URL write.
+    expect(replaceUrl).not.toHaveBeenCalled();
+  });
+
+  it("types and clears under StrictMode's double-invoked effects", async () => {
+    render(
+      <StrictMode>
+        <AnomaliesPage />
+      </StrictMode>,
+    );
+
+    fireEvent.change(searchBox(), { target: { value: "spike" } });
+    await waitFor(() => {
+      expect(
+        screen.getByText("1 de 2 anomalías coinciden con los filtros."),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(clearButton());
+    await waitFor(() => {
+      expect(searchBox()).toHaveValue("");
+      expect(
+        screen.getByText("2 de 2 anomalías coinciden con los filtros."),
+      ).toBeInTheDocument();
+    });
   });
 });
