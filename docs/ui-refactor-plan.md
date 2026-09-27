@@ -175,6 +175,10 @@ encontrado` (`src/components/MeterDetail.tsx:47`) y `Anomalía no encontrada`
 
 ## Cómo retomar
 
+Si todavía no conocés el repo, **empezá por [`docs/frontend-guide.md`](frontend-guide.md)**: explica cómo funciona
+el frontend, qué muestra cada página y con qué estados, las convenciones y los problemas conocidos. Este documento
+es el estado y la historia del refactor; la guía es el cómo.
+
 ```bash
 git switch refactor/improve-ui
 npm install
@@ -187,11 +191,25 @@ sugerencias exactas → **verificación independiente** con el mandato de *falsi
 commit del work unit → **preflight de review nativo** (`inspect` → `start` → `status` → `capture` →
 `capture` con acknowledgement → `acknowledge-approved`) → commit del registro ODD.
 
-**Para verificar en navegador** (lo que jsdom no puede dar): hay un Chromium headless instalado vía
-Playwright en `node_modules` (instalado con `--no-save`, así que `package.json` está intacto). Se usa
-`npx playwright install chromium` y un script que abre la app contra `next dev` — **en dev, no en
+**Para verificar en navegador** (lo que jsdom no puede dar): **no hay Playwright ni Puppeteer instalados** —
+`node_modules` no los tiene y `package.json` no los declara. Lo que se usa es el **Chrome de la máquina manejado por
+CDP**:
+
+```bash
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+  --headless=new --remote-debugging-port=9222 \
+  --user-data-dir=/tmp/chrome-profile --no-first-run --disable-gpu about:blank
+```
+
+y un cliente CDP mínimo en Node (WebSocket crudo sobre `net`, frames enmascarados) que use `Target.createTarget`,
+`Target.attachToTarget({flatten:true})`, `Runtime.evaluate`, `Input.dispatchMouseEvent` para clicks **reales** y el
+dominio `Accessibility` para los nombres accesibles — leer el `aria-label` que nosotros mismos escribimos no prueba
+nada.
+
+Dos condiciones que ya costaron un ciclo cada una: **medí siempre contra `http://localhost:3000`** (ver el advisory
+`dev-127-does-not-hydrate`: en `127.0.0.1` la app no hidrata y parece un bug de la aplicación), y **en dev, no en
 `next start`**, porque React solo loguea los warnings de hidratación en desarrollo. Instrumentar
-`Storage.prototype.getItem/setItem` por `addInitScript` fue lo que reveló el bug del tema.
+`Storage.prototype.getItem/setItem` fue lo que reveló el bug del tema.
 
 ### Cosas del ciclo de review que conviene saber de antemano
 

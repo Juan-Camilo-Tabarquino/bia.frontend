@@ -561,5 +561,7 @@ from *inferring* the reset instead of making it an explicit part of the state th
 - **Date truth**: no raw RFC3339 string is rendered to the user anywhere.
 - **Accessibility**: every new input has an accessible name; the existing `accessibility.test.tsx` rules
   (exactly one `h1` per route) still hold.
-- **Browser check** with the Playwright Chromium already in `node_modules` against `next dev` (React only
-  logs hydration warnings in dev), with zero console errors.
+- **Browser check** with the machine's Chrome driven over CDP against `next dev` (React only logs hydration
+  warnings in dev), with zero console errors. **There is no Playwright in `node_modules`** — an earlier version of
+  this line said there was, and phase 5 already recorded the check as "the Playwright-free CDP driver used in phase
+  4". The correct recipe lives in `docs/ui-refactor-plan.md` under *Cómo retomar*.
