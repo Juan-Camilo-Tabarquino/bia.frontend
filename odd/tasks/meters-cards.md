@@ -1,6 +1,6 @@
 # Feature: meters-cards — the meters list as clickable cards
 
-**Status: M4 done — the decisive browser properties pass and the original complaint is refuted with numbers. M5 (commit) pending.** Branch `refactor/improve-ui`, base `ff4b6b8`.
+**Status: CLOSED — implemented `cb0cec3`, recorded `9f5ef7f`, and the native review APPROVED with its authority burned (lineage `review-b78b90f368a5ca5c`).** Branch `refactor/improve-ui`, base `ff4b6b8`.
 
 **Reference:** `odd/tasks/refactor-improve-ui.md` (the feature and its binding rules),
 `odd/tasks/refactor-improve-ui-phase-4.md` (the contracts this change must not break),
@@ -103,7 +103,7 @@ feature:
 
 | Task | Commit | Gates | Mutation experiment | Review |
 | --- | --- | --- | --- | --- |
-| meters-cards | — | `npx eslint .` 0 · `npx tsc --noEmit` 0 · `npx jest` **3 suites / 28 tests** (MeterCard 8, MeterList 11, accessibility 9) | 4 mutations run: the raw-status one failed 3 tests, the unencoded-href one failed with `Expected href="/meter/M-101%20%2F%20A"`, the fetch-everything one failed with `+ Received + 100`; **deleting the stretched-link overlay failed NOTHING** and is reported as browser-only rather than faked | — |
+| meters-cards | `cb0cec3` (code) · `9f5ef7f` (record) | `npx eslint .` 0 · `npx tsc --noEmit` 0 · `npx jest` **3 suites / 28 tests** (MeterCard 8, MeterList 11, accessibility 9) | 4 mutations run: the raw-status one failed 3 tests, the unencoded-href one failed with `Expected href="/meter/M-101%20%2F%20A"`, the fetch-everything one failed with `+ Received + 100`; **deleting the stretched-link overlay failed NOTHING** and is reported as browser-only rather than faked | **APPROVED, authority burned** — lineage `review-b78b90f368a5ca5c`, target `sha256:235689aa…904e`, consumed revision `sha256:56bcd220…bac`, tier `medium`, lens `review-reliability`, 8 paths / 574 changed lines, budget 200 with no correction opened. One finding, `R3-nplus1-load`, severity **WARNING** |
 
 ## Tasks
 
@@ -113,7 +113,7 @@ feature:
 | M2 | **`MeterList` renders the grid**: replace the `Listy` block with a responsive card grid inside the existing `Space` structure, and make the detail fetch follow the VISIBLE set. Keep every contract in the table above. | **done** |
 | M3 | **Tests**: a new `MeterCard` suite (id as the accessible name, one tab stop, the encoded href, both detail labels, its own loading/error) and the updated `MeterList` suite, including the visible-set request count. StrictMode where effects are involved. Mutation experiments for the stretched link's hit area, the encoded href, and the visible-set fetch. | **done** — 8 + 11 tests; `accessibility.test.tsx` needed **no** change, because its existing fixed `useGetMeterDetailQuery` mock already feeds every card |
 | M4 | **Gates plus a real-browser look** at `/meters` with a stand-in backend: the grid fills the container, the card is clickable anywhere on its surface, Tab reaches exactly one link per card, the focus ring is visible, and no hydration warning. This is the one item that can confirm or refute the original "cortada" complaint. | **done** — see *Browser evidence* |
-| M5 | **Commit and record**: work-unit commit, this file filled in, and the `docs/ui-refactor-plan.md` row. | todo |
+| M5 | **Commit and record**: work-unit commit, this file filled in, and the `docs/ui-refactor-plan.md` row. | **done** — `cb0cec3` code, `9f5ef7f` record; the review receipt is recorded below |
 
 ## Browser evidence (M4, 2026-09-27)
 
@@ -169,6 +169,7 @@ The grid fills the container exactly, and the only `scrollWidth > clientWidth` e
 | `meters-hit-area-jsdom` | SUGGESTION | `MeterCard.module.scss` | The stretched-link hit area and the `:focus-within` ring are **browser-only properties**. Deleting the overlay left all 28 tests green, and no unit assertion was added to pretend otherwise. The M4 browser pass is what covers them; a future refactor of that SCSS has no unit guard. |
 | `meters-visible-set-negative` | SUGGESTION | `MeterList.test.tsx` | The browser measurement of the visible-set fetch is **not fully discriminating**: the first load renders all 14 cards and fetches them all, so narrowing to 2 finds both already cached. The browser shows only that narrowing issues no spurious requests. The mutation-proven unit test (102 ids → 2 requests, 102 under mutation) is what actually pins the behaviour. |
 | `no-red-first-evidence` | SUGGESTION | this phase | The implementation's tests were authored around the finished component, so no RED-first evidence exists. Falsification rests on the four mutation experiments, three of which fired. Reported as a deviation rather than presented as strict TDD. |
+| `R3-nplus1-load` | **WARNING** | `src/components/MeterList.tsx:113-116` | Raised by the native review's `review-reliability` lens: one `GET /api/meters/<id>` per rendered card, because the list endpoint returns only ids and no bulk detail endpoint exists. The owner was shown this cost before the work started and accepted it, but the independent lens graded it **WARNING** rather than SUGGESTION — the highest severity any finding has carried on this branch. Non-blocking and informational: it opened no correction and does not reopen the review. The claim text was not retained (the receipt is burned), so this row records id, lens, location, severity and disposition only. |
 
 ### Two findings this phase did NOT cause, found while verifying it
 

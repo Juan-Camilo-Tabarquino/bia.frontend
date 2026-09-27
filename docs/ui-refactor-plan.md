@@ -205,9 +205,10 @@ Playwright en `node_modules` (instalado con `--no-save`, así que `package.json`
 
 ## Trabajo posterior al refactor: `/meters` en cards
 
-**Hecho y verificado en navegador, pendiente de commit al escribir esto.** Detalle completo en
-`odd/tasks/meters-cards.md`. La lista de medidores dejó de ser filas de `Listy` (que **no** era una tabla, contra la
-premisa del pedido) y pasó a un grid de cards de antd cliqueables, con `id + estado + última lectura`.
+**Hecho, verificado en navegador, comiteado (`cb0cec3` código, `9f5ef7f` registro) y con review nativo APROBADO**
+(lineage `review-b78b90f368a5ca5c`, autoridad quemada). Detalle completo en `odd/tasks/meters-cards.md`. La lista
+de medidores dejó de ser filas de `Listy` (que **no** era una tabla, contra la premisa del pedido) y pasó a un grid
+de cards de antd cliqueables, con `id + estado + última lectura`.
 
 Lo que importa si se retoma:
 
@@ -220,7 +221,10 @@ Lo que importa si se retoma:
   recortado. La causa estructural que encontré — el `Space` externo `inline-flex` sin `width` — quedó superada por
   el layout, y el grid lo llena.
 - **El detalle es un request por card** (`GET /api/meters` solo devuelve ids, no hay endpoint de lista con datos),
-  y sigue al conjunto **visible**: filtrar 102 ids a 2 cuesta 2 requests, probado por mutación.
+  y sigue al conjunto **visible**: filtrar 102 ids a 2 cuesta 2 requests, probado por mutación. **El review nativo
+  lo marcó igual como `R3-nplus1-load`, severidad WARNING** — la más alta que recibió un hallazgo en esta rama, y
+  la lente lo graduó por encima de lo que la conversación había asumido. Queda como deuda conocida, no como
+  sorpresa.
 
 ## Dos defectos encontrados al verificar esto, ninguno causado por el cambio
 
