@@ -23,6 +23,22 @@ jest.mock('@/features/data/dataAPI', () => ({
   useGetMeterReadingsQuery: jest.fn(),
 }));
 
+// The meter detail page now mounts `AiReanalysis`, whose RTK Query hooks need a
+// store provider this suite does not use. Mock them to the idle state so the
+// page keeps rendering its single `h1` without a Redux Provider.
+jest.mock('@/features/dashboards/dashboardAPI', () => ({
+  ...jest.requireActual('@/features/dashboards/dashboardAPI'),
+  usePostAnalyzeMutation: jest.fn(() => [
+    jest.fn(),
+    { isLoading: false, data: undefined, error: undefined },
+  ]),
+  useGetAiAnalysisQuery: jest.fn(() => ({
+    data: undefined,
+    error: undefined,
+    isLoading: false,
+  })),
+}));
+
 // recharts cannot measure a container in jsdom (getBoundingClientRect is 0),
 // so render a deterministic stand-in that exposes the props under test.
 jest.mock("recharts", () =>

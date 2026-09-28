@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { useParams } from "next/navigation";
 import { Typography } from "antd";
 import MeterDetail from "../../../components/MeterDetail";
+import { AiReanalysis } from "../../../components/anomalies/AiReanalysis";
 
 export default function MeterPage() {
   const { id } = useParams();
@@ -12,6 +13,7 @@ export default function MeterPage() {
     <div>
       <Typography.Title level={1}>Medidor {meterId}</Typography.Title>
       <MeterDetail meterId={meterId} />
+      <AiReanalysis meterId={meterId} />
     </div>
   );
 }

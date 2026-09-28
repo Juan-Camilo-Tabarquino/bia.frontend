@@ -6,7 +6,6 @@ import {
   useGetAnomaliesQuery,
   useGetMetersQuery,
 } from "@/features/api/apiSlice";
-import { AiReanalysis } from "@/components/anomalies/AiReanalysis";
 import { AnomalyFilters } from "@/components/anomalies/AnomalyFilters";
 import { AnomalyTable } from "@/components/anomalies/AnomalyTable";
 import {
@@ -194,8 +193,6 @@ function AnomaliesContent() {
           />
         )}
       </section>
-
-      <AiReanalysis />
 
       {hasActiveFilters(filters) && (
         <Text type="secondary" style={{ display: "block", marginTop: "1rem" }}>

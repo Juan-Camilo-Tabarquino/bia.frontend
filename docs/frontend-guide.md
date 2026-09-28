@@ -166,8 +166,8 @@ entrada (`GET /dashboard/summary`) y **nunca se invalida**, así que puede queda
 header **depende deliberadamente** de que el shell nunca se desmonte entre rutas: como la suscripción al summary no
 se corta, la entrada no se descarta y `/dashboard` la reutiliza en vez de pedirla de nuevo. Es una limitación real,
 no un accidente, y es consistente con la decisión del dueño de **no hacer polling** — la única excepción es el
-re-análisis con IA de `/anomalies`, que poléa **por suscripción** y solo refresca su propia entrada
-(`GET /ai/analysis/{id}`); no invalida ninguna otra.
+análisis con IA **por medidor** de `/meter/[id]`, que poléa **por suscripción** y solo refresca su propia entrada
+(`GET /ai/analysis/{id}`) mientras el run esté `queued` o `running`; no invalida ninguna otra.
 
 ### Autenticación: la guardia es de flujo, no de seguridad
 
@@ -357,18 +357,43 @@ Formato: **qué se ve**, **endpoints**, **estados** con su copia exacta, y **com
 
 ### `/meter/[id]` — Detalle de medidor
 
-- **Qué se ve:** `h1` **`Medidor {meterId}`**; y una `Card` con `Descriptions` titulada **Detalles del medidor**:
+- **Qué se ve:** `h1` **`Medidor {meterId}`**; una `Card` con `Descriptions` titulada **Detalles del medidor**:
   `ID`, `ID del medidor`, `Estado` (`OK · Operativo`), `Cantidad de lecturas`, `Creado`, `Última lectura`
-  (fechas por `formatDateTime`). En el encabezado de la card, los links **Ver lecturas** y **Ver anomalías**
-  (este último a `/anomalies?meter_id=…`).
-- **Endpoints:** `GET /meters/{meterId}`.
+  (fechas por `formatDateTime`) con los links **Ver lecturas** y **Ver anomalías** (este último a
+  `/anomalies?meter_id=…`); y, debajo, el bloque **Análisis con IA** (`AiReanalysis`) del medidor.
+- **Endpoints:** `GET /meters/{meterId}`; y bajo demanda `POST /ai/analyze` (body `{"meter_id":"<meterId>"}`)
+  más `GET /ai/analysis/{id}`.
 - **Estados:**
   - *Cargando:* `Skeleton` de 6 filas.
   - *404:* `Result` con `status="404"`, título **Medidor no encontrado**, subtítulo
     `No existe un medidor con el id "{meterId}".` y link **Volver a medidores**.
   - *Error:* `RequestError` **No se pudo cargar el medidor** + **Reintentar**.
+  - *Análisis en curso:* `role="status"` **El análisis sigue en curso (estado: …). Se actualizará automáticamente.**,
+    el botón **Correr análisis con IA** deshabilitado, y la consulta al backend repetida cada 3 s mientras el `status`
+    sea `queued` o `running`.
+  - *Análisis fallido:* `Alert` error **El análisis falló** — con el `error` del run cuando existe, y si no
+    **El backend informó que el análisis falló. Vuelve a intentarlo.** Un `400` del POST (medidor desconocido) muestra
+    el `error` del body.
+  - *Estado no reconocido:* `Alert` warning **Estado del análisis no reconocido**, que no afirma que el análisis
+    haya terminado (y que también detiene el polling).
 - **Notable:**
   - `name` y `location` **llegan siempre vacíos** y la tabla no los renderiza.
+  - **Análisis con IA por medidor.** El botón **Correr análisis con IA** dispara `POST /ai/analyze` con
+    `{"meter_id":"<meterId>"}` y, con el `analysisId` devuelto, consulta `GET /ai/analysis/{id}`. El POST responde
+    **`202`** (no es sincrónico): arranca o se une a un run para ese medidor; un segundo POST mientras hay un run en
+    vuelo devuelve el `analysisId` existente, así que un doble clic no pierde la corrida. El bloque **lee el `status`**:
+    repite la consulta cada 3 s (`ANALYSIS_POLL_INTERVAL_MS`) solo mientras sea `queued` o `running`, y con cualquier
+    otro valor detiene el polling, para que un estado desconocido no se vuelva un bucle de requests.
+  - **Estado del proceso real.** Un `Steps` de antd dibuja las **siete etapas** en orden (`Lecturas`, `Baseline`,
+    `Detección`, `Correlación`, `Eventos`, `Explicación con IA`, `Recomendación`) derivadas del `stage` que informa el
+    backend — nunca un avance simulado. Antes de arrancar (`queued`) toda la lista queda pendiente, las etapas
+    anteriores quedan `finish` y la activa `process` (o `error` si el run falló). Mientras el run está en vuelo, el
+    paso activo muestra los segundos transcurridos (`Explicación con IA — 12 s`); una llamada al LLM no expone
+    progreso parcial, así que **nunca se dibuja un porcentaje falso**.
+  - **Resultado:** al completar muestra la narrativa del medidor (por el `AnomalyNarrative` seguro), su
+    `recommended_action`, la línea de cierre de plataforma `N anomalías detectadas · M requieren atención prioritaria`
+    tomada de `platform`, y el link a la anomalía del medidor cuando existe. El resultado es **aditivo** (no reemplaza
+    ni reordena ninguna lista determinística).
   - Es **la única ruta** que declara `export const dynamic = "force-dynamic"` (verificado por grep; ninguna otra
     página lo declara).
   - **Defecto conocido:** el `h1` muestra el segmento **crudo** de la ruta. `/meter/M%20109%2FA` renderiza
@@ -429,9 +454,9 @@ Formato: **qué se ve**, **endpoints**, **estados** con su copia exacta, y **com
 
 - **Qué se ve:** `h1` **Anomalías**; un párrafo `sr-only`; la barra de **filtros** (búsqueda, medidor, tipo,
   severidad, estado, rango de fechas, y **Limpiar filtros**); la línea de conteo **`N de M anomalías coinciden con
-  los filtros.`**; la tabla; y el bloque de **re-análisis con IA**.
-- **Endpoints:** `GET /anomalies`, `GET /meters` (alimenta el filtro por medidor), y bajo demanda
-  `POST /ai/analyze` + `GET /ai/analysis/{id}`.
+  los filtros.`**; y la tabla.
+- **Endpoints:** `GET /anomalies`, `GET /meters` (alimenta el filtro por medidor). El análisis con IA **ya no se
+  corre acá**: vive en la página de cada medidor.
 - **Estados:**
   - *Cargando:* `Skeleton` de 6 filas.
   - *Error de anomalías:* `RequestError` **No se pudieron cargar las anomalías** + **Reintentar**.
@@ -441,13 +466,6 @@ Formato: **qué se ve**, **endpoints**, **estados** con su copia exacta, y **com
   - *Vacío del backend:* `El backend no reportó anomalías.`
   - *Vacío por filtros:* `Ninguna anomalía coincide con los filtros actuales.` + botón **Quitar filtros**
     (distinto del **Limpiar filtros** de la barra).
-  - *Análisis en curso:* `role="status"` **El análisis sigue en curso (estado: …). Se actualizará automáticamente.**,
-    con el botón de re-análisis deshabilitado, y la consulta al backend repetida cada 3 s mientras el `status` sea
-    `queued` o `running`.
-  - *Análisis fallido:* `Alert` error **El análisis falló** — con el mensaje del error cuando existe, y si no
-    **El backend informó que el análisis falló. Vuelve a intentarlo.**
-  - *Estado no reconocido:* `Alert` warning **Estado del análisis no reconocido**, que no afirma que el análisis
-    haya terminado (y que también detiene el polling).
 - **Notable:**
   - **Filtrado y ordenamiento en el navegador.** El endpoint devuelve la lista completa y **no acepta parámetros
     de consulta**; ningún control dispara un request.
@@ -456,13 +474,6 @@ Formato: **qué se ve**, **endpoints**, **estados** con su copia exacta, y **com
     tabla; `sort=backend` (el default) significa "sin orden propio" y no se escribe en la URL.
   - **La paginación NO está en la URL.** Es estado interno de la tabla (10 filas por página) y se resetea a la
     página 1 cuando cambia el conjunto filtrado.
-  - **Re-análisis con IA a demanda:** el botón **Reintentar el análisis de la plataforma** dispara `POST /ai/analyze`
-    (sin body) y, con el `analysisId` devuelto, consulta `GET /ai/analysis/{id}`. El bloque **lee el `status`**: repite la
-    consulta cada 3 s (`ANALYSIS_POLL_INTERVAL_MS`) solo mientras sea `queued` o `running`, y con `completed` muestra el
-    conteo, la anomalía más urgente y su narrativa. Con cualquier otro valor el polling se detiene, para que un estado
-    desconocido no se vuelva un bucle de requests. El resultado es **aditivo** (no reemplaza ni reordena la lista
-    determinística). Hoy el POST es **sincrónico** (~1 min) y la API responde `completed`, así que el polling no se
-    activa; la request abierta **R3** de `docs/backend-requirements.md` pide el ciclo asíncrono.
 
 ### `/anomalies/[id]` — Investigación de la anomalía
 
@@ -479,7 +490,8 @@ Formato: **qué se ve**, **endpoints**, **estados** con su copia exacta, y **com
     es un componente de cliente, así que **no responde el código HTTP**.
   - *Error:* `RequestError` **No se pudo cargar la anomalía** + **Reintentar** + link **Volver a las anomalías**.
   - *Sin eventos correlacionados:* `Ningún evento correlacionado explica esta desviación.`
-  - *Sin narrativa LLM:* `No hay narrativa del LLM disponible para esta anomalía.`
+  - *Sin narrativa LLM:* `La narrativa se genera bajo demanda: corré el análisis con IA desde la página del
+    medidor para producirla.`
 - **Notable:** el `h1` acá es **estático** ("Investigación de la anomalía"), a diferencia del detalle de medidor:
   no muestra el segmento de ruta. El `meter_id` sí es un link, con el id como texto y el href encodado.
 
