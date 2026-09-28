@@ -34,11 +34,13 @@ npm run dev
 
 This starts the Next.js development server (App Router, Turbopack) with hot reloading. Open `http://localhost:3000` in your browser.
 
-The API base URL comes from `NEXT_PUBLIC_API_URL` (see `src/utils/apiBaseUrl.ts`). Set it in a `.env.local` file at the repository root, for example:
+The API base URL would come from `NEXT_PUBLIC_API_URL` (see `src/utils/apiBaseUrl.ts`). The repository ships a tracked `.env.example` at the root that documents the variable; copy it to `.env.local` if you want to set it, for example:
 
 ```bash
 NEXT_PUBLIC_API_URL=http://localhost:3001/api
 ```
+
+Be aware that the variable **has no browser effect today**: the read is not statically inlined by Next, so the hardcoded fallback wins and the running client always talks to `http://localhost:3001/api`. This is the `apiBaseUrl-never-inlined` defect documented in section 4 of [`docs/frontend-guide.md`](docs/frontend-guide.md).
 
 ---
 

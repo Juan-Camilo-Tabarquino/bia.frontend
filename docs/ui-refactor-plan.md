@@ -17,8 +17,8 @@ operativo.
 | --- | --- |
 | Rama | `refactor/improve-ui`, desde `main` (`ab85e7e8`) |
 | Fases hechas | **0+1, 2, 3, 4, 5 y 6** (más el arreglo del tema) y **dos cambios posteriores al refactor con su propia revisión**: `meters-cards` (recibo de review nativo **APROBADO**) y `breadcrumb-gutter` (verificación en navegador y confirmación del dueño) |
-| Fases pendientes | **Ninguna.** El refactor está cerrado. Lo que queda abierto es: la decisión de merge a `main`, los defectos `apiBaseUrl-never-inlined` y `meter-detail-h1-encoded`, los advisories abiertos, y la deuda `T-SUITE` |
-| Suite | **32 suites / 279 tests** en `55399056` (arrancó en 18/118, y era 24/155 al cerrar la fase 3). **Cifra histórica de la fase 6**: `meters-cards` agregó después la suite `MeterCard`, así que el total actual no está re-medido acá |
+| Fases pendientes | **Ninguna.** El refactor está cerrado y **ya está en `main`** (PR #2). Lo que queda abierto es: los defectos `apiBaseUrl-never-inlined` y `meter-detail-h1-encoded`, los advisories abiertos, y la deuda `T-SUITE` |
+| Suite | **35 suites / 317 tests** en `feat/demo-polish` (cifra medida, la actual). **Cifra histórica de la fase 6:** 32 suites / 279 tests en `55399056` (arrancó en 18/118, y era 24/155 al cerrar la fase 3); `meters-cards` agregó después la suite `MeterCard` |
 | Gates | Medición de la fase 6 en `55399056`: `lint` 0 · `tsc --noEmit` 0 · `test` 279/279 · `next build` 0 (8 rutas). Los cambios posteriores corrieron sus propios gates acotados, no la suite completa |
 | Review nativo | Último estado **registrado** (fase 3): **4 recibos, los 4 aprobados**, autoridad quemada. Las fases 4 y 5 se cerraron con **verificación independiente** (`gentle-ai-verify`, PASS WITH FINDINGS) registrada en sus propios ODD; **si cada una tiene un recibo de review nativo no se puede leer de los documentos → desconocido**. La fase 6 tiene recibo propio: **APROBADA** (lineage `review-ea04c99651f669cf`), autoridad quemada, 3 advisories no bloqueantes. `meters-cards` también: **APROBADA** (lineage `review-b78b90f368a5ca5c`), autoridad quemada, 1 advisory no bloqueante (`R3-nplus1-load`, WARNING). `breadcrumb-gutter` **no registra un recibo de review nativo** en su ODD: se cerró con medición en navegador y confirmación visual del dueño |
 | Decisiones fijadas | 3 destinos con `/meters` como entrada · **dark por defecto + toggle** · teal de Bia · health como **toast al arrancar** (sin polling ni chip) · **Inter** · `@ant-design/icons` permitido (solo componentes gratis de antd) |
@@ -80,9 +80,12 @@ Estas no son sugerencias: son cosas que ya costaron un ciclo cada una.
 
 **Ninguna.** Las fases 0+1 a 6 están hechas, comiteadas, pusheadas y (la 6) con review nativo aprobado. Después se sumaron dos cambios con su propio alcance: `meters-cards` (review nativo aprobado) y `breadcrumb-gutter` (verificación en navegador + confirmación del dueño, sin recibo de review nativo registrado).
 
-### El refactor está cerrado — queda la decisión de merge
+### El refactor está cerrado — y ya está en `main`
 
-- **Merge a `main`**: es tuya, no del flujo de trabajo. `refactor/improve-ui` está 31 commits adelante de `main`.
+- **Merge a `main`:** **hecho.** `refactor/improve-ui` entró por el PR #2; después se sumaron el PR #3
+  (`ai-reanalysis-status`), el PR #4 (análisis por medidor) y el PR #6 (`demo-polish`, que además trae el flujo de
+  auth). Todos están en `origin/main`. *(Al escribir esta sección la rama estaba 31 commits adelante de `main`;
+  ese detalle se conserva como historia.)*
 - **El review de la rama acumulada ya no es posible.** El primer `START` falló con `lens_context_budget_exceeded`
   sobre el candidato por defecto (`main` → rama: 86 paths, fases 3 a 6). No se creó autoridad y nada quedó que
   reparar; revisar la fase 6 sola necesitó `baseRef` en la punta de la fase 5 y bajó a 38 paths. Cualquier fase

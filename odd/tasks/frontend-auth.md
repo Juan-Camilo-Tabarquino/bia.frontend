@@ -1,3 +1,6 @@
+> **Superado.** Este registro describe un `AuthContext` bajo `frontend/` que ya no existe. El flujo de login que
+> realmente se implementó vive en [`odd/tasks/auth-flow.md`](auth-flow.md).
+
 # Feature: Frontend Authentication
 
 ## Overview

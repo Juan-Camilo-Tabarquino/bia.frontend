@@ -69,8 +69,9 @@ Abrí **`http://localhost:3000`** en el navegador (ver la trampa del entorno en 
 
 **Nota de entorno.** La URL base de la API se resuelve en un solo lugar, `src/utils/apiBaseUrl.ts`, que lee
 `NEXT_PUBLIC_API_URL` y cae a `http://localhost:3001/api`. Esa lectura **hoy no llega al navegador**, así que
-`NEXT_PUBLIC_API_URL` no tiene efecto del lado cliente y el fallback siempre gana. El repositorio **no** tiene
-`.env.local` ni `.env.example`. Está documentado como defecto en la sección 4.
+`NEXT_PUBLIC_API_URL` no tiene efecto del lado cliente y el fallback siempre gana. El repositorio **sí** trae un
+`.env.example` versionado que documenta `NEXT_PUBLIC_API_URL` (la única variable de entorno que lee el cliente) y
+repite ese caveat. Está documentado como defecto en la sección 4.
 
 ---
 
@@ -210,8 +211,9 @@ Es la forma **dinámica con encadenamiento opcional**. Next solo inlinea la expr
 navegador `process` no existe, el encadenamiento opcional corta, y **gana siempre el fallback hardcodeado**
 `http://localhost:3001/api`.
 
-**Por lo tanto: setear `NEXT_PUBLIC_API_URL` hoy no tiene efecto en el navegador.** El repositorio no tiene
-`.env.local` ni `.env.example` (verificado: no existe ningún `.env*`).
+**Por lo tanto: setear `NEXT_PUBLIC_API_URL` hoy no tiene efecto en el navegador.** El repositorio trae un
+`.env.example` versionado que documenta la variable y este mismo caveat: es un registro de la variable, no un
+override funcional (el `.env.local` local no se versiona).
 
 Se probó sobre el bundle emitido: el chunk `.next/static/chunks/2zp1jrsfcykn6.js` conserva el literal sin
 reemplazar (medición registrada, no de esta guía). Queda como el **WARNING abierto `apiBaseUrl-never-inlined`**;
@@ -630,11 +632,11 @@ Los advisories del refactor están consolidados en la tabla de [`docs/ui-refacto
 - **Fase 6:** `status-column-raw-value` (la asimetría de la columna Estado), `pagination-nesting-spy-order`,
   `pagination-two-tooltips`, `R3-dashboard-health-raw-value`, `R3-detail-severity-label`, `R3-pagination-wiring`.
 - **`meters-cards`:** `meters-hit-area-jsdom` (el área de clic y el anillo de foco son propiedades solo de
-  navegador), `meters-visible-set-negative`, `no-red-first-evidence`, y **`R3-nplus1-load` (WARNING)**: un
-  `GET /api/meters/{id}` por card renderizada (el endpoint de lista solo devuelve ids y no hay endpoint de detalle
-  masivo). Costo aceptado explícitamente por el dueño antes de empezar. **Resuelto en `demo-polish`:** el endpoint
-  de lista ahora devuelve objetos, `MeterCard` no hace ningún request y este advisory queda obsoleto (se conserva
-  acá como registro de lo que se aceptó en su momento).
+  navegador), `meters-visible-set-negative`, `no-red-first-evidence`.
+  *(Resuelto: `R3-nplus1-load` (WARNING) — un `GET /api/meters/{id}` por card renderizada, costo aceptado
+  explícitamente por el dueño antes de empezar — quedó cerrado en `demo-polish`: el endpoint de lista ahora
+  devuelve objetos y `MeterCard` no hace ningún request. Se conserva acá como registro de lo que se aceptó en su
+  momento, no como advisory abierto.)*
 - **`breadcrumb-gutter`:** `breadcrumb-margin-jsdom-invisible`, `page-padding-shape-proxies`,
   `breadcrumb-item-4px-overhang`, `production-cascade-unverified`.
 

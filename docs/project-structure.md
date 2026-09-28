@@ -8,7 +8,7 @@ Esta guía describe la organización de carpetas y su responsabilidad dentro del
 │  ├─ app/                    # App Router (rutas, layout y providers)
 │  │  ├─ layout.tsx           # Layout raíz: `AntdRegistry`, providers y `<html class="bia-theme">`
 │  │  ├─ providers.tsx        # Providers de cliente (Redux + antd `ConfigProvider` + tema)
-│  │  ├─ page.tsx             # Ruta `/`: redirige a `/meters`
+│  │  ├─ page.tsx             # Ruta `/`: redirige a `/dashboard`
 │  │  ├─ dashboard/           # Ruta `/dashboard`
 │  │  ├─ meters/              # Ruta `/meters` (grid de cards)
 │  │  ├─ anomalies/           # Rutas `/anomalies` y `/anomalies/[id]`
@@ -20,7 +20,7 @@ Esta guía describe la organización de carpetas y su responsabilidad dentro del
 │  │  ├─ MeterCard.tsx        # Card cliqueable de un medidor (stretched link)
 │  │  ├─ MeterDetail.tsx      # Detalle de medidor
 │  │  ├─ MeterList.tsx        # Lista de medidores en grid de cards
-│  │  ├─ PrivateRoute.tsx     # Pass-through (no hay autenticación implementada)
+│  │  ├─ PrivateRoute.tsx     # Guardia real de rutas: sin sesión válida redirige a `/login` (lee `useSession` de `src/features/auth/session.ts`); se monta una sola vez en el shell
 │  │  ├─ RequestError.tsx     # Vocabulario único de error con "Reintentar"
 │  │  ├─ formatters.ts        # Formateo de fechas, porcentajes y labels de estado
 │  │  ├─ paginationLabels.tsx # Nombres accesibles en español para las flechas de paginación
@@ -28,6 +28,7 @@ Esta guía describe la organización de carpetas y su responsabilidad dentro del
 │  │  ├─ anomalies/           # Componentes de anomalías (lista, detalle y narrativa)
 │  │  └─ dashboard/           # Componentes de dashboard, gráficos y tablas
 │  ├─ features/               # Slices de RTK Query y store
+│  │  ├─ auth/                # Sesión: `session.ts` (`useSession`) y `authHeaders.ts`
 │  │  ├─ api/                 # apiSlice: meters, anomalies, dashboard summary
 │  │  ├─ data/                # dataApi: lecturas de medidor
 │  │  ├─ dashboards/          # dashboardApi: flujo de análisis con IA

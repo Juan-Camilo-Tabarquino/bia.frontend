@@ -32,7 +32,7 @@ The full architecture, data flow, per-page behaviour and conventions are in [`do
 
 ## Environment
 
-The API base URL is resolved in exactly one place, `src/utils/apiBaseUrl.ts`. That file reads `NEXT_PUBLIC_API_URL` and falls back to `http://localhost:3001/api`, but the read is **materially incomplete**: it uses the dynamically optional-chained form `process?.env?.NEXT_PUBLIC_API_URL`, which Next does not statically inline, so in the browser the chain short-circuits and the hardcoded fallback always wins. **Setting `NEXT_PUBLIC_API_URL` has no browser effect today**, and this repository has no `.env.local` or `.env.example`. The defect is tracked as `apiBaseUrl-never-inlined` and documented as a defect, not a feature, in the API-URL defect section of [`docs/frontend-guide.md`](docs/frontend-guide.md).
+The API base URL is resolved in exactly one place, `src/utils/apiBaseUrl.ts`. That file reads `NEXT_PUBLIC_API_URL` and falls back to `http://localhost:3001/api`, but the read is **materially incomplete**: it uses the dynamically optional-chained form `process?.env?.NEXT_PUBLIC_API_URL`, which Next does not statically inline, so in the browser the chain short-circuits and the hardcoded fallback always wins. **Setting `NEXT_PUBLIC_API_URL` has no browser effect today.** The repository ships a tracked `.env.example` that documents the variable (`NEXT_PUBLIC_API_URL`, the only environment variable the client reads) together with this caveat: it is a record of the variable, not a working override. The defect is tracked as `apiBaseUrl-never-inlined` and documented as a defect, not a feature, in the API-URL defect section of [`docs/frontend-guide.md`](docs/frontend-guide.md).
 
 The `.env.local` file below is therefore *not* sufficient to point the running client at another API:
 
@@ -121,7 +121,7 @@ All RTK Query HTTP access lives under `src/features`, with one axios call outsid
 
 ## Documentation
 
-- `docs/backend-requirements.md` — the confirmed backend contract, the two requests the backend has since resolved, the markdown decision and the operational notes.
+- `docs/backend-requirements.md` — the confirmed backend contract, the three requests the backend has since resolved, the markdown decision and the operational notes.
 - `docs/endpoints.md` — short pointer to the confirmed contract.
 - `docs/routes.md` — routes and the endpoints each page consumes (Spanish).
 - `docs/project-structure.md` — folder responsibilities (Spanish).

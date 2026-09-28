@@ -1,3 +1,6 @@
+> **Historia — nunca ejecutada.** Este plan de migración a Vite nunca se llevó a cabo. La decisión de mantener
+> Next.js está registrada en [`docs/decisions/vite-decision.md`](../../docs/decisions/vite-decision.md).
+
 # Frontend Vite Migration
 
 ## Goal
