@@ -94,9 +94,14 @@ function severityOf(row: MeterRow): number {
  *
  * Like `anomalySortDefinitions` on the anomalies page, these are triage
  * orderings rather than a generic asc/desc toggle: biggest consumption first,
- * largest increase first, most severe first. A row with **no anomaly** always
- * sorts last, so an incomplete join can never be pushed to the head of the list
- * by a numeric accident (`-Infinity` or `NaN` would do exactly that).
+ * largest increase first, most severe first.
+ *
+ * `variation` and `severity` rank a row with **no anomaly** last, so an
+ * incomplete join can never be pushed to the head of the list by a numeric
+ * accident (`-Infinity` or `NaN` would do exactly that). `consumption`
+ * deliberately does NOT: it ranks the meter's own period total, so a meter with
+ * no anomaly leads the list when it consumed the most, which is what its test
+ * pins.
  *
  * `Array.prototype.sort` is stable, so equal rows keep the order the API
  * returned them in.
