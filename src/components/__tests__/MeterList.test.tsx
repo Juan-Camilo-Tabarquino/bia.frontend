@@ -279,8 +279,9 @@ describe('MeterList component', () => {
 
     const choose = (name: string) => fireEvent.click(screen.getByRole('radio', { name }));
 
-    // `Todos` is the default: the API order, untouched.
-    expect(linkNames()).toEqual(['M-109', 'M-111', 'M-112']);
+    // `Todos` is the default filter, and the default order is consumption, largest
+    // first: M-112 (3000.5) > M-109 (2180.4) > M-111 (900).
+    expect(linkNames()).toEqual(['M-112', 'M-109', 'M-111']);
 
     choose('Críticas');
     expect(linkNames()).toEqual(['M-109']);
@@ -294,7 +295,7 @@ describe('MeterList component', () => {
     expect(linkNames()).toEqual(['M-112']);
 
     choose('Todos');
-    expect(linkNames()).toEqual(['M-109', 'M-111', 'M-112']);
+    expect(linkNames()).toEqual(['M-112', 'M-109', 'M-111']);
 
     // Consumption, largest first: M-112 (3000.5) > M-109 (2180.4) > M-111 (900).
     choose('Consumo');
@@ -308,10 +309,6 @@ describe('MeterList component', () => {
     // Variation, largest increase first: M-109 (+125.28) > M-111 (-26.42) >
     // M-112, which has no variation at all.
     choose('Variación');
-    expect(linkNames()).toEqual(['M-109', 'M-111', 'M-112']);
-
-    // Back to the untouched API order.
-    choose('Orden del backend');
     expect(linkNames()).toEqual(['M-109', 'M-111', 'M-112']);
   });
 
