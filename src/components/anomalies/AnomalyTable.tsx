@@ -12,6 +12,7 @@ import type {
 } from "@/types/backend";
 import { AnomalyTypeTag } from "./AnomalyTypeTag";
 import {
+  anomalyActionLabels,
   anomalySeverityLabels,
   anomalyStatusLabels,
   isDataQuality,
@@ -104,7 +105,14 @@ function isSortField(value: unknown): value is AnomalySortField {
  *   arrives in a deterministic order and alphabetising ids is a different
  *   question than "what should I look at first".
  * - `type` and `status` are categories with no natural order; offering a sort
- *   would invent a ranking the domain does not have.
+ *   would invent a ranking the domain does not have. `action` is derived from
+ *   `type`, so it inherits that same "no ordering" decision.
+ *
+ * The **Acción** column is the triage verdict for the row, and it is derived from
+ * `type` alone through `anomalyActionLabels` — the same registry `AnomalyTypeTag`
+ * reads its label from. The raw wire value stays visible next to it: the Tipo
+ * column renders `REAL_ANOMALY` / `DATA_QUALITY` / … verbatim, so the action can
+ * always be traced back to the field it came from.
  *
  * Pagination is client-side over the already-filtered array (the endpoint takes
  * no query parameters): the full list pages at `DEFAULT_PAGE_SIZE` rows, and a
@@ -262,6 +270,14 @@ export function AnomalyTable({
       dataIndex: "status",
       key: "status",
       render: (status: AnomalyStatus) => anomalyStatusLabels[status],
+    },
+    {
+      title: "Acción",
+      // `type` is the only input; the column exists to turn that raw value into
+      // the one thing the operator is being asked to do next.
+      dataIndex: "type",
+      key: "action",
+      render: (type: AnomalyType) => anomalyActionLabels[type],
     },
   ];
 

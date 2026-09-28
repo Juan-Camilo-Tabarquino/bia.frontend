@@ -32,9 +32,10 @@ function safeCount(value: number | null | undefined): number | null {
  *
  * Only two DTO-backed facts feed it: the summary's total anomaly count and the
  * browser-derived count of `HIGH` severity rows. It deliberately never mentions
- * a previous period — `DashboardSummary.lastRun` is the literal `"latest"`, not
- * a date, and the API exposes no earlier run to compare against — and it never
- * prints a metric the DTO does not carry.
+ * a previous period — `lastRun` is the timestamp of the last pipeline run, so
+ * there is still no earlier run to compare against, and a date belongs on the KPI
+ * card rather than in this banner — and it never prints a metric the DTO does not
+ * carry.
  */
 export function InsightBanner({ total, highSeverity }: InsightBannerProps) {
   const safeTotal = safeCount(total);

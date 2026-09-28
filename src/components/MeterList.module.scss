@@ -7,3 +7,35 @@
   gap: 1rem;
   width: 100%;
 }
+
+/* Filter and sort controls sit side by side while there is room and stack on a
+   phone, mirroring the grid's own container-driven behaviour. Same surface as
+   the anomaly filter bar, so the two filtered views read as one family. */
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 1rem 1.5rem;
+  padding: 1rem;
+  border: 1px solid var(--bia-color-border-secondary);
+  border-radius: var(--bia-border-radius);
+  background-color: var(--bia-color-fill-alter);
+}
+
+/* The two control groups are real `fieldset`s, so the browser's own border,
+   padding and margin have to be cleared before they can be laid out. */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-inline-size: 0;
+}
+
+.label {
+  padding: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+}

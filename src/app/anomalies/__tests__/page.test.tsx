@@ -138,7 +138,22 @@ function mockLoaded(list: Anomaly[] = anomalies): void {
     refetch,
   });
   mockedUseGetMetersQuery.mockReturnValue({
-    data: ["M-109", "M-112"],
+    data: [
+      {
+        id: "M-109",
+        consumption: 2180.4,
+        status: "OK",
+        readings_count: 336,
+        last_reading_at: "2026-09-12T14:00:00Z",
+      },
+      {
+        id: "M-112",
+        consumption: 3000.5,
+        status: "DEGRADED",
+        readings_count: 336,
+        last_reading_at: "2026-09-10T14:00:00Z",
+      },
+    ],
     isLoading: false,
     error: undefined,
   });
