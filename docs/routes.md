@@ -31,7 +31,7 @@ El inicio del flujo de la prueba es **Login → Dashboard**. La autenticación e
 - `PrivateRoute` (`src/components/PrivateRoute.tsx`) es la guardia real: sin sesión válida redirige a `/login` y, con sesión, renderiza los hijos. **Omite `/login`**, de modo que no puede entrar en un bucle de redirección.
 - La guardia se monta **una sola vez, en el shell** (`SiteShell`), para cubrir todas las rutas del demo. Las páginas de la suite se renderizan directamente en los tests y nunca montan el shell, por eso la guardia no vive a nivel de página.
 - La cabecera (`SiteHeader`) muestra el nombre del usuario y un control de cierre de sesión que borra la sesión y vuelve a `/login`.
-- Cada llamada a la API agrega `Authorization: Bearer <token>` mediante un único `prepareHeaders` compartido (`src/features/auth/authHeaders.ts`), importado por `apiSlice`, `dataApi` y `dashboardApi`. **No hay interceptor de respuestas**: como el backend no valida el token, no hay un `401` que manejar.
+- **Las llamadas de los tres slices de RTK Query** agregan `Authorization: Bearer <token>` mediante un único `prepareHeaders` compartido (`src/features/auth/authHeaders.ts`), importado por `apiSlice`, `dataApi` y `dashboardApi`. La excepción es `src/api/backend.ts`, el wrapper de axios que sólo hace `GET /health` para el toast de arranque: ese request sale **sin** token. **No hay interceptor de respuestas**: como el backend no valida el token, no hay un `401` que manejar.
 
 ## Wireframes / UI (breve)
 

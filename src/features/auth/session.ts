@@ -62,14 +62,22 @@ function readStoredToken(): string | null {
   }
 }
 
-function writeStoredToken(token: string): void {
+/**
+ * Persists the token. Returns `false` when it could not be written: every read
+ * goes back to `localStorage`, so there is no in-memory session to fall back on,
+ * and reporting success would send the caller to a protected route that the guard
+ * then bounces back to `/login` with no explanation. Blocked or full storage
+ * (Safari private mode does this) is exactly that case.
+ */
+function writeStoredToken(token: string): boolean {
   if (typeof window === "undefined") {
-    return;
+    return false;
   }
   try {
     window.localStorage.setItem(SESSION_STORAGE_KEY, token);
+    return true;
   } catch {
-    // Ignored on purpose: the in-memory session still applies for this session.
+    return false;
   }
 }
 
@@ -80,7 +88,9 @@ function removeStoredToken(): void {
   try {
     window.localStorage.removeItem(SESSION_STORAGE_KEY);
   } catch {
-    // Ignored on purpose: see `writeStoredToken`.
+    // A failed removal leaves the token in storage, so a reload would sign the
+    // user back in. Nothing better is available here, and the current tab has
+    // already dropped the session either way.
   }
 }
 
@@ -98,7 +108,19 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
     const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
     const remainder = base64.length % 4;
     const padded = remainder === 0 ? base64 : base64.padEnd(base64.length + (4 - remainder), "=");
-    const parsed: unknown = JSON.parse(atob(padded));
+    // `atob` yields a latin1 byte string, so the bytes must be decoded as UTF-8
+    // or any non-ASCII name in the credential store comes back as mojibake.
+    // `decodeURIComponent` over the percent-escaped bytes does exactly that
+    // without `TextDecoder`, which lighter DOM environments (jsdom in
+    // particular) do not expose; a malformed sequence throws, and the caller
+    // reads that as "no session".
+    const utf8 = decodeURIComponent(
+      atob(padded)
+        .split("")
+        .map((char) => `%${char.charCodeAt(0).toString(16).padStart(2, "0")}`)
+        .join(""),
+    );
+    const parsed: unknown = JSON.parse(utf8);
     return isRecord(parsed) ? parsed : null;
   } catch {
     return null;
@@ -151,14 +173,17 @@ export function getSession(): Session | null {
 
 /**
  * Persists a freshly issued token. Returns the decoded session, or `null` when
- * the token is malformed or already expired — in which case nothing is written.
+ * the token is malformed, already expired, or could not be written to storage —
+ * in every one of those cases the caller must not treat the login as complete.
  */
 export function saveSession(token: string): Session | null {
   const session = decodeSession(token);
   if (session === null) {
     return null;
   }
-  writeStoredToken(token);
+  if (!writeStoredToken(token)) {
+    return null;
+  }
   emit();
   return session;
 }

@@ -1,6 +1,8 @@
 # Feature: flow login (JWT) and route protection for the demo
 
-**Status: IN PROGRESS.** Two parallel writers, one per repository, on `feat/auth-flow` from `main`.
+**Status: DONE, verified, committed and pushed.** Two writers, one per repository, on `feat/auth-flow` from
+`main`. Independent verification found **no blocker** on either side; its real findings were closed (see
+"Verification" below).
 
 **Why:** technical test §21's flow starts with **Login → Dashboard → M-109 → Run AI Analysis → Anomalía →
 Explicación → Acción**, and the frontend has no authentication at all: no route, no middleware, no
@@ -68,13 +70,57 @@ change needed there.
 - `/` now redirects to `/dashboard`.
 - **No 401 handling**: the backend does not validate the token, so there is nothing to react to.
 
+## Verification
+
+Two independent read-only verifications, one per repository. **Neither found a blocker.**
+
+**Backend — PASS**, and the most valuable part was cryptographic: the verifier recomputed
+the HMAC-SHA256 signature over the captured token and reproduced it bit for bit with the test's
+signing secret, confirming the stdlib implementation is correct. It also confirmed the 401 body is
+byte-identical for an unknown user and a wrong password, that the password digest is computed
+before the lookup, that the 405 check precedes any store read, that no path authenticates with an
+empty password, and that the committed digest really is `sha256("bia2026")`.
+
+Three documentation defects it found were closed in `3298693`. Two of them were introduced by the
+parent's own config cleanup (the env table still listed Viper keys that no longer exist) and the
+third was a captured token presented without saying the test suite signed it.
+
+**Frontend — the claim holds**, with no loop and no hydration bounce. The verifier exercised the
+real session module rather than a copy: the `getSnapshot` cache was stable in all six sequences
+(no session, valid, save, clear, cross-tab, expiry), and it confirmed the cross-repo contract by
+driving the real RTK Query slice, including that the joined URL really is `/api/auth/login` and
+that no session sends no `Authorization` header at all.
+
+Its two real defects were closed here:
+
+- **Blocked storage was a silent trap.** `saveSession` reported success while the write had failed,
+  so the login page redirected to `/dashboard`, the guard re-read storage, found nothing and bounced
+the user back to `/login` with no message (Safari private mode). `saveSession` now returns `null`
+  when the token could not be written, which the login page already handled correctly.
+- **Non-ASCII names decoded as mojibake**, because `atob` yields latin1. The payload is now decoded
+  as UTF-8. The first attempt used `TextDecoder`, which jsdom does not expose, so it broke two
+  tests; the shipped version uses `decodeURIComponent` over percent-escaped bytes instead, which is
+  portable and fails closed on a malformed sequence.
+
+**Coverage gaps left open, deliberately** (owner asked for as few tests as possible): nothing tests
+`SiteShell`, so removing the guard from the shell would leave all 308 tests green — the mount, which
+is the headline claim, is asserted by reading the code and by the verifier's grep, not by a test.
+Nothing tests the login page, `authHeaders.ts` or the session module directly either. Closing the
+`SiteShell` gap is the highest-value one and is queued with the remaining demo work.
+
+**Accepted, documented, not fixed**: chrome (header, breadcrumb, footer, health toast) renders outside
+the guard and issues an unauthenticated summary request before the redirect lands; `authorized` is
+decoded but never gates (the backend answers 403 instead of issuing such a token); an expired token
+keeps the tab signed in until the next re-render; and protected routes now emit empty SSR HTML because
+the guard returns `null` on the server.
+
 ## Task board
 
 | ID | Title | Status |
 | --- | --- | --- |
 | 1 | Freeze the auth contract and publish this record | done |
-| 2 | Writer A — backend: users.csv, the login endpoint, HS256 with stdlib | pending |
-| 3 | Writer B — frontend: `/login`, session, real guard, header, Bearer, landing | pending |
-| 4 | Independent verification of both sides | pending |
-| 5 | Commit both repos | pending |
-| 6 | Demo credentials + flow documented in the READMEs | pending |
+| 2 | Writer A — backend: users.csv, the login endpoint, HS256 with stdlib | done |
+| 3 | Writer B — frontend: `/login`, session, real guard, header, Bearer, landing | done |
+| 4 | Independent verification of both sides | done (2 defects closed, 1 gap queued) |
+| 5 | Commit both repos | done (pushed) |
+| 6 | Demo credentials + flow documented in the READMEs | done |
