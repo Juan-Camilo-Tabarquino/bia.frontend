@@ -9,13 +9,9 @@ import { saveSession, useSession } from "@/features/auth/session";
 
 const { Title, Text } = Typography;
 
-/**
- * Demo credentials. They are shown on screen on purpose: this is a flow demo
- * for a technical test, and the README documents the same pair. The backend
- * stores only the SHA-256 of the password, and the endpoint only issues a JWT.
- */
-const DEMO_USERNAME = "jcamilo";
-const DEMO_PASSWORD = "bia2026";
+// The demo credentials are documented in the README. This screen deliberately
+// shows no hint and no placeholder for them: the login is part of the demo polish,
+// not a place to publish test data.
 
 const LOGIN_ERROR_FALLBACK =
   "No se pudo iniciar sesión. Revisa tu conexión e intenta de nuevo.";
@@ -103,26 +99,13 @@ export default function LoginPage() {
           Acceso al monitoreo energético de Bia.
         </Text>
 
-        <Alert
-          type="info"
-          showIcon
-          style={{ marginBlock: "1rem" }}
-          message="Credenciales de demostración"
-          description={
-            <span>
-              Usuario <Text code>{DEMO_USERNAME}</Text> · Contraseña{" "}
-              <Text code>{DEMO_PASSWORD}</Text>
-            </span>
-          }
-        />
-
         {errorMessage !== null && (
           <Alert
             role="alert"
             type="error"
             showIcon
             style={{ marginBottom: "1rem" }}
-            message={errorMessage}
+            title={errorMessage}
           />
         )}
 
@@ -134,14 +117,12 @@ export default function LoginPage() {
           <Form.Item label="Usuario" name="username">
             <Input
               autoComplete="username"
-              placeholder={DEMO_USERNAME}
               disabled={isLoading}
             />
           </Form.Item>
           <Form.Item label="Contraseña" name="password">
             <Input.Password
               autoComplete="current-password"
-              placeholder={DEMO_PASSWORD}
               disabled={isLoading}
             />
           </Form.Item>
