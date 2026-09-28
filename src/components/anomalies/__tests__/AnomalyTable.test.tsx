@@ -67,6 +67,21 @@ const dataQualityAnomaly: Anomaly = {
   data_quality: { flagged: true, reason: "power factor 0.720 below 0.85" },
 };
 
+/** The two types the base fixtures do not cover, so all four actions are pinned. */
+const explainableAnomaly: Anomaly = {
+  ...realAnomaly,
+  id: "M-110-2026-09-11T09:00:00Z",
+  meter_id: "M-110",
+  type: "EXPLAINABLE_ANOMALY",
+};
+
+const falsePositiveAnomaly: Anomaly = {
+  ...realAnomaly,
+  id: "M-111-2026-09-09T09:00:00Z",
+  meter_id: "M-111",
+  type: "FALSE_POSITIVE",
+};
+
 /** Builds `count` distinct anomalies so a page's rows can be told apart. */
 function makeAnomalies(count: number): Anomaly[] {
   return Array.from({ length: count }, (_unused, index) => ({
@@ -190,6 +205,54 @@ describe("AnomalyTable", () => {
     ).not.toBeInTheDocument();
     // The real anomaly keeps its own label, so the map is exercised for it too.
     expect(screen.getByText("Anomalía real")).toBeInTheDocument();
+  });
+
+  // The Acción column is the triage verdict, derived from `type` alone. All four
+  // types are on screen at once on purpose: a single-type assertion would pass
+  // for a column that hardcoded one action for every row.
+  it("turns each anomaly type into the action its Acción cell prescribes", () => {
+    render(
+      <AnomalyTable
+        anomalies={[
+          realAnomaly,
+          dataQualityAnomaly,
+          explainableAnomaly,
+          falsePositiveAnomaly,
+        ]}
+      />,
+    );
+
+    expect(
+      screen.getByRole("columnheader", { name: "Acción" }),
+    ).toBeInTheDocument();
+
+    /** The last cell of the row whose meter link names `meterId`. */
+    const actionFor = (meterId: string): string => {
+      const row = screen
+        .getByRole("link", { name: meterId })
+        .closest("tr");
+      if (!row) {
+        throw new Error(`no table row for ${meterId}`);
+      }
+      return row.lastElementChild?.textContent ?? "";
+    };
+
+    expect(actionFor("M-109")).toBe("Investigar");
+    expect(actionFor("M-112")).toBe("Validar");
+    expect(actionFor("M-110")).toBe("Validar operación");
+    expect(actionFor("M-111")).toBe("No escalar");
+
+    // The raw wire value the action was derived from stays visible in the same
+    // row (the Tipo column's tag renders it verbatim), so the verdict can always
+    // be traced back to its field.
+    expect(
+      screen.getByRole("link", { name: realAnomaly.meter_id }).closest("tr"),
+    ).toHaveTextContent("REAL_ANOMALY");
+    expect(
+      screen
+        .getByRole("link", { name: falsePositiveAnomaly.meter_id })
+        .closest("tr"),
+    ).toHaveTextContent("FALSE_POSITIVE");
   });
 
   it("marks the DATA_QUALITY row as visually distinct", () => {

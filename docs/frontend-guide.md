@@ -335,23 +335,41 @@ Formato: **qué se ve**, **endpoints**, **estados** con su copia exacta, y **com
 ### `/meters` — Medidores
 
 - **Qué se ve:** `h1` **Medidores**; un buscador con label **Buscar medidor** (placeholder
-  `Buscar por id de medidor`); la línea de conteo **`Mostrando N de M medidores.`**; y un **grid responsive de
-  cards** cliqueables, una por medidor.
-- **Endpoints:** `GET /meters` (ids) y **un `GET /meters/{id}` por cada card renderizada** (`MeterCard`).
+  `Buscar por id de medidor`); dos grupos de controles (**Filtrar por anomalía**: Todos / Normales / Alertas /
+  Críticas, y **Ordenar por**: Orden del backend / Consumo / Variación / Severidad); la línea de conteo
+  **`Mostrando N de M medidores.`**; y un **grid responsive de cards** cliqueables, una por medidor.
+- **Endpoints:** `GET /meters` (objetos: `id`, `consumption`, `status`, `readings_count`,
+  `last_reading_at`) y `GET /anomalies` (para unir por `meter_id`). **No hay ningún request por card.**
 - **Estados:**
   - *Cargando:* `Skeleton` de 4 filas (sin texto).
   - *Error:* `RequestError` con título **No se pudieron cargar los medidores**, detalle del backend o
     `Revisa tu conexión e intenta de nuevo.`, y botón **Reintentar** (`retrying={isFetching}`).
-  - *Vacío del backend:* `No hay medidores para mostrar.` — y **el buscador no se muestra** (no tiene sentido
-    invitar a buscar sobre nada).
+  - *Vacío del backend:* `No hay medidores para mostrar.` — y **ningún control se muestra** (no tiene sentido
+    invitar a buscar, filtrar u ordenar sobre nada).
   - *Vacío por búsqueda:* `Ningún medidor coincide con la búsqueda.` (distinto del anterior).
-  - *Card sin detalle:* `No se pudo cargar el detalle.` (sin botón de reintento: la card debe exponer un solo tab
-    stop).
+  - *Vacío por filtro:* `Ningún medidor coincide con los filtros activos.` (distinto de los dos anteriores).
+- **Cada card muestra:** el id (único texto del link, único tab stop), el **badge de severidad** de su anomalía
+  más urgente (`HIGH · Alta`) o `Sin anomalías`, y las filas **Estado**, **Consumo** (con unidad kWh),
+  **Variación** (el `consumption_change_pct` del DTO, con signo; `—` cuando no hay anomalía) y **Última
+  lectura**.
 - **Notable:**
+  - **La unión se hace en el navegador.** `/meters` aporta `status`, `consumption` y `last_reading_at`;
+    `/anomalies` aporta la severidad y la variación. La anomalía de una card es **la primera del array de la API
+    cuyo `meter_id` coincide** — el array llega ordenado por `priority` ascendente, así que la primera es la más
+    urgente. Tomar la última mostraría los números de la anomalía menos urgente bajo el id del medidor.
+  - **Los cuatro filtros particionan la lista:** `Normales` = sin anomalía unida, `Alertas` = `MEDIUM` o `LOW`,
+    `Críticas` = `HIGH`, `Todos` = todo. `Críticas` es exactamente el conteo que el resto de la app llama
+    "requiere atención prioritaria".
+  - **Los tres órdenes tienen una sola dirección fija** (triage, no un toggle asc/desc): mayor consumo primero,
+    mayor aumento primero, mayor severidad primero. Una card **sin anomalía siempre queda última**, nunca al
+    frente por un accidente numérico.
   - **Filtrado en el cliente con debounce** (`useDebouncedValue`, default 250 ms): la búsqueda filtra el array ya
-    obtenido y **no dispara requests**.
-  - El fetch del detalle **sigue al conjunto visible**: filtrar 100 ids a 2 cuesta 2 requests, nunca 100 (probado
-    por mutación en `odd/tasks/meters-cards.md`).
+    obtenido y **no dispara requests**. La búsqueda solo mira el `id` del medidor, que es el único texto que la
+    card expone y por lo tanto siempre visible donde hubo match.
+  - **El N+1 quedó eliminado.** Antes cada card renderizada hacía su propio `GET /meters/{id}` porque el endpoint
+    de lista solo devolvía ids; ahora el fetch de detalle **no existe** y filtrar 100 medidores a 2 cuesta los
+    mismos dos requests que la vista completa (el advisory `R3-nplus1-load` de `odd/tasks/meters-cards.md` queda
+    obsoleto).
   - La card entera es el área de clic mediante el patrón *stretched link*; el link real conserva el id como único
     texto, así que su nombre accesible sigue siendo el id.
 
@@ -429,25 +447,41 @@ Formato: **qué se ve**, **endpoints**, **estados** con su copia exacta, y **com
 ### `/dashboard` — Panel de control
 
 - **Qué se ve:** `h1` **Panel de control**; un párrafo `sr-only` que describe los KPIs; la fila de KPIs **Estado**,
-  **Medidores**, **Anomalías**, **Última ejecución**; la sección de cambios de la anomalía más urgente con
-  **píldoras de delta**; el **banner de insight**; y una `Card` **Resumen de anomalías** con conteos **Por tipo** y
-  **Por severidad** más una previsualización de la tabla.
+  **Medidores**, **Consumo total** (con unidad kWh), **Anomalías IA**, **Alta prioridad**, **Confianza IA** y
+  **Último análisis** (fecha/hora formateada más una etiqueta de estado); la sección de cambios de la anomalía más
+  urgente con **píldoras de delta**; el **banner de insight**; y una `Card` **Resumen de anomalías** con conteos
+  **Por tipo** y **Por severidad** más una previsualización de la tabla.
 - **Endpoints:** `GET /dashboard/summary` y `GET /anomalies`.
 - **Estados:**
-  - *Cargando:* 8 cards `Skeleton` (la forma conocida de la fila de KPIs).
+  - *Cargando:* 11 cards `Skeleton` (`KPI_CARD_COUNT` = los 7 KPIs más las 4 píldoras de la anomalía más urgente).
   - *Error:* `RequestError` **No se pudo cargar el panel** + **Reintentar** (reintenta ambos queries).
   - *Sin anomalías (previsualización):* `No se reportaron anomalías.`
   - *Banner:* `Hay N anomalías en la última ejecución, M de severidad alta.`; sin datos,
     `Todavía no hay datos de anomalías para resumir.`; con total 0,
     `No se detectaron anomalías en la última ejecución.`
 - **Notable:**
+  - **Los seis KPIs del §5 de la prueba técnica:** `Medidores`, `Consumo total`, `Anomalías IA`, `Alta prioridad`,
+    `Confianza IA` y `Último análisis`. `Estado` (la salud del backend) se conserva junto a ellos.
+  - `Consumo total` viene del resumen (`total_consumption`, kWh) y se formatea con `formatMetric`, la misma
+    convención decimal del resto de la app. **El número va dentro del `value`**, no en el `suffix`: `Statistic`
+    reagrupa un valor numérico con sus propios separadores `en-US` (`12,345`), que en español se leen como
+    decimales. Si el campo no llega (un backend anterior a esta fase), el KPI muestra `—` en lugar de romper.
+  - **`Alta prioridad` y `Confianza IA` se calculan en el navegador** a partir de la lista obtenida: el conteo de
+    `severity === "HIGH"` y el promedio de `confidence`. El resumen **no** expone ningún desglose por severidad ni
+    una confianza agregada, así que el backend nunca es consultado por ellos. Con la lista vacía, `Confianza IA`
+    muestra `—` (un `0%` afirmaría que el modelo puntuó filas que nunca vio) y `Alta prioridad` muestra `0`, que es
+    el conteo real de un conjunto vacío.
+  - `Último análisis` formatea el `lastRun` RFC3339 con `formatDateTime` (que devuelve el valor sin tocar si no es
+    parseable) y añade el estado **Completado** o **Sin datos**. El resumen no trae un campo de estado, así que la
+    única afirmación derivable es si una corrida reportó un timestamp; un estado "en curso" requeriría un progreso
+    que el endpoint no expone. Un backend que aún responda el literal `"latest"` degrada a `Sin datos`.
   - Los conteos **Por tipo** y **Por severidad** se calculan **en el navegador** a partir de la lista obtenida,
     porque el summary solo informa totales.
   - Las **píldoras de delta** usan los porcentajes con signo que ya trae el DTO de la anomalía más urgente
     (relativos a su propio `baseline`); **no** son una comparación contra un período anterior (la API no expone una
     corrida previa). Un valor faltante o no finito no dibuja píldora.
   - La tabla de la previsualización es la misma `AnomalyTable` pero **sin ordenamiento y sin paginador** (el
-    dashboard no tiene estado donde guardar la página ni el orden).
+    dashboard no tiene estado donde guardar la página ni el orden). Sí incluye la columna **Acción**.
   - La página está cubierta por la guardia del shell (`PrivateRoute`), no por un envoltorio propio.
 
 ### `/anomalies` — Anomalías
@@ -526,10 +560,14 @@ renderizan nodos DOM reales que exponen las props bajo test.
 **CI (`.github/workflows/ci.yml`).** Un solo job, `build`, en `ubuntu-latest`, disparado por push y pull request a
 `main`/`master`. Pasos: `npm ci` → `npm run lint` → `npm test` → `npm run build`. Node 20 con cache de npm.
 
-> **Los tests NO se ejecutaron al escribir esta guía.** No se afirma ningún resultado de corrida.
+> **Los tests NO se ejecutaron al escribir esta guía.** No se afirma ningún resultado de corrida. (La corrida
+> medida que se registra más abajo es posterior a esta sección base.)
 
-- **Conteo que se puede verificar en el árbol (estático, no ejecutado):** 34 archivos de test contados con `find`
+- **Conteo que se puede verificar en el árbol (estático, no ejecutado):** 35 archivos de test contados con `find`
   bajo `src/**/__tests__`. Esto cuenta archivos, no tests.
+- **Cifra medida (no estimada) en la rama `feat/demo-polish`:** **35 suites / 317 tests** verdes con
+  `npx jest --ci`, y `npx tsc --noEmit` y `npx eslint .` sin salida. Es la primera cifra de esta sección que
+  proviene de una corrida y no de un conteo estático, y por lo tanto la única que se puede citar como resultado.
 - **Cifra registrada en la historia del proyecto:** **32 suites / 279 tests** en el commit `5539905` (fases 0+1 a 6,
   medido entonces). Después, `meters-cards` agregó la suite `MeterCard`, así que el árbol de hoy tiene al menos un
   archivo más.
@@ -594,7 +632,9 @@ Los advisories del refactor están consolidados en la tabla de [`docs/ui-refacto
 - **`meters-cards`:** `meters-hit-area-jsdom` (el área de clic y el anillo de foco son propiedades solo de
   navegador), `meters-visible-set-negative`, `no-red-first-evidence`, y **`R3-nplus1-load` (WARNING)**: un
   `GET /api/meters/{id}` por card renderizada (el endpoint de lista solo devuelve ids y no hay endpoint de detalle
-  masivo). Costo aceptado explícitamente por el dueño antes de empezar.
+  masivo). Costo aceptado explícitamente por el dueño antes de empezar. **Resuelto en `demo-polish`:** el endpoint
+  de lista ahora devuelve objetos, `MeterCard` no hace ningún request y este advisory queda obsoleto (se conserva
+  acá como registro de lo que se aceptó en su momento).
 - **`breadcrumb-gutter`:** `breadcrumb-margin-jsdom-invisible`, `page-padding-shape-proxies`,
   `breadcrumb-item-4px-overhang`, `production-cascade-unverified`.
 

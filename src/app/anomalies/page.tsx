@@ -134,7 +134,10 @@ function AnomaliesContent() {
 
       <section aria-label="Filtros de anomalías">
         <AnomalyFilters
-          meters={meters}
+          // `GET /api/meters` returns objects now; the filter only needs the id,
+          // so the projection happens here instead of teaching the filter bar a
+          // shape it does not use. The filter's own contract stays `string[]`.
+          meters={meters.map((meter) => meter.id)}
           values={filters}
           onChange={(patch) =>
             setUrlState((previous) => ({ ...previous, ...patch }))

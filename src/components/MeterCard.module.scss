@@ -28,6 +28,16 @@
   inset: 0;
 }
 
+/* Severity badge line. Sits between the id link and the details rows, and holds
+   text only -- the stretched link's overlay stays the card's only hit area. */
+.badge {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
 .details {
   display: flex;
   flex-direction: column;

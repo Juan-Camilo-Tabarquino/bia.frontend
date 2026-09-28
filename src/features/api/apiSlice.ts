@@ -5,7 +5,7 @@ import type {
   Anomaly,
   DashboardSummary,
   MeterDetail,
-  MeterId,
+  MeterSummary,
 } from "../../types/backend";
 
 // Resolve API base URL from utility (NEXT_PUBLIC_API_URL)
@@ -36,7 +36,7 @@ export interface LoginResponse {
  *
  * Endpoints:
  * - login                POST /auth/login              -> LoginResponse (no auth required)
- * - getMeters            GET /meters                -> MeterId[] (bare strings)
+ * - getMeters            GET /meters                -> MeterSummary[] (id + consumption + status + last reading)
  * - getMeterDetail       GET /meters/{meterId}      -> MeterDetail
  * - getAnomalies         GET /anomalies             -> Anomaly[] (API order: priority ascending)
  * - getAnomalyById       GET /anomalies/{id}        -> Anomaly
@@ -60,7 +60,7 @@ export const apiSlice = createApi({
         body,
       }),
     }),
-    getMeters: builder.query<MeterId[], void>({
+    getMeters: builder.query<MeterSummary[], void>({
       query: () => "/meters",
     }),
     getMeterDetail: builder.query<MeterDetail, string>({

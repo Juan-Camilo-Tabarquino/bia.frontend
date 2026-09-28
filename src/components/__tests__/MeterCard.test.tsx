@@ -2,61 +2,49 @@ import React, { StrictMode } from 'react';
 import { render, screen } from '@testing-library/react';
 import { MeterCard } from '../MeterCard';
 import { formatDateTime } from '@/components/formatters';
-import type { MeterDetail } from '@/types/backend';
+import type { Anomaly, MeterSummary } from '@/types/backend';
 
-jest.mock('@/features/api/apiSlice', () => ({
-  useGetMeterDetailQuery: jest.fn(),
-}));
-
-import { useGetMeterDetailQuery } from '@/features/api/apiSlice';
-
-const mockedUseGetMeterDetailQuery = useGetMeterDetailQuery as jest.Mock;
-
-const detail: MeterDetail = {
-  id: 'meter-row-1',
-  meter_id: 'M-101',
-  name: '',
-  location: '',
+const meter: MeterSummary = {
+  id: 'M-101',
+  consumption: 2180.4,
   status: 'OK',
-  created_at: '2024-01-01T00:00:00Z',
-  readings_count: 12,
+  readings_count: 336,
   last_reading_at: '2024-01-10T00:00:00Z',
 };
 
-function mockDetail(
-  value: Partial<{
-    data: typeof detail | undefined;
-    isLoading: boolean;
-    error: unknown;
-  }>,
-): void {
-  mockedUseGetMeterDetailQuery.mockReturnValue({
-    data: undefined,
-    isLoading: false,
-    error: undefined,
-    ...value,
-  });
-}
+const anomaly: Anomaly = {
+  id: 'M-101-2026-09-12T14:00:00Z',
+  meter_id: 'M-101',
+  detected_at: '2026-09-12T14:00:00Z',
+  type: 'REAL_ANOMALY',
+  severity: 'HIGH',
+  confidence: 0.97,
+  reason: 'Sudden consumption spike',
+  recommended_action: 'Inspect the meter',
+  status: 'unexplained',
+  priority: 1,
+  baseline: {
+    mean: 52.16,
+    stddev: 20.84,
+    count: 336,
+    voltage_mean: 219.38,
+    current_mean: 238.82,
+    power_factor_mean: 0.905,
+  },
+  consumption_change_pct: 125.28,
+  voltage_change_pct: -2.71,
+  current_change_pct: 111.16,
+  power_factor_change_pct: -18.16,
+  correlated_events: [],
+  data_quality: { flagged: false, reason: '' },
+};
 
 describe('MeterCard component', () => {
-  beforeEach(() => {
-    mockedUseGetMeterDetailQuery.mockReset();
-  });
-
-  it('queries the detail endpoint for its own meter id', () => {
-    mockDetail({ data: detail });
-
-    render(<MeterCard meterId="M-101" />);
-
-    expect(mockedUseGetMeterDetailQuery).toHaveBeenCalledWith('M-101');
-  });
-
-  // The accessible name must stay exactly the id and nothing else: the status
-  // and the last reading live outside the anchor, never inside it.
+  // The accessible name must stay exactly the id and nothing else: every value
+  // the card gained (badge, status, consumption, variation, last reading) lives
+  // outside the anchor, never inside it.
   it('exposes exactly the meter id as the only link name', () => {
-    mockDetail({ data: detail });
-
-    render(<MeterCard meterId="M-101" />);
+    render(<MeterCard meter={meter} anomaly={anomaly} />);
 
     const links = screen.getAllByRole('link');
     expect(links).toHaveLength(1);
@@ -66,9 +54,7 @@ describe('MeterCard component', () => {
   });
 
   it('encodes the meter id in the link href', () => {
-    mockDetail({ data: detail });
-
-    render(<MeterCard meterId="M-101 / A" />);
+    render(<MeterCard meter={{ ...meter, id: 'M-101 / A' }} />);
 
     expect(screen.getByRole('link', { name: 'M-101 / A' })).toHaveAttribute(
       'href',
@@ -76,13 +62,13 @@ describe('MeterCard component', () => {
     );
   });
 
-  it('renders the Spanish status label and the formatted last reading', () => {
-    mockDetail({ data: detail });
-
-    render(<MeterCard meterId="M-101" />);
+  it('renders the status label, the consumption with its unit and the last reading', () => {
+    render(<MeterCard meter={meter} anomaly={anomaly} />);
 
     expect(screen.getByText('Estado')).toBeInTheDocument();
     expect(screen.getByText('Operativo')).toBeInTheDocument();
+    expect(screen.getByText('Consumo')).toBeInTheDocument();
+    expect(screen.getByText('2180.4 kWh')).toBeInTheDocument();
     expect(screen.getByText('Última lectura')).toBeInTheDocument();
     expect(
       screen.getByText(formatDateTime('2024-01-10T00:00:00Z')),
@@ -92,48 +78,46 @@ describe('MeterCard component', () => {
   });
 
   it('renders the DEGRADED member of the meter status map', () => {
-    mockDetail({ data: { ...detail, status: 'DEGRADED' as const } });
-
-    render(<MeterCard meterId="M-101" />);
+    render(<MeterCard meter={{ ...meter, status: 'DEGRADED' }} />);
 
     expect(screen.getByText('Degradado')).toBeInTheDocument();
   });
 
-  it('keeps the id link while the detail is loading', () => {
-    mockDetail({ data: undefined, isLoading: true });
+  // The badge carries the raw severity next to its Spanish label, so a reader
+  // cross-referencing the payload can still see `HIGH` -- the same contract the
+  // anomaly table's Severidad column keeps.
+  it('badges the joined anomaly with its raw severity and label', () => {
+    render(<MeterCard meter={meter} anomaly={anomaly} />);
 
-    const { container } = render(<MeterCard meterId="M-101" />);
-
-    expect(container.querySelector('.ant-skeleton')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'M-101' })).toHaveAttribute(
-      'href',
-      '/meter/M-101',
-    );
+    expect(screen.getByText('HIGH · Alta')).toBeInTheDocument();
+    expect(screen.getByText('Anomalía real')).toBeInTheDocument();
+    expect(screen.getByText('Variación')).toBeInTheDocument();
+    // The DTO value is shown verbatim, sign included.
+    expect(screen.getByText('+125.3%')).toBeInTheDocument();
   });
 
-  it('keeps the id link when the detail request fails', () => {
-    mockDetail({ data: undefined, isLoading: false, error: { message: 'Boom' } });
+  it('reports a meter with no joined anomaly instead of inventing a change', () => {
+    render(<MeterCard meter={meter} />);
 
-    render(<MeterCard meterId="M-101" />);
+    expect(screen.getByText('Sin anomalías')).toBeInTheDocument();
+    expect(screen.queryByText('Anomalía real')).not.toBeInTheDocument();
+    // No anomaly means no variation to show; `0%` would be a measurement the API
+    // never reported.
+    expect(screen.getByText('—')).toBeInTheDocument();
+    expect(screen.queryByText(/^\d+(\.\d+)?%$/)).not.toBeInTheDocument();
+  });
 
-    expect(screen.getByRole('link', { name: 'M-101' })).toHaveAttribute(
-      'href',
-      '/meter/M-101',
-    );
-    expect(
-      screen.getByText('No se pudo cargar el detalle.'),
-    ).toBeInTheDocument();
-    // The error state must not add a second tab stop to the card.
+  it('adds no second tab stop beyond the id link', () => {
+    render(<MeterCard meter={meter} anomaly={anomaly} />);
+
     expect(screen.getAllByRole('link')).toHaveLength(1);
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 
   it('renders the resolved card under StrictMode', () => {
-    mockDetail({ data: detail });
-
     render(
       <StrictMode>
-        <MeterCard meterId="M-101" />
+        <MeterCard meter={meter} anomaly={anomaly} />
       </StrictMode>,
     );
 

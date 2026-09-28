@@ -1,6 +1,7 @@
 import React from 'react';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import DashboardPage from '../../app/dashboard/page';
+import { formatDateTime } from '../../components/formatters';
 
 jest.mock('../../features/api/apiSlice', () => ({
   useGetDashboardSummaryQuery: jest.fn(),
@@ -20,7 +21,15 @@ const mockedUseGetAnomaliesQuery = useGetAnomaliesQuery as jest.Mock;
 const refetchSummary = jest.fn();
 const refetchAnomalies = jest.fn();
 
-const summary = { health: 'ok', meters: 3, anomalies: 2, lastRun: 'latest' };
+// The §5 example values: 12 meters, 4 anomalies, 2 of them HIGH, and a real
+// RFC3339 timestamp where the endpoint used to answer the literal "latest".
+const summary = {
+  health: 'ok',
+  meters: 12,
+  anomalies: 4,
+  total_consumption: 12345.6,
+  lastRun: '2026-09-28T00:16:17Z',
+};
 
 const anomalies: Anomaly[] = [
   {
@@ -77,6 +86,34 @@ const anomalies: Anomaly[] = [
   },
 ];
 
+/**
+ * The §5 shape: four anomalies of which **M-109 and M-112 are the two HIGH ones**,
+ * so the browser-derived `Alta prioridad` KPI has to read 2 while the summary
+ * only supplies the total.
+ */
+const fourAnomalies: Anomaly[] = [
+  { ...anomalies[0], id: 'f1', meter_id: 'M-109', severity: 'HIGH', priority: 1, confidence: 0.97 },
+  {
+    ...anomalies[1],
+    id: 'f2',
+    meter_id: 'M-112',
+    type: 'DATA_QUALITY',
+    severity: 'HIGH',
+    priority: 2,
+    confidence: 0.9,
+  },
+  { ...anomalies[0], id: 'f3', meter_id: 'M-101', severity: 'MEDIUM', priority: 3, confidence: 0.8 },
+  {
+    ...anomalies[1],
+    id: 'f4',
+    meter_id: 'M-102',
+    type: 'REAL_ANOMALY',
+    severity: 'LOW',
+    priority: 4,
+    confidence: 0.5,
+  },
+];
+
 function mockLoaded(
   summaryValue = summary,
   anomalyList: Anomaly[] = anomalies,
@@ -95,6 +132,24 @@ function mockLoaded(
     error: undefined,
     refetch: refetchAnomalies,
   });
+}
+
+/**
+ * One KPI card, addressed by its title within the KPI region.
+ *
+ * Scoping the value assertion to the card is what keeps it from matching the
+ * insight banner's highlighted number, which renders as its own element in the
+ * same region (`Alta prioridad` is 2, and so is the banner's HIGH count).
+ */
+function kpiCard(title: string): HTMLElement {
+  const region = within(
+    screen.getByRole('region', { name: 'Indicadores clave' }),
+  );
+  const card = region.getByText(title).closest('.ant-card');
+  if (!card) {
+    throw new Error(`no KPI card titled ${title}`);
+  }
+  return card as HTMLElement;
 }
 
 /** The pill that renders `value`, so a direction can be asserted per field. */
@@ -161,22 +216,78 @@ describe('DashboardPage component', () => {
     expect(refetchAnomalies).toHaveBeenCalledTimes(1);
   });
 
-  it('renders the KPI block from the deterministic summary', () => {
-    mockLoaded();
+  it('renders the KPI block from the deterministic summary and the fetched anomalies', () => {
+    mockLoaded(summary, fourAnomalies);
 
     render(<DashboardPage />);
 
     const kpis = within(
       screen.getByRole('region', { name: 'Indicadores clave' }),
     );
-    expect(kpis.getByText('Estado')).toBeInTheDocument();
-    expect(kpis.getByText('Operativo')).toBeInTheDocument();
-    expect(kpis.getByText('Medidores')).toBeInTheDocument();
-    expect(kpis.getByText('3')).toBeInTheDocument();
-    expect(kpis.getByText('Anomalías')).toBeInTheDocument();
-    expect(kpis.getByText('2')).toBeInTheDocument();
-    expect(kpis.getByText('Última ejecución')).toBeInTheDocument();
-    expect(kpis.getByText('latest')).toBeInTheDocument();
+    for (const title of [
+      'Estado',
+      'Medidores',
+      'Consumo total',
+      'Anomalías IA',
+      'Alta prioridad',
+      'Confianza IA',
+      'Último análisis',
+    ]) {
+      expect(kpis.getByText(title)).toBeInTheDocument();
+    }
+
+    expect(within(kpiCard('Estado')).getByText('Operativo')).toBeInTheDocument();
+    expect(within(kpiCard('Medidores')).getByText('12')).toBeInTheDocument();
+    // Consumo total is the one KPI that carries a unit, and the number keeps the
+    // shared fixed-decimal format (never antd's own digit grouping).
+    expect(
+      within(kpiCard('Consumo total')).getByText('12345.6 kWh'),
+    ).toBeInTheDocument();
+    expect(within(kpiCard('Anomalías IA')).getByText('4')).toBeInTheDocument();
+    // M-109 and M-112 are the two HIGH rows, counted in the browser.
+    expect(
+      within(kpiCard('Alta prioridad')).getByText('2'),
+    ).toBeInTheDocument();
+    // mean(0.97, 0.90, 0.80, 0.50) = 0.7925 -> 79%.
+    expect(within(kpiCard('Confianza IA')).getByText('79%')).toBeInTheDocument();
+
+    // Último análisis formats the RFC3339 timestamp, and the literal `"latest"`
+    // placeholder it replaced is nowhere on the page.
+    const lastRun = kpiCard('Último análisis');
+    expect(
+      within(lastRun).getByText(formatDateTime(summary.lastRun)),
+    ).toBeInTheDocument();
+    expect(within(lastRun).getByText('Completado')).toBeInTheDocument();
+    expect(kpis.queryByText('latest')).toBeNull();
+  });
+
+  it('reports no data for the last analysis when the summary carries no run', () => {
+    // An older backend still answers the literal placeholder. It must not crash,
+    // must not echo the placeholder as if it were a date, and must not claim the
+    // analysis ran.
+    mockLoaded({ ...summary, lastRun: 'latest' }, fourAnomalies);
+
+    render(<DashboardPage />);
+
+    const lastRun = kpiCard('Último análisis');
+    expect(within(lastRun).getByText('Sin datos')).toBeInTheDocument();
+    expect(within(lastRun).queryByText('Completado')).toBeNull();
+  });
+
+  it('shows no confidence when there is nothing to average', () => {
+    mockLoaded({ ...summary, anomalies: 0 }, []);
+
+    render(<DashboardPage />);
+
+    // Both browser-derived KPIs degrade to what the data supports: an empty list
+    // has no confidence, and `0%` would claim the model scored rows it never
+    // saw. The HIGH count is a real zero, because it counts an empty set.
+    expect(
+      within(kpiCard('Confianza IA')).getByText('—'),
+    ).toBeInTheDocument();
+    expect(
+      within(kpiCard('Alta prioridad')).getByText('0'),
+    ).toBeInTheDocument();
   });
 
   it('renders the anomaly overview with a link to each anomaly detail', () => {
@@ -270,19 +381,20 @@ describe('DashboardPage component', () => {
   });
 
   it('derives the insight banner only from the summary total and the fetched rows', () => {
-    mockLoaded();
+    mockLoaded(summary, fourAnomalies);
 
     render(<DashboardPage />);
 
-    const banner = screen.getByText(/Hay 2 anomalías/);
+    // 4 comes from the SUMMARY (only four rows were fetched, of which two are
+    // HIGH), so the total is the DTO value and the high count is the row count.
+    const banner = screen.getByText(/Hay 4 anomalías/);
     expect(banner).toHaveTextContent(
-      'Hay 2 anomalías en la última ejecución, 1 de severidad alta.',
+      'Hay 4 anomalías en la última ejecución, 2 de severidad alta.',
     );
-    // The single HIGH-severity row is the highlighted number.
-    expect(within(banner).getByText('1')).toHaveClass('number');
+    expect(within(banner).getByText('2')).toHaveClass('number');
   });
 
-  it('keeps the four summary KPI cards and the anomaly table alongside the pills', () => {
+  it('keeps every KPI card and the anomaly table alongside the pills', () => {
     mockLoaded();
 
     render(<DashboardPage />);
@@ -290,7 +402,15 @@ describe('DashboardPage component', () => {
     const kpis = within(
       screen.getByRole('region', { name: 'Indicadores clave' }),
     );
-    for (const title of ['Estado', 'Medidores', 'Anomalías', 'Última ejecución']) {
+    for (const title of [
+      'Estado',
+      'Medidores',
+      'Consumo total',
+      'Anomalías IA',
+      'Alta prioridad',
+      'Confianza IA',
+      'Último análisis',
+    ]) {
       expect(kpis.getByText(title)).toBeInTheDocument();
     }
     expect(screen.getByRole('table')).toBeInTheDocument();

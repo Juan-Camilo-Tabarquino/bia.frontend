@@ -60,7 +60,22 @@ beforeEach(() => {
   jest.clearAllMocks();
 
   (useGetMetersQuery as jest.Mock).mockReturnValue({
-    data: ['M-101', 'M-102'],
+    data: [
+      {
+        id: 'M-101',
+        consumption: 2180.4,
+        status: 'OK',
+        readings_count: 336,
+        last_reading_at: '2024-01-03T00:00:00Z',
+      },
+      {
+        id: 'M-102',
+        consumption: 900.1,
+        status: 'OK',
+        readings_count: 300,
+        last_reading_at: '2024-01-02T00:00:00Z',
+      },
+    ],
     isLoading: false,
     error: undefined,
   });
@@ -79,7 +94,13 @@ beforeEach(() => {
     error: undefined,
   });
   (useGetDashboardSummaryQuery as jest.Mock).mockReturnValue({
-    data: { health: 'ok', meters: 2, anomalies: 0, lastRun: '2024-01-01' },
+    data: {
+      health: 'ok',
+      meters: 2,
+      anomalies: 0,
+      total_consumption: 12345.6,
+      lastRun: '2024-01-01T00:00:00Z',
+    },
     isLoading: false,
     error: undefined,
   });

@@ -27,7 +27,12 @@ import {
   anomalyTypes,
   severityColors,
 } from "@/components/anomalies/anomalyLabels";
-import { meterStatusLabel } from "@/components/formatters";
+import {
+  formatConfidence,
+  formatDateTime,
+  formatMetric,
+  meterStatusLabel,
+} from "@/components/formatters";
 import type {
   Anomaly,
   AnomalySeverity,
@@ -52,10 +57,14 @@ const { Text, Title } = Typography;
 const OVERVIEW_LIMIT = 5;
 
 /**
- * Number of KPI cards the loading skeleton mirrors: the four summary cards
- * plus the four leading-anomaly signal cards the loaded row can show.
+ * Number of KPI cards the loaded overview renders.
+ *
+ * §5 of the technical test names the full set; `Estado` is the pre-existing
+ * backend-health card and is kept alongside them, so the count below is the
+ * seven cards the JSX actually renders. Both constants exist so the loading
+ * skeleton cannot drift from the loaded shape in either direction.
  */
-const KPI_CARD_COUNT = 8;
+const KPI_COUNT = 7;
 
 /** Signed change fields the anomaly DTO carries, in the order the pills render. */
 type DeltaSignalField =
@@ -77,6 +86,32 @@ const ANOMALY_DELTA_SIGNALS: ReadonlyArray<{
   { field: "current_change_pct", label: "Cambio de corriente" },
   { field: "power_factor_change_pct", label: "Cambio de factor de potencia" },
 ];
+
+/**
+ * Number of placeholder cards the loading skeleton mirrors: the KPI row plus
+ * the four leading-anomaly signal cards the loaded page can show.
+ */
+const KPI_CARD_COUNT = KPI_COUNT + ANOMALY_DELTA_SIGNALS.length;
+
+/**
+ * State of the last analysis run.
+ *
+ * `GET /api/dashboard/summary` carries one timestamp and no status field, so the
+ * only state derivable from it is whether a run actually reported something: a
+ * parseable RFC3339 value means a completed run, and anything else — a missing
+ * value, or the literal `"latest"` an older backend sent — is "no data".
+ * Inventing an "en curso" state would require progress the endpoint does not
+ * expose.
+ */
+function lastRunState(lastRun: string | undefined): {
+  label: string;
+  color: string;
+} {
+  if (lastRun !== undefined && !Number.isNaN(Date.parse(lastRun))) {
+    return { label: "Completado", color: "green" };
+  }
+  return { label: "Sin datos", color: "default" };
+}
 
 function countTypes(anomalies: Anomaly[]): Map<AnomalyType, number> {
   const counts = new Map<AnomalyType, number>();
@@ -126,12 +161,26 @@ export default function DashboardPage() {
   } = useGetAnomaliesQuery();
 
   // The summary endpoint reports only totals (`health`, `meters`, `anomalies`,
-  // `lastRun`): it exposes no `by_type` or `by_severity` breakdown. Every
-  // per-category count below is therefore derived in the browser from the
-  // fetched `GET /api/anomalies` array.
+  // `total_consumption`, `lastRun`): it exposes no `by_type` or `by_severity`
+  // breakdown. Every per-category count below is therefore derived in the
+  // browser from the fetched `GET /api/anomalies` array — including the two §5
+  // KPIs, `Alta prioridad` (the HIGH-severity count) and `Confianza IA` (the
+  // mean of `confidence`), which the backend is deliberately not asked for.
   const typeCounts = useMemo(() => countTypes(anomalies), [anomalies]);
   const severityCounts = useMemo(() => countSeverities(anomalies), [anomalies]);
   const overview = anomalies.slice(0, OVERVIEW_LIMIT);
+
+  // The mean of the fetched `confidence` values, or `null` when there is
+  // nothing to average: an empty list has no confidence, and `0%` would claim
+  // the model scored every row at zero.
+  const confidenceAverage = useMemo(
+    () =>
+      anomalies.length === 0
+        ? null
+        : anomalies.reduce((total, anomaly) => total + anomaly.confidence, 0) /
+          anomalies.length,
+    [anomalies],
+  );
 
   // `GET /api/anomalies` returns rows already ordered by ascending `priority`
   // (most urgent first) and the preview is never re-sorted, so the head of the
@@ -144,6 +193,17 @@ export default function DashboardPage() {
   const isLoading = summaryLoading || anomaliesLoading;
   const error = summaryError ?? anomaliesError;
 
+  // `total_consumption` is new on the summary. It is read through the same
+  // finite guard every other number here uses, so a response that predates the
+  // field renders the `—` placeholder instead of throwing inside `formatMetric`.
+  const totalConsumption =
+    summary && Number.isFinite(summary.total_consumption)
+      ? summary.total_consumption
+      : null;
+  const lastRun = summary?.lastRun;
+  const lastRunStatus = lastRunState(lastRun);
+  const hasLastRun = lastRun !== undefined && lastRun.length > 0;
+
   return (
     // The shell container owns the horizontal gutter on every route; this
     // page keeps only the vertical padding so its title aligns at x=144.
@@ -152,12 +212,14 @@ export default function DashboardPage() {
       <p className="sr-only">
         Indicadores clave de la última ejecución determinística y una
         previsualización de las anomalías detectadas, que llegan desde la API
-        ordenadas por prioridad (la más urgente primero). Los conteos por tipo
-        y por severidad se calculan en el navegador a partir de la lista de
-        anomalías obtenida. Las píldoras de cambio muestran los porcentajes
-        con signo de la anomalía más urgente respecto de su propia línea base,
-        y el banner de análisis usa el total del resumen más el conteo de
-        filas de severidad HIGH; no se muestra ninguna otra métrica.
+        ordenadas por prioridad (la más urgente primero). El consumo total y el
+        estado del último análisis vienen del endpoint de resumen; los conteos
+        por tipo y por severidad, el conteo de alta prioridad y la confianza
+        promedio se calculan en el navegador a partir de la lista de anomalías
+        obtenida. Las píldoras de cambio muestran los porcentajes con signo de la
+        anomalía más urgente respecto de su propia línea base, y el banner de
+        análisis usa el total del resumen más el conteo de filas de severidad
+        HIGH; no se muestra ninguna otra métrica.
       </p>
 
       {isLoading ? (
@@ -205,18 +267,60 @@ export default function DashboardPage() {
               </Col>
               <Col xs={24} sm={12} lg={6}>
                 <Card>
+                  {/* The number is formatted by the shared helper and the unit is
+                      part of the value string, not a `suffix`: `Statistic`
+                      regroups a numeric value with its own en-US separators
+                      (`12,345`), which a Spanish reader reads as twelve point
+                      three four five. The rest of the app never groups digits,
+                      so neither does this card. */}
                   <Statistic
-                    title="Anomalías"
-                    value={summary?.anomalies ?? anomalies.length}
+                    title="Consumo total"
+                    value={
+                      totalConsumption === null
+                        ? "—"
+                        : `${formatMetric(totalConsumption, 1)} kWh`
+                    }
                   />
                 </Card>
               </Col>
               <Col xs={24} sm={12} lg={6}>
                 <Card>
                   <Statistic
-                    title="Última ejecución"
-                    value={summary?.lastRun ?? "—"}
+                    title="Anomalías IA"
+                    value={summary?.anomalies ?? anomalies.length}
                   />
+                </Card>
+              </Col>
+              <Col xs={24} sm={12} lg={6}>
+                <Card>
+                  {/* Derived in the browser from the fetched anomalies: the
+                      summary exposes no severity breakdown. */}
+                  <Statistic title="Alta prioridad" value={highSeverityCount} />
+                </Card>
+              </Col>
+              <Col xs={24} sm={12} lg={6}>
+                <Card>
+                  <Statistic
+                    title="Confianza IA"
+                    value={
+                      confidenceAverage === null
+                        ? "—"
+                        : formatConfidence(confidenceAverage)
+                    }
+                  />
+                </Card>
+              </Col>
+              <Col xs={24} sm={12} lg={6}>
+                <Card>
+                  <Statistic
+                    title="Último análisis"
+                    value={hasLastRun ? formatDateTime(lastRun) : "—"}
+                  />
+                  <div style={{ marginTop: "0.5rem" }}>
+                    <Tag color={lastRunStatus.color}>
+                      {lastRunStatus.label}
+                    </Tag>
+                  </div>
                 </Card>
               </Col>
             </Row>

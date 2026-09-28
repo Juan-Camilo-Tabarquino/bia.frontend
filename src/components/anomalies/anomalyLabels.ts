@@ -55,6 +55,24 @@ export const anomalyTypeColors: Record<AnomalyType, string> = {
 };
 
 /**
+ * The action the anomaly table's **Acción** column prescribes for each `type`.
+ *
+ * This is presentation for the same discriminator `anomalyTypeLabels` already
+ * switches on, read through one map rather than a second `if` chain somewhere
+ * else, so a new `AnomalyType` cannot gain a label without also gaining an
+ * action (the record type makes both omissions a compile error the same way).
+ * `type` stays the only input: the action is never derived from `severity`,
+ * `status` or `recommended_action`, and the raw wire value stays on screen in
+ * the Tipo column's own tag.
+ */
+export const anomalyActionLabels: Record<AnomalyType, string> = {
+  REAL_ANOMALY: "Investigar",
+  DATA_QUALITY: "Validar",
+  EXPLAINABLE_ANOMALY: "Validar operación",
+  FALSE_POSITIVE: "No escalar",
+};
+
+/**
  * Plain-language labels for the `severity` enum. The raw `HIGH`/`MEDIUM`/`LOW`
  * value stays on screen next to this label wherever a record is shown, because
  * those are the exact strings the API payload carries.

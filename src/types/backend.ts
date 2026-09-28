@@ -11,6 +11,29 @@
 /** Meter identifier as returned by `GET /api/meters` (e.g. `"M-101"`). */
 export type MeterId = string;
 
+/** Health of a single meter, as `status` reports it. */
+export type MeterStatus = "OK" | "DEGRADED";
+
+/**
+ * Meter row returned by `GET /api/meters`.
+ *
+ * This endpoint used to answer a **bare array of ids**; it now answers one
+ * object per meter carrying the period total plus the same `status` and
+ * `last_reading_at` the detail endpoint reports. That is what lets the `/meters`
+ * cards show consumption, variation and an anomaly badge without a follow-up
+ * `GET /meters/{id}` per rendered card (the N+1 the repo had recorded as an open
+ * advisory).
+ */
+export interface MeterSummary {
+  id: string;
+  /** Period total for this meter, in kWh. */
+  consumption: number;
+  status: MeterStatus;
+  readings_count: number;
+  /** RFC3339 timestamp of the newest reading. */
+  last_reading_at: string;
+}
+
 /**
  * Single reading returned by `GET /api/meters/{meterId}/readings`.
  *
@@ -131,7 +154,7 @@ export interface MeterDetail {
   name: string;
   /** Always `""` in the current backend response. */
   location: string;
-  status: "OK" | "DEGRADED";
+  status: MeterStatus;
   /** RFC3339 timestamp. */
   created_at: string;
   readings_count: number;
@@ -144,7 +167,17 @@ export interface DashboardSummary {
   health: string;
   meters: number;
   anomalies: number;
-  /** Observed literal `"latest"`. */
+  /** Sum of `Consumption` over every reading loaded, in kWh. */
+  total_consumption: number;
+  /**
+   * RFC3339 timestamp of the last `Detect` that published a snapshot.
+   *
+   * This replaces the literal `"latest"` placeholder the endpoint used to
+   * return. The UI still renders through `formatDateTime`, whose failure policy
+   * returns an unparseable value unchanged, so an older backend that still sends
+   * `"latest"` degrades to the raw string and the `Sin datos` state instead of
+   * blanking or throwing.
+   */
   lastRun: string;
 }
 
