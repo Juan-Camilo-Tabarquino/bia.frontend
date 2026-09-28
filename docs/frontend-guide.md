@@ -338,7 +338,7 @@ Formato: **qué se ve**, **endpoints**, **estados** con su copia exacta, y **com
 
 - **Qué se ve:** `h1` **Medidores**; un buscador con label **Buscar medidor** (placeholder
   `Buscar por id de medidor`); dos grupos de controles (**Filtrar por anomalía**: Todos / Normales / Alertas /
-  Críticas, y **Ordenar por**: Orden del backend / Consumo / Variación / Severidad); la línea de conteo
+  Críticas, y **Ordenar por**: Consumo / Variación / Severidad); la línea de conteo
   **`Mostrando N de M medidores.`**; y un **grid responsive de cards** cliqueables, una por medidor.
 - **Endpoints:** `GET /meters` (objetos: `id`, `consumption`, `status`, `readings_count`,
   `last_reading_at`) y `GET /anomalies` (para unir por `meter_id`). **No hay ningún request por card.**

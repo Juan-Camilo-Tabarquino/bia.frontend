@@ -32,8 +32,13 @@ interface MeterListProps {
 /** The four buckets the filter bar exposes, named after what they show. */
 export type MeterFilter = "all" | "normal" | "alert" | "critical";
 
-/** The orderings the sort control exposes; `"backend"` is the API order. */
-export type MeterSort = "backend" | "consumption" | "variation" | "severity";
+/**
+ * The orderings the sort control exposes. There is deliberately no "no order"
+ * option: the control used to offer "Orden del backend", which exposed an
+ * implementation detail instead of a choice a user can make. Consumption, largest
+ * first, is the default.
+ */
+export type MeterSort = "consumption" | "variation" | "severity";
 
 /** One rendered row: a `/meters` object plus the anomaly the join found. */
 export interface MeterRow {
@@ -107,7 +112,7 @@ function severityOf(row: MeterRow): number {
  * returned them in.
  */
 const meterSortDefinitions: Record<
-  Exclude<MeterSort, "backend">,
+  MeterSort,
   (left: MeterRow, right: MeterRow) => number
 > = {
   consumption: (left, right) =>
@@ -182,7 +187,7 @@ export function MeterList({ headingLevel = 1 }: MeterListProps) {
 
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<MeterFilter>("all");
-  const [sort, setSort] = useState<MeterSort>("backend");
+  const [sort, setSort] = useState<MeterSort>("consumption");
 
   // `GET /api/meters` returns the whole array in the browser, so the search
   // filters that array and never issues a request. The box is debounced so the
@@ -205,9 +210,6 @@ export function MeterList({ headingLevel = 1 }: MeterListProps) {
         : rows.filter((row) => matchesSearch(row, normalizedQuery));
     const filtered = searched.filter((row) => matchesMeterFilter(row, filter));
 
-    if (sort === "backend") {
-      return filtered;
-    }
     return [...filtered].sort(meterSortDefinitions[sort]);
   }, [rows, debouncedQuery, filter, sort]);
 
@@ -286,7 +288,6 @@ export function MeterList({ headingLevel = 1 }: MeterListProps) {
                 value={sort}
                 onChange={(event) => setSort(event.target.value as MeterSort)}
                 options={[
-                  { label: "Orden del backend", value: "backend" },
                   { label: "Consumo", value: "consumption" },
                   { label: "Variación", value: "variation" },
                   { label: "Severidad", value: "severity" },
