@@ -1,7 +1,7 @@
 # Feature: AI re-analysis — read the analysis `status` and poll until it is terminal
 
-**Status: IMPLEMENTED and independently verified.** Branch `feat/ai-reanalysis-status`, from `main`
-(`4bf9bb07`). Five code/test files plus four documents changed; **nothing committed**.
+**Status: DONE — committed and merged into `main` by PR #3.** Branch `feat/ai-reanalysis-status`, from `main`
+(`4bf9bb07`). Five code/test files plus four documents changed; the work is committed and in `origin/main`.
 
 **Trigger:** an independent read-only verification of the already-shipped AI re-analysis action
 (`odd/tasks/repo-cleanup-and-ai-action.md`) found the highest-value gap: **the component never read

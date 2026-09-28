@@ -1,6 +1,6 @@
 # Feature: demo polish — the dashboard KPIs, the meters cards and the action column
 
-**Status: IN PROGRESS.** Two parallel writers, one per repository, on `feat/demo-polish`
+**Status: DONE — merged into `main` by PR #6.** Two parallel writers, one per repository, on `feat/demo-polish`
 (backend from `main` `092c6dc`; frontend stacked on `feat/auth-flow`, which already carries the login).
 
 **Why:** the complete technical test asks for things the app does not show yet. §5 lists six dashboard

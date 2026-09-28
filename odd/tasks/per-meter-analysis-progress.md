@@ -1,6 +1,6 @@
 # Feature: per-meter on-demand AI analysis with visible progress
 
-**Status: IN PROGRESS.** Two parallel writers, one per repository.
+**Status: DONE — merged into `main` by PR #4** (commit range `29b70bc1..e8f8118f`). Two parallel writers, one per repository.
 
 **Why:** technical test §13 requires *"un botón Run AI Analysis y mostrar el estado del proceso"*, and §21's
 flow runs `Run AI Analysis` **before** `Explicación`. Today the backend runs `Enrich()` (4 LLM calls,
@@ -82,9 +82,9 @@ The new endpoints must **not** require auth yet, or the frontend breaks mid-flig
 | ID | Title | Status |
 | --- | --- | --- |
 | 1 | Freeze the contract and publish this record | done |
-| 2 | Writer A — backend: record + 202 + statuses + stages + audit log + guardrails | pending |
-| 3 | Writer B — frontend: meter-scoped button, `Steps`, polling, result | pending |
-| 4 | Independent verification of both sides | pending |
-| 5 | Login/JWT + route guard | pending |
-| 6 | §5 dashboard KPIs, §6 card enrichment, §11 `Acción` column | pending |
-| 7 | `.env.example` in both repos + demo script | pending |
+| 2 | Writer A — backend: record + 202 + statuses + stages + audit log + guardrails | done (PR #4) |
+| 3 | Writer B — frontend: meter-scoped button, `Steps`, polling, result | done (PR #4) |
+| 4 | Independent verification of both sides | done (PR #4) |
+| 5 | Login/JWT + route guard | done (PR #6, auth flow) |
+| 6 | §5 dashboard KPIs, §6 card enrichment, §11 `Acción` column | done (PR #6, `demo-polish`) |
+| 7 | `.env.example` in both repos + demo script | done — frontend `.env.example` in PR #6; the demo script is deliberately kept outside the repo |
