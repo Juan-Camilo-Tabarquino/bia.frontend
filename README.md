@@ -21,7 +21,7 @@ The interface is the result of the `refactor/improve-ui` work (`docs/ui-refactor
 - **Spanish** throughout, including antd's own strings via `locale={esES}` and `dayjs.locale("es")`.
 - **Dark by default with a persisted light toggle.** The palette lives in one token module (`src/theme/tokens.ts`) that emits the `--bia-*` CSS variables, scoped by the `bia-theme` class on `<html>`.
 - **A real shell** (`AntdRegistry` → `Providers` → `SiteShell`): header with three destinations, a pathname-derived breadcrumb, and a one-shot health toast.
-- **`/meters` is a card grid**, not a list: one clickable antd card per meter (id, estado, última lectura), where the whole card is the hit area but the accessible name of the link stays exactly the meter id.
+- **`/meters` is a card grid**, not a list: one clickable antd card per meter (id, severity badge, estado, consumo, variación, última lectura), where the whole card is the hit area but the accessible name of the link stays exactly the meter id. The cards are driven by two already-fetched lists (`GET /meters` joined with `GET /anomalies` by `meter_id`), so no card issues a request of its own.
 
 The full architecture, data flow, per-page behaviour and conventions are in [`docs/frontend-guide.md`](docs/frontend-guide.md) (Spanish).
 

@@ -247,7 +247,8 @@ Lo que importa si se retoma:
   y sigue al conjunto **visible**: filtrar 102 ids a 2 cuesta 2 requests, probado por mutación. **El review nativo
   lo marcó igual como `R3-nplus1-load`, severidad WARNING** — la más alta que recibió un hallazgo en esta rama, y
   la lente lo graduó por encima de lo que la conversación había asumido. Queda como deuda conocida, no como
-  sorpresa.
+  sorpresa. **Resuelto en `demo-polish`:** `GET /api/meters` ahora devuelve objetos con el consumo y el estado de
+  cada medidor, así que `MeterCard` ya no hace ningún request y este advisory queda obsoleto.
 
 ## Trabajo posterior al refactor: el breadcrumb y el borde de contenido
 

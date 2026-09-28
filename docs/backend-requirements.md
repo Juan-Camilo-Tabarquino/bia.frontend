@@ -26,7 +26,7 @@ wrapped with CORS (`Access-Control-Allow-Origin: *`).
 | --- | --- | --- |
 | POST | `/api/auth/login` | `{"token":…,"expires_at":…,"user":{…}}` on success, or `{"error":…}` |
 | GET | `/api/health` | literal `{"status":"ok"}` |
-| GET | `/api/meters` | **bare array** of meter-id strings |
+| GET | `/api/meters` | **bare array** of meter objects (id, consumption, status, last reading) |
 | GET | `/api/meters/{meterId}` | meter metadata object |
 | GET | `/api/meters/{meterId}/readings?from&to` | **bare array** of reading objects, or `null` |
 | GET | `/api/anomalies` | **bare array** of anomaly objects (`[]` when empty) |
@@ -71,12 +71,32 @@ Literal body `{"status":"ok"}`.
 
 ### `GET /api/meters`
 
-Bare JSON array of meter-id strings, with no wrapper object. The order is not
+Bare JSON array of **meter objects**, with no wrapper object. The order is not
 sorted.
 
 ```json
-["M-101", "M-112"]
+[
+  {
+    "id": "M-109",
+    "consumption": 2180.4,
+    "status": "OK",
+    "readings_count": 336,
+    "last_reading_at": "2026-09-12T14:00:00Z"
+  }
+]
 ```
+
+- `consumption` is that meter's period total in kWh.
+- `status` is `"OK"` or `"DEGRADED"` — the same value
+  `GET /api/meters/{meterId}` reports.
+- `readings_count` and `last_reading_at` mirror the detail endpoint.
+
+**This shape replaces the bare array of id strings**, and the change is
+deliberately breaking: it is the only way to give the `/meters` cards a
+consumption figure (and a status and a last reading) without one follow-up
+`GET /api/meters/{meterId}` per rendered card. The frontend typed it as
+`MeterSummary` (`src/types/backend.ts`) and the `/meters` page joins it with
+`GET /api/anomalies` by `meter_id` in the browser.
 
 ### `GET /api/meters/{meterId}`
 
@@ -309,11 +329,28 @@ cycle above, so the polling is live; see §2 for the reversal of the old
 ### `GET /api/dashboard/summary`
 
 ```json
-{ "health": "ok", "meters": 12, "anomalies": 4, "lastRun": "latest" }
+{
+  "health": "ok",
+  "meters": 12,
+  "anomalies": 4,
+  "total_consumption": 12345.6,
+  "lastRun": "2026-09-28T00:16:17Z"
+}
 ```
 
-`lastRun` is a literal placeholder string; the backend does not compute a
-timestamp for it.
+- `total_consumption` is kWh: the sum of `Consumption` over every reading
+  loaded. It backs the **Consumo total** KPI.
+- `lastRun` is now a real RFC3339 timestamp — the moment of the last `Detect`
+  that published a snapshot — and it **replaces the literal `"latest"`
+  placeholder** the endpoint used to return. It backs the **Último análisis**
+  KPI, which renders the formatted date/time plus a state.
+- `health`, `meters` and `anomalies` are unchanged. The payload also carries
+  `unvalidatedMeters`, also unchanged; the frontend does not consume it.
+
+The summary deliberately carries **no** per-severity or per-type breakdown and no
+confidence figure, so the **Alta prioridad** (count of `severity === "HIGH"`) and
+**Confianza IA** (mean of `confidence`) KPIs are derived in the browser from the
+already-fetched `GET /api/anomalies` array.
 
 ### `GET /api/reports`
 
