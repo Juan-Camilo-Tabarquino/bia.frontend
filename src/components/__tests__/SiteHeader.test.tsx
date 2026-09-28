@@ -1,10 +1,13 @@
 import React from "react";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 
 const mockUsePathname = jest.fn();
+const mockReplace = jest.fn();
+const mockUseRouter = jest.fn(() => ({ replace: mockReplace }));
 
 jest.mock("next/navigation", () => ({
   usePathname: () => mockUsePathname(),
+  useRouter: () => mockUseRouter(),
 }));
 
 jest.mock("@/features/api/apiSlice", () => ({
@@ -12,10 +15,18 @@ jest.mock("@/features/api/apiSlice", () => ({
 }));
 
 import { useGetDashboardSummaryQuery } from "@/features/api/apiSlice";
+import { SESSION_STORAGE_KEY } from "@/features/auth/session";
 import { ThemeProvider } from "../../theme/theme-provider";
 import { SiteHeader } from "../shell/SiteHeader";
 
 const mockedSummary = useGetDashboardSummaryQuery as jest.Mock;
+
+/** A structurally valid (never verified) HS256-shaped token for the tests. */
+function makeToken(payload: Record<string, unknown>): string {
+  const encode = (value: object): string =>
+    Buffer.from(JSON.stringify(value)).toString("base64url");
+  return `${encode({ alg: "HS256", typ: "JWT" })}.${encode(payload)}.sig`;
+}
 
 function renderHeader(): void {
   render(
@@ -27,6 +38,7 @@ function renderHeader(): void {
 
 describe("SiteHeader anomaly badge", () => {
   beforeEach(() => {
+    window.localStorage.clear();
     mockUsePathname.mockReturnValue("/meters");
     mockedSummary.mockReset();
   });
@@ -151,5 +163,43 @@ describe("SiteHeader current destination", () => {
     expect(
       screen.getByRole("link", { name: "Anomalías" }),
     ).not.toHaveAttribute("aria-current");
+  });
+});
+
+describe("SiteHeader session", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    mockUsePathname.mockReset();
+    mockUsePathname.mockReturnValue("/dashboard");
+    mockUseRouter.mockReset();
+    mockUseRouter.mockReturnValue({ replace: mockReplace });
+    mockReplace.mockReset();
+    mockedSummary.mockReset();
+    mockedSummary.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: undefined,
+    });
+  });
+
+  it("shows the signed-in user and clears the session on logout", async () => {
+    window.localStorage.setItem(
+      SESSION_STORAGE_KEY,
+      makeToken({
+        sub: "jcamilo",
+        name: "Juan Camilo",
+        authorized: true,
+        exp: Math.floor(Date.now() / 1000) + 3600,
+      }),
+    );
+
+    renderHeader();
+
+    expect(await screen.findByText("Juan Camilo")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Cerrar sesión" }));
+
+    expect(window.localStorage.getItem(SESSION_STORAGE_KEY)).toBeNull();
+    expect(mockReplace).toHaveBeenCalledWith("/login");
   });
 });

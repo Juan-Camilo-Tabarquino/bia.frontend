@@ -1,5 +1,6 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { getApiBaseUrl } from "../../utils/apiBaseUrl";
+import { prepareAuthHeaders } from "../auth/authHeaders";
 import type { AnalysisResult, AnalyzeResponse } from "../../types/backend";
 
 // Resolve API base URL from utility (NEXT_PUBLIC_API_URL)
@@ -15,7 +16,10 @@ const dashboardBaseUrl = getApiBaseUrl();
  */
 export const dashboardApi = createApi({
   reducerPath: "dashboardApi",
-  baseQuery: fetchBaseQuery({ baseUrl: dashboardBaseUrl }),
+  baseQuery: fetchBaseQuery({
+    baseUrl: dashboardBaseUrl,
+    prepareHeaders: prepareAuthHeaders,
+  }),
   endpoints: (builder) => ({
     postAnalyze: builder.mutation<AnalyzeResponse, void>({
       query: () => ({

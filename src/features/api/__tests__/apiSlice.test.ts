@@ -13,6 +13,7 @@ describe('apiSlice', () => {
         'getDashboardSummary',
         'getMeterDetail',
         'getMeters',
+        'login',
       ].sort(),
     );
   });
