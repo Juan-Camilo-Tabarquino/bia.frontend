@@ -145,12 +145,12 @@ describe("AnomalyDetail", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows an honest empty state when the backend omits llm_analysis", () => {
+  it("invites the reader to run the analysis when the backend omits llm_analysis", () => {
     render(<AnomalyDetail anomaly={makeAnomaly()} />);
 
     expect(
       screen.getByText(
-        "No hay narrativa del LLM disponible para esta anomalía.",
+        "La narrativa se genera bajo demanda: corré el análisis con IA desde la página del medidor para producirla.",
       ),
     ).toBeInTheDocument();
   });

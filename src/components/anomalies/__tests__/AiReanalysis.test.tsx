@@ -4,9 +4,9 @@ import type { Anomaly, AnalysisResult } from "@/types/backend";
 import { AiReanalysis } from "../AiReanalysis";
 
 jest.mock("@/features/dashboards/dashboardAPI", () => ({
-  // The component also imports the poll interval constant and the pending-status
-  // helper from that module, so the factory must keep the real exports and
-  // replace only the two hooks that need a store provider.
+  // The component also imports the poll interval constant, the stage list and
+  // the pending-status helper from that module, so the factory must keep the
+  // real exports and replace only the two hooks that need a store provider.
   ...jest.requireActual("@/features/dashboards/dashboardAPI"),
   usePostAnalyzeMutation: jest.fn(),
   useGetAiAnalysisQuery: jest.fn(),
@@ -14,12 +14,16 @@ jest.mock("@/features/dashboards/dashboardAPI", () => ({
 
 import {
   ANALYSIS_POLL_INTERVAL_MS,
+  ANALYSIS_STAGES,
   useGetAiAnalysisQuery,
   usePostAnalyzeMutation,
 } from "@/features/dashboards/dashboardAPI";
 
 const mockedUsePostAnalyzeMutation = usePostAnalyzeMutation as jest.Mock;
 const mockedUseGetAiAnalysisQuery = useGetAiAnalysisQuery as jest.Mock;
+
+/** Meter the block is scoped to across this suite. */
+const METER_ID = "M-109";
 
 function makeAnomaly(overrides: Partial<Anomaly> = {}): Anomaly {
   return {
@@ -54,17 +58,23 @@ function makeAnomaly(overrides: Partial<Anomaly> = {}): Anomaly {
 
 const result: AnalysisResult = {
   analysisId: "3f1c9d4e-uuid",
+  meter_id: METER_ID,
   status: "completed",
+  stage: "completed",
+  progress: { done: 7, total: 7 },
+  started_at: "2026-09-12T14:00:00Z",
+  finished_at: "2026-09-12T14:01:00Z",
   anomalies: [
     makeAnomaly(),
     makeAnomaly({
-      id: "M-112-2026-09-10T09:00:00Z",
-      meter_id: "M-112",
+      id: "M-109-2026-09-10T09:00:00Z",
       priority: 2,
       type: "DATA_QUALITY",
       llm_analysis: "Second narrative.",
     }),
   ],
+  platform: { total_anomalies: 4, high_priority: 2 },
+  error: null,
 };
 
 const trigger = jest.fn();
@@ -103,6 +113,10 @@ function mockQuery(
   });
 }
 
+function renderBlock(): void {
+  render(<AiReanalysis meterId={METER_ID} />);
+}
+
 describe("AiReanalysis", () => {
   beforeEach(() => {
     mockedUsePostAnalyzeMutation.mockReset();
@@ -113,35 +127,46 @@ describe("AiReanalysis", () => {
   });
 
   it("renders the labelled control and the latency disclosure while idle", () => {
-    render(<AiReanalysis />);
+    renderBlock();
 
     expect(
       screen.getByRole("region", { name: "Análisis con IA" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Reintentar el análisis de la plataforma" }),
+      screen.getByRole("button", { name: "Correr análisis con IA" }),
     ).toBeEnabled();
     expect(screen.getByText(/alrededor de un minuto/i)).toBeInTheDocument();
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
-  it("triggers the analysis request when the action is clicked", () => {
-    render(<AiReanalysis />);
+  it("renders the seven real pipeline stages in order", () => {
+    renderBlock();
+
+    const titles = screen
+      .getAllByText(/^(Lecturas|Baseline|Detección|Correlación|Eventos|Explicación con IA|Recomendación)$/)
+      .map((node) => node.textContent);
+
+    expect(titles).toEqual(ANALYSIS_STAGES.map((step) => step.label));
+  });
+
+  it("sends the meter id in the POST body when the action is clicked", () => {
+    renderBlock();
 
     fireEvent.click(
-      screen.getByRole("button", { name: "Reintentar el análisis de la plataforma" }),
+      screen.getByRole("button", { name: "Correr análisis con IA" }),
     );
 
     expect(trigger).toHaveBeenCalledTimes(1);
+    expect(trigger).toHaveBeenCalledWith({ meterId: METER_ID });
   });
 
   it("disables the action and announces the running state while pending", () => {
     mockMutation({ isLoading: true });
 
-    render(<AiReanalysis />);
+    renderBlock();
 
     expect(
-      screen.getByRole("button", { name: /Reintentar el análisis de la plataforma/ }),
+      screen.getByRole("button", { name: /Correr análisis con IA/ }),
     ).toBeDisabled();
     expect(screen.getByRole("status")).toHaveTextContent(
       "El análisis está en curso. Puede tardar alrededor de un minuto.",
@@ -151,21 +176,31 @@ describe("AiReanalysis", () => {
   it("renders the mutation error and leaves the action usable to retry", () => {
     mockMutation({ error: { message: "Boom" } });
 
-    render(<AiReanalysis />);
+    renderBlock();
 
     expect(screen.getByRole("alert")).toHaveTextContent("Boom");
     expect(
-      screen.getByRole("button", { name: "Reintentar el análisis de la plataforma" }),
+      screen.getByRole("button", { name: "Correr análisis con IA" }),
     ).toBeEnabled();
+  });
+
+  it("shows the error body of a rejected POST (unknown meter)", () => {
+    // RTK Query exposes the JSON body under `data`; a `400 {"error":"…"}` must
+    // surface that string instead of the generic fallback.
+    mockMutation({ error: { status: 400, data: { error: "meter desconocido" } } });
+
+    renderBlock();
+
+    expect(screen.getByRole("alert")).toHaveTextContent("meter desconocido");
   });
 
   it("falls back to a generic message when the mutation error has none", () => {
     mockMutation({ error: {} });
 
-    render(<AiReanalysis />);
+    renderBlock();
 
     expect(screen.getByRole("alert")).toHaveTextContent(
-      "No se pudo completar el análisis de la plataforma. Inténtalo de nuevo.",
+      "No se pudo completar el análisis del medidor. Inténtalo de nuevo.",
     );
   });
 
@@ -173,7 +208,7 @@ describe("AiReanalysis", () => {
     mockMutation({ data: { analysisId: "3f1c9d4e-uuid" } });
     mockQuery({ error: { message: "Nope" } });
 
-    render(<AiReanalysis />);
+    renderBlock();
 
     expect(screen.getByRole("alert")).toHaveTextContent("Nope");
   });
@@ -182,7 +217,7 @@ describe("AiReanalysis", () => {
     mockMutation({ data: { analysisId: "3f1c9d4e-uuid" } });
     mockQuery({ data: result });
 
-    render(<AiReanalysis />);
+    renderBlock();
 
     expect(screen.getByRole("status")).toHaveTextContent(
       "Análisis completado: se devolvieron 2 anomalías.",
@@ -199,13 +234,18 @@ describe("AiReanalysis", () => {
     expect(
       screen.getByText("Consumption far above baseline."),
     ).toBeInTheDocument();
+    // The recommended action and the platform closing line come from the result.
+    expect(screen.getByText("Inspect the meter")).toBeInTheDocument();
+    expect(
+      screen.getByText("4 anomalías detectadas · 2 requieren atención prioritaria"),
+    ).toBeInTheDocument();
   });
 
   it("renders an honest completion state when no anomalies are returned", () => {
     mockMutation({ data: { analysisId: "3f1c9d4e-uuid" } });
     mockQuery({ data: { ...result, anomalies: [] } });
 
-    render(<AiReanalysis />);
+    renderBlock();
 
     expect(screen.getByRole("status")).toHaveTextContent(
       "Análisis completado: no se devolvió ninguna anomalía.",
@@ -223,16 +263,20 @@ describe("AiReanalysis status handling", () => {
     mockMutation({ data: { analysisId } });
   });
 
+  function renderBlock(): void {
+    render(<AiReanalysis meterId={METER_ID} />);
+  }
+
   function button(): HTMLElement {
-    return screen.getByRole("button", {
-      name: "Reintentar el análisis de la plataforma",
-    });
+    return screen.getByRole("button", { name: "Correr análisis con IA" });
   }
 
   it("reports a queued analysis as in progress, never as a completed one", () => {
-    mockQuery({ data: { ...result, status: "queued" } });
+    mockQuery({
+      data: { ...result, status: "queued", stage: "queued", progress: { done: 0, total: 7 } },
+    });
 
-    render(<AiReanalysis />);
+    renderBlock();
 
     expect(screen.getByRole("status")).toHaveTextContent(
       "El análisis sigue en curso (estado: queued). Se actualizará automáticamente.",
@@ -240,31 +284,40 @@ describe("AiReanalysis status handling", () => {
     // A non-terminal status is never announced as a finished analysis.
     expect(screen.queryByText(/Análisis completado/)).not.toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-    expect(screen.queryByRole("link")).not.toBeInTheDocument();
     // A second analysis must not be spinnable on top of the first.
     expect(button()).toBeDisabled();
   });
 
-  it("keeps polling while the API reports running", () => {
-    mockQuery({ data: { ...result, status: "running" } });
+  it("marks the active stage and shows elapsed seconds while running", () => {
+    mockQuery({
+      data: {
+        ...result,
+        status: "running",
+        stage: "explicacion",
+        progress: { done: 5, total: 7 },
+        finished_at: null,
+      },
+    });
 
-    render(<AiReanalysis />);
+    renderBlock();
 
     expect(screen.getByRole("status")).toHaveTextContent(
       "El análisis sigue en curso (estado: running). Se actualizará automáticamente.",
     );
-    expect(screen.queryByText(/Análisis completado/)).not.toBeInTheDocument();
     expect(button()).toBeDisabled();
     expect(mockedUseGetAiAnalysisQuery).toHaveBeenLastCalledWith(analysisId, {
       skip: false,
       pollingInterval: ANALYSIS_POLL_INTERVAL_MS,
     });
+    // The active stage carries the live seconds counter; no fake percentage.
+    expect(screen.getByText(/^Explicación con IA — \d+ s$/)).toBeInTheDocument();
+    expect(screen.queryByText(/%/)).not.toBeInTheDocument();
   });
 
   it("stops polling and re-enables the action once the status is completed", () => {
     mockQuery({ data: result });
 
-    render(<AiReanalysis />);
+    renderBlock();
 
     expect(screen.getByRole("status")).toHaveTextContent(
       "Análisis completado: se devolvieron 2 anomalías.",
@@ -276,17 +329,23 @@ describe("AiReanalysis status handling", () => {
     expect(button()).toBeEnabled();
   });
 
-  it("surfaces a failed status as an error without claiming completion", () => {
-    mockQuery({ data: { ...result, status: "failed" } });
+  it("surfaces a failed status as an error with the backend reason", () => {
+    mockQuery({
+      data: {
+        ...result,
+        status: "failed",
+        stage: "failed",
+        progress: { done: 5, total: 7 },
+        error: "LLM provider timeout",
+      },
+    });
 
-    render(<AiReanalysis />);
+    renderBlock();
 
     const alert = screen.getByRole("alert");
     expect(alert).toHaveClass("ant-alert-error");
     expect(alert).toHaveTextContent("El análisis falló");
-    expect(alert).toHaveTextContent(
-      "El backend informó que el análisis falló. Vuelve a intentarlo.",
-    );
+    expect(alert).toHaveTextContent("LLM provider timeout");
     expect(screen.queryByText(/Análisis completado/)).not.toBeInTheDocument();
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
     expect(mockedUseGetAiAnalysisQuery).toHaveBeenLastCalledWith(analysisId, {
@@ -301,7 +360,7 @@ describe("AiReanalysis status handling", () => {
     // and the payload must never be read as a finished analysis.
     mockQuery({ data: { ...result, status: "processing" } });
 
-    render(<AiReanalysis />);
+    renderBlock();
 
     const alert = screen.getByRole("alert");
     expect(alert).toHaveClass("ant-alert-warning");
@@ -321,8 +380,10 @@ describe("AiReanalysis status handling", () => {
     // Triangulation of the interval itself: the `completed` test above starts
     // from a terminal status, so only this one exercises the pending -> terminal
     // transition that has to turn the interval back to 0 for good.
-    mockQuery({ data: { ...result, status: "queued" } });
-    const { rerender } = render(<AiReanalysis />);
+    mockQuery({
+      data: { ...result, status: "queued", stage: "queued", progress: { done: 0, total: 7 } },
+    });
+    const { rerender } = render(<AiReanalysis meterId={METER_ID} />);
 
     expect(mockedUseGetAiAnalysisQuery).toHaveBeenLastCalledWith(analysisId, {
       skip: false,
@@ -330,7 +391,7 @@ describe("AiReanalysis status handling", () => {
     });
 
     mockQuery({ data: result });
-    rerender(<AiReanalysis />);
+    rerender(<AiReanalysis meterId={METER_ID} />);
 
     expect(screen.getByRole("status")).toHaveTextContent(
       "Análisis completado: se devolvieron 2 anomalías.",

@@ -8,18 +8,6 @@ jest.mock("@/features/api/apiSlice", () => ({
   useGetMetersQuery: jest.fn(),
 }));
 
-// The page now mounts `AiReanalysis`, whose RTK Query hooks need a store
-// provider the page suite does not use. Mock them to the idle state so the
-// page's own behaviour stays under test without a Redux Provider.
-jest.mock("@/features/dashboards/dashboardAPI", () => ({
-  // `AiReanalysis` also imports the poll interval constant and the pending-status
-  // helper from that module, so keep the real exports and replace only the two
-  // hooks that need a store provider.
-  ...jest.requireActual("@/features/dashboards/dashboardAPI"),
-  usePostAnalyzeMutation: jest.fn(),
-  useGetAiAnalysisQuery: jest.fn(),
-}));
-
 jest.mock("next/navigation", () => ({
   useSearchParams: jest.fn(),
   usePathname: jest.fn(),
@@ -30,10 +18,6 @@ import {
   useGetAnomaliesQuery,
   useGetMetersQuery,
 } from "@/features/api/apiSlice";
-import {
-  useGetAiAnalysisQuery,
-  usePostAnalyzeMutation,
-} from "@/features/dashboards/dashboardAPI";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 // jsdom does not implement MessageChannel, which rc-select (antd Select) uses to
@@ -73,8 +57,6 @@ const mockedUseGetMetersQuery = useGetMetersQuery as jest.Mock;
 const mockedUseSearchParams = useSearchParams as jest.Mock;
 const mockedUsePathname = usePathname as jest.Mock;
 const mockedUseRouter = useRouter as jest.Mock;
-const mockedUsePostAnalyzeMutation = usePostAnalyzeMutation as jest.Mock;
-const mockedUseGetAiAnalysisQuery = useGetAiAnalysisQuery as jest.Mock;
 
 const refetch = jest.fn();
 
@@ -223,17 +205,6 @@ describe("AnomaliesPage", () => {
     mockedUseRouter.mockReturnValue({ replace: replaceUrl, push: pushUrl });
     replaceUrl.mockReset();
     pushUrl.mockReset();
-    mockedUsePostAnalyzeMutation.mockReset();
-    mockedUseGetAiAnalysisQuery.mockReset();
-    mockedUsePostAnalyzeMutation.mockReturnValue([
-      jest.fn(),
-      { isLoading: false, data: undefined, error: undefined },
-    ]);
-    mockedUseGetAiAnalysisQuery.mockReturnValue({
-      data: undefined,
-      error: undefined,
-      isLoading: false,
-    });
     refetch.mockReset();
     mockLoaded();
   });
