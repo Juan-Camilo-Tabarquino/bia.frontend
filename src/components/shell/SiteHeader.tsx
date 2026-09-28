@@ -3,16 +3,18 @@
 import {
   AlertOutlined,
   LineChartOutlined,
+  LogoutOutlined,
   MoonOutlined,
   SunOutlined,
   ThunderboltOutlined,
 } from "@ant-design/icons";
-import { Badge, Button, Layout, Tooltip } from "antd";
+import { Badge, Button, Layout, Space, Tooltip } from "antd";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useCallback, type ReactNode } from "react";
 
 import { useGetDashboardSummaryQuery } from "@/features/api/apiSlice";
+import { useSession } from "@/features/auth/session";
 import { brand } from "../../theme/tokens";
 import { useThemeMode } from "../../theme/theme-provider";
 import styles from "./SiteHeader.module.scss";
@@ -70,8 +72,15 @@ const ANOMALY_BADGE_DESCRIPTION_ID = "anomalies-badge-description";
  */
 export function SiteHeader() {
   const pathname = usePathname();
+  const router = useRouter();
   const { mode, toggle } = useThemeMode();
+  const { session, signOut } = useSession();
   const { data: summary, isLoading, error } = useGetDashboardSummaryQuery();
+
+  const handleSignOut = useCallback((): void => {
+    signOut();
+    router.replace("/login");
+  }, [router, signOut]);
 
   // Only a positive count from a settled, successful request is shown: a
   // loading or failed summary must never surface as a badge, and zero is not a
@@ -169,6 +178,26 @@ export function SiteHeader() {
             onClick={toggle}
           />
         </Tooltip>
+
+        {/*
+         * The signed-in user and the logout control. Both are hidden until
+         * `useSession` has read storage, so the server render and the first
+         * client render agree (no session yet).
+         */}
+        {session && (
+          <Space size={4} align="center">
+            <span className="sr-only">Sesión iniciada como</span>
+            <span>{session.user.name}</span>
+            <Tooltip title="Cerrar sesión">
+              <Button
+                type="text"
+                aria-label="Cerrar sesión"
+                icon={<LogoutOutlined />}
+                onClick={handleSignOut}
+              />
+            </Tooltip>
+          </Space>
+        )}
       </div>
     </Layout.Header>
   );

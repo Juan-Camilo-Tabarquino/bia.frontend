@@ -65,7 +65,8 @@ Implemented today under `src/app`:
 
 | Route | File | Description |
 |-------|------|-------------|
-| `/` | `src/app/page.tsx` | Server component whose only body is `redirect("/meters")`; it renders nothing itself. |
+| `/` | `src/app/page.tsx` | Server component whose only body is `redirect("/dashboard")`; it renders nothing itself. |
+| `/login` | `src/app/login/page.tsx` | Sign-in screen: antd username/password form, the demo credentials shown as a hint, the backend's `400`/`401`/`403` messages surfaced, and a redirect to `/dashboard` on success. Hides the shell's header, nav and breadcrumb. |
 | `/meters` | `src/app/meters/page.tsx` | Full meter list. |
 | `/meter/[id]` | `src/app/meter/[id]/page.tsx` | Single meter detail. |
 | `/meter/[id]/readings` | `src/app/meter/[id]/readings/page.tsx` | Meter readings with chart and table. |
@@ -81,11 +82,37 @@ Planned, not implemented yet:
 
 `docs/routes.md` (Spanish) maps each page to the endpoints it consumes.
 
+## Authentication (demo flow)
+
+The technical-test flow starts with **Login → Dashboard**, so the demo has a login screen and a route guard. It is a
+**UX flow, not a security boundary**: the backend only issues the JWT at `POST /api/auth/login` and does **not**
+validate it on any other route.
+
+**Demo credentials:**
+
+```text
+username: jcamilo
+password: bia2026
+```
+
+They are shown on the login screen too, because this is a flow demo. How it works, briefly:
+
+- The token is stored in `localStorage` under the versioned key **`bia.session.v1`**. The JWT payload (`sub`, `name`,
+  `authorized`, `exp`) is decoded by hand; a missing, malformed or expired token counts as “no session”.
+- `src/components/PrivateRoute.tsx` is the real guard. It is mounted **once, in the shell** (`SiteShell`), redirects to
+  `/login` when there is no valid session, and skips `/login` so it can never loop.
+- The header shows the signed-in user and a logout control that clears the session and returns to `/login`.
+- A shared `prepareHeaders` (`src/features/auth/authHeaders.ts`) adds `Authorization: Bearer <token>` to the three RTK
+  Query slices. There is no response interceptor, because the API returns no `401` on those routes.
+
+See the auth section of [`docs/frontend-guide.md`](docs/frontend-guide.md) and the endpoint in
+[`docs/backend-requirements.md`](docs/backend-requirements.md) for the details.
+
 ## API layer
 
 All RTK Query HTTP access lives under `src/features`, with one axios call outside it:
 
-- `src/features/api/apiSlice.ts` — `apiSlice` (reducerPath `api`): `GET /meters`, `GET /meters/{meterId}`, `GET /anomalies`, `GET /anomalies/{id}`, `GET /dashboard/summary`.
+- `src/features/api/apiSlice.ts` — `apiSlice` (reducerPath `api`): `POST /auth/login`, `GET /meters`, `GET /meters/{meterId}`, `GET /anomalies`, `GET /anomalies/{id}`, `GET /dashboard/summary`.
 - `src/features/data/dataAPI.ts` — `dataApi`: `GET /meters/{meterId}/readings` with `from`/`to` query params.
 - `src/features/dashboards/dashboardAPI.ts` — `dashboardApi`: `POST /ai/analyze` and `GET /ai/analysis/{id}`.
 - `src/features/store/index.ts` — registers the three slices and their middleware.

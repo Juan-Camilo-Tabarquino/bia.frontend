@@ -113,10 +113,10 @@ const expectSingleH1 = (name: string | RegExp): void => {
 };
 
 describe('accessibility', () => {
-  it('redirects the home page to the meters route', () => {
+  it('redirects the home page to the dashboard route', () => {
     render(<Home />);
 
-    expect(redirect).toHaveBeenCalledWith('/meters');
+    expect(redirect).toHaveBeenCalledWith('/dashboard');
   });
 
   it('renders exactly one h1 on the meters page', () => {

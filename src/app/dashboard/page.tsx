@@ -14,7 +14,6 @@ import {
   Tag,
   Typography,
 } from "antd";
-import PrivateRoute from "../../components/PrivateRoute";
 // The anomaly table is reused verbatim: every row links to `/anomalies/{id}`,
 // so the dashboard preview stays consistent with the full list page.
 import { AnomalyTable } from "@/components/anomalies/AnomalyTable";
@@ -146,214 +145,212 @@ export default function DashboardPage() {
   const error = summaryError ?? anomaliesError;
 
   return (
-    <PrivateRoute>
-      {/* The shell container owns the horizontal gutter on every route; this
-          page keeps only the vertical padding so its title aligns at x=144. */}
-      <div style={{ paddingBlock: "1rem" }}>
-        <Title level={1}>Panel de control</Title>
-        <p className="sr-only">
-          Indicadores clave de la última ejecución determinística y una
-          previsualización de las anomalías detectadas, que llegan desde la API
-          ordenadas por prioridad (la más urgente primero). Los conteos por tipo
-          y por severidad se calculan en el navegador a partir de la lista de
-          anomalías obtenida. Las píldoras de cambio muestran los porcentajes
-          con signo de la anomalía más urgente respecto de su propia línea base,
-          y el banner de análisis usa el total del resumen más el conteo de
-          filas de severidad HIGH; no se muestra ninguna otra métrica.
-        </p>
+    // The shell container owns the horizontal gutter on every route; this
+    // page keeps only the vertical padding so its title aligns at x=144.
+    <div style={{ paddingBlock: "1rem" }}>
+      <Title level={1}>Panel de control</Title>
+      <p className="sr-only">
+        Indicadores clave de la última ejecución determinística y una
+        previsualización de las anomalías detectadas, que llegan desde la API
+        ordenadas por prioridad (la más urgente primero). Los conteos por tipo
+        y por severidad se calculan en el navegador a partir de la lista de
+        anomalías obtenida. Las píldoras de cambio muestran los porcentajes
+        con signo de la anomalía más urgente respecto de su propia línea base,
+        y el banner de análisis usa el total del resumen más el conteo de
+        filas de severidad HIGH; no se muestra ninguna otra métrica.
+      </p>
 
-        {isLoading ? (
-          // The KPI row is a known shape, so the loading state mirrors it with
-          // placeholder cards instead of a single unlabelled spinner.
-          <Row gutter={[16, 16]}>
-            {Array.from({ length: KPI_CARD_COUNT }, (_unused, index) => (
-              <Col key={index} xs={24} sm={12} lg={6}>
+      {isLoading ? (
+        // The KPI row is a known shape, so the loading state mirrors it with
+        // placeholder cards instead of a single unlabelled spinner.
+        <Row gutter={[16, 16]}>
+          {Array.from({ length: KPI_CARD_COUNT }, (_unused, index) => (
+            <Col key={index} xs={24} sm={12} lg={6}>
+              <Card>
+                <Skeleton active title={false} paragraph={{ rows: 1 }} />
+              </Card>
+            </Col>
+          ))}
+        </Row>
+      ) : error ? (
+        <RequestError
+          title="No se pudo cargar el panel"
+          description={requestErrorMessage(error, REQUEST_ERROR_FALLBACK)}
+          onRetry={() => {
+            void refetchSummary();
+            void refetchAnomalies();
+          }}
+          retrying={summaryFetching || anomaliesFetching}
+        />
+      ) : (
+        <>
+          <section aria-label="Indicadores clave">
+            <Row gutter={[16, 16]}>
+              <Col xs={24} sm={12} lg={6}>
                 <Card>
-                  <Skeleton active title={false} paragraph={{ rows: 1 }} />
+                  <Statistic
+                    title="Estado"
+                    value={
+                      summary?.health
+                        ? meterStatusLabel(summary.health)
+                        : "—"
+                    }
+                  />
                 </Card>
               </Col>
-            ))}
-          </Row>
-        ) : error ? (
-          <RequestError
-            title="No se pudo cargar el panel"
-            description={requestErrorMessage(error, REQUEST_ERROR_FALLBACK)}
-            onRetry={() => {
-              void refetchSummary();
-              void refetchAnomalies();
-            }}
-            retrying={summaryFetching || anomaliesFetching}
-          />
-        ) : (
-          <>
-            <section aria-label="Indicadores clave">
-              <Row gutter={[16, 16]}>
-                <Col xs={24} sm={12} lg={6}>
-                  <Card>
-                    <Statistic
-                      title="Estado"
-                      value={
-                        summary?.health
-                          ? meterStatusLabel(summary.health)
-                          : "—"
-                      }
-                    />
-                  </Card>
-                </Col>
-                <Col xs={24} sm={12} lg={6}>
-                  <Card>
-                    <Statistic title="Medidores" value={summary?.meters ?? "—"} />
-                  </Card>
-                </Col>
-                <Col xs={24} sm={12} lg={6}>
-                  <Card>
-                    <Statistic
-                      title="Anomalías"
-                      value={summary?.anomalies ?? anomalies.length}
-                    />
-                  </Card>
-                </Col>
-                <Col xs={24} sm={12} lg={6}>
-                  <Card>
-                    <Statistic
-                      title="Última ejecución"
-                      value={summary?.lastRun ?? "—"}
-                    />
-                  </Card>
-                </Col>
-              </Row>
+              <Col xs={24} sm={12} lg={6}>
+                <Card>
+                  <Statistic title="Medidores" value={summary?.meters ?? "—"} />
+                </Card>
+              </Col>
+              <Col xs={24} sm={12} lg={6}>
+                <Card>
+                  <Statistic
+                    title="Anomalías"
+                    value={summary?.anomalies ?? anomalies.length}
+                  />
+                </Card>
+              </Col>
+              <Col xs={24} sm={12} lg={6}>
+                <Card>
+                  <Statistic
+                    title="Última ejecución"
+                    value={summary?.lastRun ?? "—"}
+                  />
+                </Card>
+              </Col>
+            </Row>
 
-              {leadingAnomaly && (
-                <section
-                  aria-label="Cambios de la anomalía más urgente"
-                  style={{ marginTop: "1rem" }}
-                >
-                  <Text type="secondary">
-                    Cambios de la anomalía más urgente (
-                    {leadingAnomaly.meter_id}).
-                  </Text>
-                  <Row gutter={[16, 16]} style={{ marginTop: "0.5rem" }}>
-                    {ANOMALY_DELTA_SIGNALS.map(({ field, label }) => (
-                      <Col key={field} xs={24} sm={12} lg={6}>
-                        <Card>
-                          <Text type="secondary">{label}</Text>
-                          <div
-                            style={{ marginTop: "0.5rem", fontSize: "1.5rem" }}
-                          >
-                            <KpiDeltaPill changePct={leadingAnomaly[field]} />
-                          </div>
-                        </Card>
-                      </Col>
-                    ))}
-                  </Row>
-                </section>
-              )}
-
-              <div style={{ marginTop: "1rem" }}>
-                <InsightBanner
-                  total={summary?.anomalies ?? anomalies.length}
-                  highSeverity={highSeverityCount}
-                />
-              </div>
-            </section>
-
-            <section
-              aria-label="Resumen de anomalías"
-              style={{ marginTop: "1.5rem" }}
-            >
-              <Card
-                title="Resumen de anomalías"
-                extra={
-                  <Space>
-                    <Link href="/meters">Ver medidores</Link>
-                    <Button type="primary" href="/anomalies">
-                      Ver todas las anomalías
-                    </Button>
-                  </Space>
-                }
+            {leadingAnomaly && (
+              <section
+                aria-label="Cambios de la anomalía más urgente"
+                style={{ marginTop: "1rem" }}
               >
-                <Space
-                  orientation="vertical"
-                  size="middle"
-                  style={{ width: "100%" }}
-                >
-                  <div>
-                    <Text strong>Por tipo</Text>
-                    <section
-                      aria-label="Conteo de anomalías por tipo"
-                      style={{ marginTop: "0.5rem" }}
-                    >
-                      <Space wrap>
-                        {anomalyTypes.map((type) => {
-                          const count = typeCounts.get(type) ?? 0;
-                          if (count === 0) return null;
-                          return (
-                            <Tag key={type} color={anomalyTypeColors[type]}>
-                              {anomalyTypeLabels[type]}: {count}
-                            </Tag>
-                          );
-                        })}
-                      </Space>
-                    </section>
-                  </div>
+                <Text type="secondary">
+                  Cambios de la anomalía más urgente (
+                  {leadingAnomaly.meter_id}).
+                </Text>
+                <Row gutter={[16, 16]} style={{ marginTop: "0.5rem" }}>
+                  {ANOMALY_DELTA_SIGNALS.map(({ field, label }) => (
+                    <Col key={field} xs={24} sm={12} lg={6}>
+                      <Card>
+                        <Text type="secondary">{label}</Text>
+                        <div
+                          style={{ marginTop: "0.5rem", fontSize: "1.5rem" }}
+                        >
+                          <KpiDeltaPill changePct={leadingAnomaly[field]} />
+                        </div>
+                      </Card>
+                    </Col>
+                  ))}
+                </Row>
+              </section>
+            )}
 
-                  <div>
-                    <Text strong>Por severidad</Text>
-                    <section
-                      aria-label="Conteo de anomalías por severidad"
-                      style={{ marginTop: "0.5rem" }}
-                    >
-                      <Space wrap>
-                        {anomalySeverities.map((severity) => {
-                          const count = severityCounts.get(severity) ?? 0;
-                          if (count === 0) return null;
-                          return (
-                            <Tag
-                              key={severity}
-                              color={severityColors[severity]}
-                            >
-                              {anomalySeverityLabels[severity]}: {count}
-                            </Tag>
-                          );
-                        })}
-                      </Space>
-                    </section>
-                  </div>
+            <div style={{ marginTop: "1rem" }}>
+              <InsightBanner
+                total={summary?.anomalies ?? anomalies.length}
+                highSeverity={highSeverityCount}
+              />
+            </div>
+          </section>
 
-                  <Text type="secondary">
-                    Los conteos se calculan en el navegador a partir de la lista
-                    de anomalías obtenida; el endpoint de resumen solo informa
-                    totales.
-                  </Text>
-
-                  {anomalies.length === 0 ? (
-                    <Empty description="No se reportaron anomalías." />
-                  ) : (
-                    <>
-                      <AnomalyTable anomalies={overview} />
-                      {anomalies.length > overview.length && (
-                        <Text type="secondary">
-                          Mostrando las primeras {overview.length} de{" "}
-                          {anomalies.length} anomalías en orden de prioridad (la
-                          más urgente primero). Abre{" "}
-                          <Link href="/anomalies">la lista completa</Link> para
-                          filtrar y ordenar todas las anomalías.
-                        </Text>
-                      )}
-                      {anomalies.length <= overview.length && (
-                        <Text type="secondary">
-                          Ordenadas por prioridad del backend, la más urgente
-                          primero.
-                        </Text>
-                      )}
-                    </>
-                  )}
+          <section
+            aria-label="Resumen de anomalías"
+            style={{ marginTop: "1.5rem" }}
+          >
+            <Card
+              title="Resumen de anomalías"
+              extra={
+                <Space>
+                  <Link href="/meters">Ver medidores</Link>
+                  <Button type="primary" href="/anomalies">
+                    Ver todas las anomalías
+                  </Button>
                 </Space>
-              </Card>
-            </section>
-          </>
-        )}
-      </div>
-    </PrivateRoute>
+              }
+            >
+              <Space
+                orientation="vertical"
+                size="middle"
+                style={{ width: "100%" }}
+              >
+                <div>
+                  <Text strong>Por tipo</Text>
+                  <section
+                    aria-label="Conteo de anomalías por tipo"
+                    style={{ marginTop: "0.5rem" }}
+                  >
+                    <Space wrap>
+                      {anomalyTypes.map((type) => {
+                        const count = typeCounts.get(type) ?? 0;
+                        if (count === 0) return null;
+                        return (
+                          <Tag key={type} color={anomalyTypeColors[type]}>
+                            {anomalyTypeLabels[type]}: {count}
+                          </Tag>
+                        );
+                      })}
+                    </Space>
+                  </section>
+                </div>
+
+                <div>
+                  <Text strong>Por severidad</Text>
+                  <section
+                    aria-label="Conteo de anomalías por severidad"
+                    style={{ marginTop: "0.5rem" }}
+                  >
+                    <Space wrap>
+                      {anomalySeverities.map((severity) => {
+                        const count = severityCounts.get(severity) ?? 0;
+                        if (count === 0) return null;
+                        return (
+                          <Tag
+                            key={severity}
+                            color={severityColors[severity]}
+                          >
+                            {anomalySeverityLabels[severity]}: {count}
+                          </Tag>
+                        );
+                      })}
+                    </Space>
+                  </section>
+                </div>
+
+                <Text type="secondary">
+                  Los conteos se calculan en el navegador a partir de la lista
+                  de anomalías obtenida; el endpoint de resumen solo informa
+                  totales.
+                </Text>
+
+                {anomalies.length === 0 ? (
+                  <Empty description="No se reportaron anomalías." />
+                ) : (
+                  <>
+                    <AnomalyTable anomalies={overview} />
+                    {anomalies.length > overview.length && (
+                      <Text type="secondary">
+                        Mostrando las primeras {overview.length} de{" "}
+                        {anomalies.length} anomalías en orden de prioridad (la
+                        más urgente primero). Abre{" "}
+                        <Link href="/anomalies">la lista completa</Link> para
+                        filtrar y ordenar todas las anomalías.
+                      </Text>
+                    )}
+                    {anomalies.length <= overview.length && (
+                      <Text type="secondary">
+                        Ordenadas por prioridad del backend, la más urgente
+                        primero.
+                      </Text>
+                    )}
+                  </>
+                )}
+              </Space>
+            </Card>
+          </section>
+        </>
+      )}
+    </div>
   );
 }

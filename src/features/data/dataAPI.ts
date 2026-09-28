@@ -1,6 +1,7 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import type { MeterId, Reading } from "../../types/backend";
 import { getApiBaseUrl } from "@/utils/apiBaseUrl";
+import { prepareAuthHeaders } from "../auth/authHeaders";
 
 // Resolve API base URL from utility (NEXT_PUBLIC_API_URL)
 const dataBaseUrl = getApiBaseUrl();
@@ -24,7 +25,10 @@ export interface MeterReadingsParams {
  */
 export const dataApi = createApi({
   reducerPath: "dataApi",
-  baseQuery: fetchBaseQuery({ baseUrl: dataBaseUrl }),
+  baseQuery: fetchBaseQuery({
+    baseUrl: dataBaseUrl,
+    prepareHeaders: prepareAuthHeaders,
+  }),
   endpoints: (builder) => ({
     getMeterReadings: builder.query<Reading[] | null, MeterReadingsParams>({
       query: ({ meterId, from, to }) => ({
