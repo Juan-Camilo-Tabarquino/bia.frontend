@@ -12,8 +12,10 @@ contract, to avoid a second copy that drifts out of sync with the backend.
   `priority` field and the ordering, confirmed against the backend source and
   recorded in §2 R1, plus the
   per-anomaly statistical evidence (baseline, per-signal change percentages,
-  correlated events, data-quality flag) are all in place) and one ask that is
-  still **open**: **R3**, the asynchronous analysis lifecycle.
+  correlated events, data-quality flag) are all in place) and one ask that the
+  backend has since **resolved**: **R3**, the asynchronous analysis lifecycle
+  (implemented as `202` + polling, and recorded as resolved in
+  `docs/backend-requirements.md`).
 - §3 of the same document is the frontend-only markdown decision.
 - [`docs/routes.md`](routes.md) — the routes each page consumes today and the three
   RTK Query slices that declare them.

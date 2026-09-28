@@ -14,7 +14,6 @@ jest.mock("@/features/dashboards/dashboardAPI", () => ({
 
 import {
   ANALYSIS_POLL_INTERVAL_MS,
-  ANALYSIS_STAGES,
   useGetAiAnalysisQuery,
   usePostAnalyzeMutation,
 } from "@/features/dashboards/dashboardAPI";
@@ -146,7 +145,18 @@ describe("AiReanalysis", () => {
       .getAllByText(/^(Lecturas|Baseline|Detección|Correlación|Eventos|Explicación con IA|Recomendación)$/)
       .map((node) => node.textContent);
 
-    expect(titles).toEqual(ANALYSIS_STAGES.map((step) => step.label));
+    // The expected order is written out literally on purpose: comparing against
+    // ANALYSIS_STAGES, which the component itself renders from, would move both
+    // sides together and still pass if two stages were swapped.
+    expect(titles).toEqual([
+      "Lecturas",
+      "Baseline",
+      "Detección",
+      "Correlación",
+      "Eventos",
+      "Explicación con IA",
+      "Recomendación",
+    ]);
   });
 
   it("sends the meter id in the POST body when the action is clicked", () => {
@@ -374,6 +384,17 @@ describe("AiReanalysis status handling", () => {
       skip: false,
       pollingInterval: 0,
     });
+  });
+
+  it("marks no step finished when the status is not recognised", () => {
+    // Regression guard for the steps: an unrecognised payload can still carry
+    // `stage: "completed"`, and seven finished steps next to the warning that
+    // completion cannot be confirmed would contradict each other.
+    mockQuery({ data: { ...result, status: "processing" } });
+
+    renderBlock();
+
+    expect(document.querySelectorAll(".ant-steps-item-finish")).toHaveLength(0);
   });
 
   it("stops polling once a pending analysis reports a terminal status", () => {

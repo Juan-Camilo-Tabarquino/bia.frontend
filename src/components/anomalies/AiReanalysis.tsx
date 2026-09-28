@@ -170,7 +170,16 @@ export function AiReanalysis({ meterId }: AiReanalysisProps) {
   const topAnomaly = result?.anomalies[0];
   const failed = Boolean(error) || Boolean(resultError);
   const failedRun = status === "failed";
-  const currentIndex = analysisStageIndex(result?.stage, result?.progress);
+  // The steps only report progress for a lifecycle the interface recognises. An
+  // unrecognised status warns that completion cannot be confirmed, and its
+  // payload can still carry `stage: "completed"`; rendering seven finished steps
+  // next to that warning would contradict it, so the whole list stays pending.
+  const recognisedStatus =
+    status !== undefined &&
+    (isAnalysisPending(status) || status === "completed" || status === "failed");
+  const currentIndex = recognisedStatus
+    ? analysisStageIndex(result?.stage, result?.progress)
+    : -1;
   const elapsed = useElapsedSeconds(result?.started_at, pending);
 
   // A failed READ deliberately does not stop the polling once a non-terminal

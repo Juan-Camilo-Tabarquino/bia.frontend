@@ -449,7 +449,8 @@ Formato: **qué se ve**, **endpoints**, **estados** con su copia exacta, y **com
     es un componente de cliente, así que **no responde el código HTTP**.
   - *Error:* `RequestError` **No se pudo cargar la anomalía** + **Reintentar** + link **Volver a las anomalías**.
   - *Sin eventos correlacionados:* `Ningún evento correlacionado explica esta desviación.`
-  - *Sin narrativa LLM:* `No hay narrativa del LLM disponible para esta anomalía.`
+  - *Sin narrativa LLM:* `La narrativa se genera bajo demanda: corré el análisis con IA desde la página del
+    medidor para producirla.`
 - **Notable:** el `h1` acá es **estático** ("Investigación de la anomalía"), a diferencia del detalle de medidor:
   no muestra el segmento de ruta. El `meter_id` sí es un link, con el id como texto y el href encodado.
 

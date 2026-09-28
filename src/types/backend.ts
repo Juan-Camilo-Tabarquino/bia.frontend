@@ -192,7 +192,12 @@ export interface AnalyzeResponse {
   analysisId: string;
   /** Meter the accepted run belongs to. */
   meter_id: MeterId;
-  /** Always `"queued"` on the accepted (`202`) response. */
+  /**
+   * Status of the accepted run. `"queued"` for a fresh run, but a second POST
+   * while one is already in flight for that meter returns the EXISTING run, so
+   * this can legitimately be `"running"`. Read only `analysisId` from this
+   * response and let the GET endpoint report the state.
+   */
   status: string;
 }
 
