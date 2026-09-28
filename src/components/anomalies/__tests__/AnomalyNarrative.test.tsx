@@ -55,33 +55,33 @@ describe("AnomalyNarrative", () => {
     expect(screen.getByText("plain bold")).toBeInTheDocument();
   });
 
-  it("renders the honest empty state when llm_analysis is absent", () => {
+  it("invites the reader to run the analysis when llm_analysis is absent", () => {
     render(<AnomalyNarrative />);
 
     expect(
       screen.getByText(
-        "No hay narrativa del LLM disponible para esta anomalía.",
+        "La narrativa se genera bajo demanda: corré el análisis con IA desde la página del medidor para producirla.",
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText(/not available yet/i)).not.toBeInTheDocument();
   });
 
-  it("renders the honest empty state when llm_analysis is an empty string", () => {
+  it("invites the reader to run the analysis when llm_analysis is an empty string", () => {
     render(<AnomalyNarrative analysis="" />);
 
     expect(
       screen.getByText(
-        "No hay narrativa del LLM disponible para esta anomalía.",
+        "La narrativa se genera bajo demanda: corré el análisis con IA desde la página del medidor para producirla.",
       ),
     ).toBeInTheDocument();
   });
 
-  it("renders the honest empty state when llm_analysis is only whitespace", () => {
+  it("invites the reader to run the analysis when llm_analysis is only whitespace", () => {
     render(<AnomalyNarrative analysis={"   \n  "} />);
 
     expect(
       screen.getByText(
-        "No hay narrativa del LLM disponible para esta anomalía.",
+        "La narrativa se genera bajo demanda: corré el análisis con IA desde la página del medidor para producirla.",
       ),
     ).toBeInTheDocument();
   });

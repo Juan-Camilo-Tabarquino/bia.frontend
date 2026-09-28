@@ -38,7 +38,8 @@ export function AnomalyNarrative({ analysis }: AnomalyNarrativeProps) {
         </Paragraph>
         {narrative.length === 0 ? (
           <Paragraph className={styles.empty}>
-            No hay narrativa del LLM disponible para esta anomalía.
+            La narrativa se genera bajo demanda: corré el análisis con IA desde
+            la página del medidor para producirla.
           </Paragraph>
         ) : (
           <div className={styles.narrative}>

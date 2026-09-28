@@ -153,15 +153,79 @@ export interface HealthResponse {
   status: string;
 }
 
+/**
+ * Pipeline stage reported by `GET /api/ai/analysis/{id}`.
+ *
+ * The seven real stages (`ANALYSIS_STAGES` order) plus the three lifecycle-only
+ * values: `"queued"` before the pipeline starts, and `"completed"` / `"failed"`
+ * once it ends.
+ */
+export type AnalysisStage =
+  | "queued"
+  | "lecturas"
+  | "baseline"
+  | "deteccion"
+  | "correlacion"
+  | "eventos"
+  | "explicacion"
+  | "recomendacion"
+  | "completed"
+  | "failed";
+
+/** Stage counter returned next to `AnalysisStage` while a run is in flight. */
+export interface AnalysisProgress {
+  done: number;
+  total: number;
+}
+
+/**
+ * Platform-wide closing counters returned on completion: how many anomalies the
+ * run detected and how many of them require priority attention.
+ */
+export interface AnalysisPlatformSummary {
+  total_anomalies: number;
+  high_priority: number;
+}
+
 /** `POST /api/ai/analyze` */
 export interface AnalyzeResponse {
   analysisId: string;
+  /** Meter the accepted run belongs to. */
+  meter_id: MeterId;
+  /**
+   * Status of the accepted run. `"queued"` for a fresh run, but a second POST
+   * while one is already in flight for that meter returns the EXISTING run, so
+   * this can legitimately be `"running"`. Read only `analysisId` from this
+   * response and let the GET endpoint report the state.
+   */
+  status: string;
 }
 
 /** `GET /api/ai/analysis/{id}` */
 export interface AnalysisResult {
   analysisId: string;
-  /** Observed values: `"queued"`, `"completed"`. */
+  /** Meter the run belongs to. */
+  meter_id: MeterId;
+  /**
+   * Observed values: `"queued"`, `"completed"`.
+   * Extended lifecycle from the per-meter contract: `"running"`, `"failed"`.
+   */
   status: string;
+  /** Current pipeline stage for the run; see `AnalysisStage`. */
+  stage: AnalysisStage;
+  /** Completed / total stage counter for the run. */
+  progress: AnalysisProgress;
+  /** RFC3339 timestamp of when the run started. */
+  started_at: string;
+  /** RFC3339 timestamp of when the run ended, or `null` while it is running. */
+  finished_at: string | null;
   anomalies: Anomaly[];
+  /**
+   * Platform-wide closing counters. The backend marks this field `omitempty`, so
+   * it is ABSENT (not null) until the run completes — read it only when
+   * `status === "completed"`, or guard for `undefined`.
+   */
+  platform?: AnalysisPlatformSummary;
+  /** Failure reason reported by the backend when `status` is `"failed"`. */
+  error?: string | null;
 }

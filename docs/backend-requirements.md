@@ -5,7 +5,7 @@
 **Status:** the HTTP contract below is **confirmed** against the backend. The
 backend repository's `docs/endpoints.md` remains the definitive backend
 reference; this file is the frontend-facing summary of that contract, the
-backend requests (the resolved ones and the open **R3**), one frontend-only
+backend requests (all of them resolved), one frontend-only
 decision, and the operational notes needed to run against it.
 
 The earlier version of this handoff was written against a speculative API and
@@ -30,7 +30,7 @@ wrapped with CORS (`Access-Control-Allow-Origin: *`).
 | GET | `/api/meters/{meterId}/readings?from&to` | **bare array** of reading objects, or `null` |
 | GET | `/api/anomalies` | **bare array** of anomaly objects (`[]` when empty) |
 | GET | `/api/anomalies/{id}` | single anomaly object |
-| POST | `/api/ai/analyze` | `{"analysisId":"<uuid>"}` |
+| POST | `/api/ai/analyze` | `202 {"analysisId":"<uuid>","meter_id":"M-109","status":"queued"}` |
 | GET | `/api/ai/analysis/{id}` | analysis result object |
 | GET | `/api/dashboard/summary` | summary object |
 | GET | `/api/reports` | `{"reports":[…]}` (raw evidence; not consumed by the frontend) |
@@ -178,42 +178,83 @@ and never replaces them.
 
 ### `POST /api/ai/analyze`
 
-No request body is read. The handler re-runs the deterministic pipeline
-(idempotent: it does not duplicate stored data) and snapshots the produced
-evidence under a new id:
+Takes a JSON body naming the meter:
 
 ```json
-{ "analysisId": "3f1c9d4e-…-uuid" }
+{ "meter_id": "M-109" }
 ```
+
+The handler starts (or joins) the AI analysis **for that meter** and answers
+immediately with `202 Accepted`:
+
+```json
+{ "analysisId": "3f1c9d4e-…-uuid", "meter_id": "M-109", "status": "queued" }
+```
+
+- `meter_id` is **required**. Missing or unknown: `400` with `{"error":"…"}`.
+- The run is **not synchronous**: the deterministic pipeline and the LLM run
+  behind the returned id, and progress is read from `GET /api/ai/analysis/{id}`.
+- A second POST while one run for that meter is in flight returns `202` with the
+  **existing** `analysisId` instead of starting another LLM call, so a double
+  click cannot lose or duplicate the run.
 
 ### `GET /api/ai/analysis/{id}`
 
 ```json
 {
   "analysisId": "3f1c9d4e-…-uuid",
-  "status": "completed",
-  "anomalies": [ { "…": "same anomaly DTO shape as above" } ]
+  "meter_id": "M-109",
+  "status": "queued",
+  "stage": "lecturas",
+  "progress": { "done": 0, "total": 7 },
+  "started_at": "2026-09-12T14:00:00Z",
+  "finished_at": null,
+  "anomalies": [ { "…": "same anomaly DTO shape as above" } ],
+  "platform": { "total_anomalies": 4, "high_priority": 2 },
+  "error": null
 }
 ```
 
-- There is **no** evidence-counter field.
-- **`anomalies` is the same DTO array, in the same deterministic priority order, as `GET /api/anomalies`:**
-the backend maps the list endpoint and this stored snapshot through one shared helper
-(`anomalyDTOs` over `sortedEvidence`, `internal/api/handlers/endpoints.go`), called by
-`AnalysisGET` in `internal/api/handlers/ai.go`. The first element is therefore the most urgent
-anomaly, which is what the `/anomalies` re-analysis action labels "top-priority".
-That ordering is committed and pinned: `sortedEvidence()` is the sort and
-`anomalyDTOs()` is the mapping both endpoints share, and `internal/api/api_test.go`
-asserts the ascending `priority` sequence.
-- Unknown id: `404`.
+- `status` is the lifecycle: `"queued"` → `"running"` → `"completed"` |
+  `"failed"`.
+- `stage` is the **real** pipeline stage the run is on:
+
+  | `stage` | Spanish label drawn by the UI |
+  | --- | --- |
+  | `lecturas` | Lecturas |
+  | `baseline` | Baseline |
+  | `deteccion` | Detección |
+  | `correlacion` | Correlación |
+  | `eventos` | Eventos |
+  | `explicacion` | Explicación con IA |
+  | `recomendacion` | Recomendación |
+
+  plus the lifecycle-only values `"queued"` (nothing started yet),
+  `"completed"` and `"failed"`. `progress` (`done`/`total`, `total` = 7) counts
+  the seven stages.
+- `started_at` / `finished_at` are RFC3339; `finished_at` is `null` while the
+  run is in flight.
+- `anomalies` is the same DTO array, in the same deterministic priority order,
+  as `GET /api/anomalies`, but **scoped to the run's meter** (empty when that
+  meter has none): the backend maps the list endpoint and this stored snapshot
+  through one shared helper (`anomalyDTOs` over `sortedEvidence`,
+  `internal/api/handlers/endpoints.go`), called by `AnalysisGET` in
+  `internal/api/handlers/ai.go`. The first element is therefore the most urgent
+  anomaly of the meter. That ordering is committed and pinned:
+  `sortedEvidence()` is the sort and `anomalyDTOs()` is the mapping both
+  endpoints share, and `internal/api/api_test.go` asserts the ascending
+  `priority` sequence.
+- `platform` carries the closing counters (`total_anomalies`,
+  `high_priority`), populated when the run completes.
+- `error` carries the failure reason when `status` is `"failed"` (`null`
+  otherwise).
+- Unknown id: `404` with `{"error":"análisis {id} no encontrado"}`.
 - The snapshot store is in-memory and per-process: ids are lost on restart.
 
-**Frontend consumer:** the `/anomalies` page mounts `AiReanalysis`, which is the
-only UI path to these two routes. Because `POST /api/ai/analyze` is synchronous
-and runs the LLM once per evidence item, the request can stay pending for about
-a minute; the UI states that latency in the page instead of hiding it.
-
-The block **reads `status`** and polls this endpoint every 3 s
+**Frontend consumer:** the `/meter/[id]` page mounts `AiReanalysis`, which is
+now the only UI path to these two routes (it used to live on `/anomalies`). The
+block posts `{"meter_id":"<meterId>"}`, keeps the returned `analysisId` and
+**reads `status`**, polling this endpoint every 3 s
 (`ANALYSIS_POLL_INTERVAL_MS`) while the reported value is `"queued"` or
 `"running"` — the only two statuses the frontend treats as pending. Every other
 value stops the polling: `"completed"`, `"failed"`, and **any status the
@@ -222,12 +263,18 @@ rendered as a finished analysis. The list of non-terminal statuses is
 deliberately an allow-list, so a future or malformed value can never turn into
 an unbounded request loop.
 
-The frontend is therefore already ready for an **asynchronous** run, but the
-current backend answers synchronously, so the polling never engages today. The
-contract it assumes (and the fields it would need to render progress and a
-failure reason) is the open request R3 in §2, recorded in Engram under
-`bia-backend/ai-reanalysis-async-contract`. The action is
-additive: it never replaces the deterministic anomaly list already on the page.
+The UI turns the reported `stage` into an antd `Steps` with the seven real
+stages, so the process state the technical test asks for reflects the backend
+and is never simulated. Because one LLM call exposes no partial progress, the
+in-flight signal is the active stage plus the elapsed seconds — **never a fake
+percentage** — and a completed run renders the meter's narrative, its
+`recommended_action` and the `platform` closing line. The action is additive: it
+never replaces the deterministic anomaly list shown elsewhere in the app.
+
+The frontend used to assume an asynchronous run while the backend answered
+synchronously, so the polling never engaged. The backend now implements the
+cycle above, so the polling is live; see §2 for the reversal of the old
+"no polling protocol" stance.
 
 ### `GET /api/dashboard/summary`
 
@@ -271,31 +318,34 @@ The defects listed in the earlier handoff are fixed:
   Ollama provider and exposed on the anomaly DTO (and inside the analysis
   result).
 
-### Request R3 — asynchronous analysis with a real status lifecycle (OPEN)
+### Former request R3 — asynchronous analysis with a real status lifecycle (RESOLVED, stance reversed)
 
-The frontend side is done: the re-analysis block branches on `status` and polls
-while the value is non-terminal (see the frontend-consumer note under
-`GET /api/ai/analysis/{id}` in §1). What it cannot do by itself is make the flow
-end to end, because today `POST /api/ai/analyze` blocks for ~80 s and the read
-endpoint only ever reports `"completed"`.
+**Reversal of the old stance.** Earlier layers of this document described the AI
+endpoints as **synchronous** and treated polling as a protocol the frontend
+*assumed* but the backend did not implement; the owner's broader caching
+decision was "no polling" **except** this flow. That stance is reversed: the
+per-meter analysis **is** now a `202` + polling protocol, and the frontend polls
+it for real (see the frontend-consumer note under `GET /api/ai/analysis/{id}` in
+§1). `POST /api/ai/analyze` is **not** a blocking request anymore, so the old
+"sincrónico ~1 min" wording no longer applies.
 
-Recorded in Engram under **`bia-backend/ai-reanalysis-async-contract`** for the
-backend work. In short:
+The backend now implements the whole cycle:
 
-- `POST /api/ai/analyze` returns **immediately** with `{ analysisId, status:
-  "queued" }` and runs the deterministic pipeline plus the LLM asynchronously.
+- `POST /api/ai/analyze` takes `{"meter_id": …}` and returns **immediately** with
+  `202 { analysisId, meter_id, status: "queued" }`, running the deterministic
+  pipeline plus the LLM asynchronously; a concurrent POST returns the existing
+  `analysisId`.
 - `GET /api/ai/analysis/{id}` reports a real lifecycle: `queued` → `running` →
-  `completed` \| `failed`, and **every run reaches a terminal state within a
-  bounded time** (the frontend polls indefinitely while the status is
-  non-terminal, by design).
-- A failed run carries a machine-readable reason, and a running run optionally
-  carries progress.
-- Concurrent `POST`s stay independent, and the snapshot store's retention is
-  documented.
+  `completed` \| `failed`, with `stage`, `progress`, `started_at` /
+  `finished_at`, and `platform` counters, and **every run reaches a terminal
+  state within a bounded time** (the frontend polls indefinitely while the status
+  is non-terminal, by design).
+- A failed run carries the machine-readable `error` string.
 
-The frontend renders progress and a failure reason only **after** those fields
-exist in the contract; it deliberately does not invent them (see the DTO rule in
-§1: no field is stated as fact before the backend confirms it).
+The frontend renders progress and the failure reason from those fields, and
+deliberately invents none of them (see the DTO rule in §1: no field is stated as
+fact before the backend confirms it). The old Engram record
+`bia-backend/ai-reanalysis-async-contract` is superseded by the contract above.
 
 ### Former request R1 — priority and ordering (resolved)
 
