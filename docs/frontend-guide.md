@@ -128,12 +128,16 @@ renderiza:
 
 1. `BackendStatus` — toast de salud del backend. Monta una sola vez y **no renderiza markup**.
 2. `SiteHeader` — marca "Bia", navegación de tres destinos **Medidores** (`/meters`), **Análisis** (`/dashboard`) y
-   **Anomalías** (`/anomalies`) con iconos y `aria-current`, badge opcional con el conteo de anomalías, y el toggle
-   de tema. El `aria-label` de la nav es `Navegación principal`.
+   **Anomalías** (`/anomalies`) con iconos y `aria-current`, badge opcional con el conteo de anomalías, el nombre
+   del usuario con su control de cierre de sesión, y el toggle de tema. El `aria-label` de la nav es
+   `Navegación principal`.
 3. `SiteBreadcrumb` — rastro derivado del pathname; el `aria-label` del landmark es `Ruta de navegación`. Un path
    que la app no reconoce no renderiza nada (mejor sin breadcrumb que con uno engañoso).
-4. `Content` con la clase compartida `shell-container`.
+4. `Content` con la clase compartida `shell-container`, que envuelve a los hijos en `PrivateRoute` (la guardia de
+   autenticación).
 5. `Footer` con el texto `Bia · <año>`.
+
+En `/login` el shell **no** monta la barra superior ni el breadcrumb: es la única ruta sin chrome.
 
 ### Los tres slices de RTK Query
 
@@ -165,10 +169,31 @@ no un accidente, y es consistente con la decisión del dueño de **no hacer poll
 re-análisis con IA de `/anomalies`, que poléa **por suscripción** y solo refresca su propia entrada
 (`GET /ai/analysis/{id}`); no invalida ninguna otra.
 
-### `PrivateRoute` es un pass-through
+### Autenticación: la guardia es de flujo, no de seguridad
 
-`src/components/PrivateRoute.tsx` es un no-op: devuelve `<>{children}</>`. **No hay autenticación implementada.**
-Hoy solo lo usa la página del dashboard, como envoltorio. No protege nada.
+`src/components/PrivateRoute.tsx` es la guardia real: sin sesión válida redirige a `/login`; con sesión, renderiza
+sus hijos. **Omite `/login`**, así que montarla sobre el shell entero no puede producir un bucle de redirección.
+
+Se monta **una sola vez, en `SiteShell`**, para cubrir todas las rutas del demo. La razón es explícita: las páginas
+de la suite se renderizan directamente en los tests y nunca montan el shell, de modo que una guardia a nivel de
+página rompería muchas suites sin ningún beneficio de producto.
+
+**Dónde vive el token.** `src/features/auth/session.ts` guarda el JWT en `localStorage` bajo la clave versionada
+`bia.session.v1`. El payload (`sub`, `name`, `authorized`, `exp`) se decodifica a mano desde el segmento `base64url`;
+un token ausente, mal formado o **vencido** se trata como *sin sesión*, y todo acceso a `localStorage` está envuelto
+en `try/catch` porque los modos privados lanzan. `useSession()` expone `{ session, ready, signOut }` y `ready`
+distingue "no hay sesión" de "todavía no se leyó el almacenamiento" (el render del servidor siempre es
+`ready: false`).
+
+**Es un flujo de UX, no una frontera de seguridad.** El backend **solo emite** el JWT en `POST /api/auth/login` y
+**no lo valida en ninguna otra ruta** (decisión de alcance de esta demo). Por eso la guardia solo mantiene fuera de
+las pantallas del demo a quien no inició sesión, y **no hay interceptor de respuestas**: no existe un `401` de token
+vencido que manejar. `src/features/auth/authHeaders.ts` es el único `prepareHeaders`, compartido por los tres slices
+(`apiSlice`, `dataApi`, `dashboardApi`), que agrega `Authorization: Bearer <token>` cuando hay sesión.
+
+`/login` oculta la barra superior, la navegación y el breadcrumb (condicional del propio shell) para quedar limpio, y
+muestra las credenciales de demostración (`jcamilo` / `bia2026`) porque es un demo de flujo. La cabecera muestra el
+nombre del usuario y un control de cierre de sesión que borra la sesión y vuelve a `/login`.
 
 ---
 
@@ -287,9 +312,25 @@ Formato: **qué se ve**, **endpoints**, **estados** con su copia exacta, y **com
 ### `/` — la entrada
 
 - **Qué se ve:** nada. Es un componente de servidor (`src/app/page.tsx`) cuyo único cuerpo es
-  `redirect("/meters")`. Costo de JavaScript en el cliente: cero.
+  `redirect("/dashboard")`. Costo de JavaScript en el cliente: cero.
 - **Endpoints:** ninguno.
-- **Notable:** el redirect es la materialización de la decisión "3 destinos con `/meters` como entrada".
+- **Notable:** el redirect refleja que el flujo del demo pone Dashboard justo después del login.
+
+### `/login` — Iniciar sesión
+
+- **Qué se ve:** una tarjeta centrada con el `h1` **Iniciar sesión**, el aviso **Credenciales de demostración**
+  (`jcamilo` / `bia2026`), el formulario de usuario y contraseña, y el botón **Entrar**. Sin barra superior, sin
+  navegación y sin breadcrumb.
+- **Endpoints:** `POST /api/auth/login`.
+- **Estados:**
+  - *En vuelo:* el botón queda deshabilitado y con `loading`, y los campos no se pueden editar.
+  - *Error:* un `Alert` con el mensaje **del backend** (`usuario o contraseña incorrectos`, `el usuario no está
+    autorizado`, `usuario y contraseña son obligatorios`) o el texto genérico
+    `No se pudo iniciar sesión. Revisa tu conexión e intenta de nuevo.` para cualquier otra falla.
+- **Notable:**
+  - El formulario **no** declara reglas `required` en el cliente: el backend dueño del `400` y mostrar su mensaje
+    era el punto.
+  - Con una sesión válida ya guardada, redirige a `/dashboard` en lugar de mostrar el formulario.
 
 ### `/meters` — Medidores
 
@@ -382,7 +423,7 @@ Formato: **qué se ve**, **endpoints**, **estados** con su copia exacta, y **com
     corrida previa). Un valor faltante o no finito no dibuja píldora.
   - La tabla de la previsualización es la misma `AnomalyTable` pero **sin ordenamiento y sin paginador** (el
     dashboard no tiene estado donde guardar la página ni el orden).
-  - La página está envuelta en `PrivateRoute`, que hoy es un pass-through.
+  - La página está cubierta por la guardia del shell (`PrivateRoute`), no por un envoltorio propio.
 
 ### `/anomalies` — Anomalías
 
@@ -475,7 +516,7 @@ renderizan nodos DOM reales que exponen las props bajo test.
 
 > **Los tests NO se ejecutaron al escribir esta guía.** No se afirma ningún resultado de corrida.
 
-- **Conteo que se puede verificar en el árbol (estático, no ejecutado):** 33 archivos de test contados con `find`
+- **Conteo que se puede verificar en el árbol (estático, no ejecutado):** 34 archivos de test contados con `find`
   bajo `src/**/__tests__`. Esto cuenta archivos, no tests.
 - **Cifra registrada en la historia del proyecto:** **32 suites / 279 tests** en el commit `5539905` (fases 0+1 a 6,
   medido entonces). Después, `meters-cards` agregó la suite `MeterCard`, así que el árbol de hoy tiene al menos un
@@ -557,8 +598,8 @@ refutó; se observó un timeout flaky una vez). No está resuelta.
 
 - **`jest` está declarado en `dependencies`**, no en `devDependencies` (verificado en `package.json`). Un test
   runner no es una dependencia de runtime.
-- **`PrivateRoute` es un no-op** (`src/components/PrivateRoute.tsx`): no hay autenticación, y el nombre sugiere una
-  protección que no existe.
+- **La guardia de autenticación no es una frontera de seguridad** (sección 3): el backend no valida el token, así
+  que quien conozca la URL entra a las pantallas; la guardia solo ordena el flujo del demo.
 - **Solo `/meter/[id]` declara `force-dynamic`**; ninguna otra ruta lo hace (verificado por grep).
 - **El skeleton de `ReadingsTable`** es de párrafo para una tabla de seis columnas (ver arriba).
 - **El `h1` del detalle de medidor** muestra el segmento crudo de la ruta (`meter-detail-h1-encoded`).

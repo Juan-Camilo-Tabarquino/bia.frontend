@@ -24,6 +24,7 @@ wrapped with CORS (`Access-Control-Allow-Origin: *`).
 
 | Method | Route | Response body (top level) |
 | --- | --- | --- |
+| POST | `/api/auth/login` | `{"token":…,"expires_at":…,"user":{…}}` on success, or `{"error":…}` |
 | GET | `/api/health` | literal `{"status":"ok"}` |
 | GET | `/api/meters` | **bare array** of meter-id strings |
 | GET | `/api/meters/{meterId}` | meter metadata object |
@@ -34,6 +35,35 @@ wrapped with CORS (`Access-Control-Allow-Origin: *`).
 | GET | `/api/ai/analysis/{id}` | analysis result object |
 | GET | `/api/dashboard/summary` | summary object |
 | GET | `/api/reports` | `{"reports":[…]}` (raw evidence; not consumed by the frontend) |
+
+### `POST /api/auth/login`
+
+Body `{"username":"…","password":"…"}`. It is the **only** authenticated route: it issues an HS256 JWT and the
+backend does **not** validate that token on any other route. That is a deliberate scope limit of this demo, not an
+oversight — and it is why the frontend guard is a UX flow rather than a security boundary.
+
+Success (`200`):
+
+```json
+{
+  "token": "<jwt>",
+  "expires_at": "RFC3339",
+  "user": { "username": "jcamilo", "name": "Juan Camilo", "authorized": true }
+}
+```
+
+The JWT claims are `sub` (username), `name`, `authorized` (bool), `iat` and `exp` (8 h). The frontend reads them by
+decoding the `base64url` payload segment; it never verifies the signature.
+
+| Case | Response |
+| --- | --- |
+| valid and authorized | `200` with the body above |
+| unknown user **or** wrong password | `401` `{"error":"usuario o contraseña incorrectos"}` (the same body for both, so the endpoint does not enumerate users) |
+| `authorized: false` | `403` `{"error":"el usuario no está autorizado"}` |
+| missing field | `400` `{"error":"usuario y contraseña son obligatorios"}` |
+
+Demo credentials: username **`jcamilo`**, password **`bia2026`**. The credential store is a committed CSV that keeps
+only the SHA-256 of the password (standard library, no dependency).
 
 ### `GET /api/health`
 
